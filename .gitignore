@@ -1,0 +1,10 @@
+.env
+/migrations/versions/*
+/app/logs/*
+venv/*
+build/
+dist/
+logs/*
+
+# 通用
+node_modules/
