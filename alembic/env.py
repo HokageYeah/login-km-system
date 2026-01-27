@@ -19,6 +19,9 @@ sys.path.append(str(project_root))
 from app.config.database_config import get_database_config, DATABASE_URL
 from app.db.sqlalchemy_db import Base
 
+# 导入所有模型，确保 Alembic 能检测到它们
+import app.models  # 这会触发 __init__.py 中的所有导入
+
 # env.py 是 Alembic 的环境配置文件
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

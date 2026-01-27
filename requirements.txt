@@ -9,3 +9,7 @@ pydantic-settings>=2.0.3
 httpx>=0.25.0
 cachetools>=5.3.0
 loguru>=0.7.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+python-multipart>=0.0.6

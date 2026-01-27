@@ -1,6 +1,64 @@
-# 微信公众号爬虫
+# 通用卡密与授权系统
 
-这是一个用于爬取微信公众号资源的Python项目。
+这是一个基于 FastAPI 的通用卡密授权管理系统，支持多应用、多设备的卡密管理和权限控制。
+
+## ✨ 核心功能
+
+- 🔐 **用户认证系统**: 注册、登录、JWT Token 认证
+- 🎫 **卡密管理**: 生成、绑定、查询、解绑卡密
+- 🔑 **权限控制**: 基于卡密的权限校验，支持自定义权限配置
+- 📱 **多设备支持**: 控制每个卡密的设备绑定数量
+- 🏢 **多应用支持**: 一套系统支持多个桌面应用或服务
+- 👤 **用户管理**: 用户封禁、角色管理（普通用户/管理员）
+- 📊 **管理后台**: 完整的后台管理功能（开发中）
+
+## 🚀 快速开始
+
+详细的快速开始指南请查看：[快速开始指南](app/docs/快速开始指南.md)
+
+### 1. 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+### 2. 配置数据库
+编辑 `.env.development` 文件：
+```bash
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=login_km_system_dev
+```
+
+### 3. 初始化系统
+```bash
+# 设置环境
+export ENV=dev
+
+# 创建数据库
+python -m app.scripts.create_database
+
+# 应用迁移
+alembic upgrade head
+
+# 初始化数据（创建默认应用和管理员账户）
+python -m app.scripts.init_data
+```
+
+### 4. 启动服务
+```bash
+python run_app.py
+```
+
+服务启动后访问：
+- 📖 **API文档**: http://localhost:8002/docs
+- 🔧 **ReDoc文档**: http://localhost:8002/redoc
+
+### 5. 测试接口
+
+使用默认账户登录测试：
+- **管理员**: admin / admin123456
+- **测试用户**: testuser / test123456
+- **应用标识**: default_app
 
 ## 集成框架
 
@@ -112,7 +170,7 @@ DB_USER=root
 DB_PASSWORD=password
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=wx_public_dev
+DB_NAME=login_km_system_dev
 DB_CHARSET=utf8mb4
 
 # API配置
@@ -259,15 +317,68 @@ if __name__ == "__main__":
 
 应用将在 http://localhost:8002 运行，API文档可在 http://localhost:8002/docs 访问。
 
-## API接口
+## 📡 API接口
 
-### 搜索微信公众号文章
+### 认证接口
 
+#### 用户注册
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
 ```
-GET /api/v1/wx/search?query=关键词
+
+#### 用户登录
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "test123456",
+  "app_key": "default_app",
+  "device_id": "device-001"
+}
 ```
 
-此接口会调用搜狗微信搜索，获取相关的微信公众号文章信息。
+响应示例：
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "user_status": "normal",
+  "has_card": false,
+  "username": "testuser",
+  "role": "user"
+}
+```
+
+#### 验证Token
+```http
+GET /api/v1/auth/verify
+Authorization: Bearer <token>
+```
+
+#### 获取当前用户信息
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <token>
+```
+
+### 卡密接口（开发中）
+- 查询我的卡密
+- 绑定卡密
+- 解绑设备
+- 权限校验
+
+### 管理后台接口（开发中）
+- 批量生成卡密
+- 用户管理
+- 卡密管理
+- 设备管理
 
 ## 日志系统
 
