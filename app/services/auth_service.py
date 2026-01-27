@@ -13,6 +13,8 @@ from app.models.user_token import UserToken
 from app.models.user_card import UserCard, UserCardStatus
 from app.utils.security import hash_password, verify_password, create_access_token
 from app.core.config import settings
+import colorama
+
 
 
 class AuthService:
@@ -149,23 +151,31 @@ class AuthService:
         Returns:
             (用户信息, 错误信息)
         """
+        print(colorama.Fore.CYAN + f" [AuthService] 开始验证Token: {token[:20]}...")
+        
         # 从数据库查询Token
         user_token = self.db.query(UserToken).filter(UserToken.token == token).first()
         if not user_token:
+            print(colorama.Fore.RED + " [AuthService] Token不存在")
             return None, "Token无效"
         
         # 检查Token是否过期
         if user_token.expire_time < datetime.now():
+            print(colorama.Fore.RED + f" [AuthService] Token已过期: {user_token.expire_time}")
             return None, "Token已过期"
         
         # 获取用户信息
         user = self.db.query(User).filter(User.id == user_token.user_id).first()
         if not user:
+            print(colorama.Fore.RED + f" [AuthService] 用户不存在: user_id={user_token.user_id}")
             return None, "用户不存在"
         
         # 检查用户状态
         if user.status == UserStatus.BANNED:
+            print(colorama.Fore.RED + f" [AuthService] 用户已被封禁: {user.username}")
             return None, "用户已被封禁"
+            
+        print(colorama.Fore.GREEN + f" [AuthService] 验证通过: {user.username}")
         
         # 构造用户信息
         user_info = {

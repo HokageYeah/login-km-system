@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.db.sqlalchemy_db import get_sqlalchemy_db
 from app.services.auth_service import AuthService
 from app.models.user import UserRole
+import colorama
 
 # HTTP Bearer Token 认证方案
 security = HTTPBearer()
@@ -43,18 +44,22 @@ async def get_current_user(
         HTTPException: 认证失败
     """
     token = credentials.credentials
+    print(colorama.Fore.YELLOW + f" 获取当前登录用户信息Token: {token}")
     
     # 验证Token
     auth_service = AuthService(db)
     user_info, error = auth_service.verify_token(token)
+    logger.info(f" Token验证结果 用户信息: {user_info}")
     
     if error:
+        print(colorama.Fore.RED + f" Token验证失败: {error}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=error,
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    print(colorama.Fore.GREEN + f" Token验证成功: {user_info}")
     return user_info
 
 

@@ -10,6 +10,12 @@ from app.utils.security import (
     verify_token,
     get_token_expire_time
 )
+from app.utils.dependencies import (
+    get_db,
+    get_current_user,
+    get_current_admin,
+    get_optional_current_user
+)
 
 __all__ = [
     "hash_password",
@@ -18,4 +24,8 @@ __all__ = [
     "decode_access_token",
     "verify_token",
     "get_token_expire_time",
+    "get_db",
+    "get_current_user",
+    "get_current_admin",
+    "get_optional_current_user"
 ]

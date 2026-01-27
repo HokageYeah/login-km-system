@@ -1,10 +1,19 @@
 from fastapi import Request, FastAPI, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.exceptions import ResponseValidationError
 from app.schemas.common_data import ApiResponseData, PlatformEnum
 from app.core.config import settings
+import httpx
+from datetime import datetime, timedelta
+
+# 创建一个简单的内存锁，用于防止重复调用n8n
+n8n_workflow_lock = {
+    "is_running": False,
+    "started_at": None,
+    "max_duration": 300  # 锁定最长时间，单位秒，防止锁死
+}
 # 自定义HTTP异常处理器
 async def http_exception_handler(request: Request, exc: HTTPException):
     """
@@ -36,6 +45,45 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         'v': settings.VERSION,
         'api': path.strip("/")
     }
+    # 通过：获取最后一个
+    error_msg = exc.detail.split(':')[-1].strip()
+    print('error_msg----', error_msg)
+    # 如果error_msg包含invalid session 说明需要调用n8n登录工作流
+    if 'invalid session' in error_msg:
+        # 检查锁是否已存在
+        global n8n_workflow_lock
+        # 获取当前时间
+        current_time = datetime.now()
+        print('n8n_workflow_lock----', n8n_workflow_lock)
+        # 如果锁存在，但超过最大持续时间，则释放锁
+        if (n8n_workflow_lock["is_running"] and n8n_workflow_lock["started_at"] 
+            and (current_time - n8n_workflow_lock["started_at"]) > timedelta(seconds=n8n_workflow_lock["max_duration"])):
+            print('n8n_workflow_lock----', '锁存在，但超过最大持续时间，则释放锁')
+            # 释放锁
+            n8n_workflow_lock["is_running"] = False
+            n8n_workflow_lock["started_at"] = None
+        # 如果工作流未运行，则设置锁并执行
+        if not n8n_workflow_lock["is_running"]:
+            try:
+                # 设置锁
+                n8n_workflow_lock["is_running"] = True
+                n8n_workflow_lock["started_at"] = current_time
+                # 调用n8n登录工作流
+                # 获取n8n的webhook地址
+                n8n_webhook_url = settings.N8N_WEBHOOK_URL
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(n8n_webhook_url)
+                    print('n8n_response----', response)
+            except Exception as e:
+                print(f"调用n8n工作流出错: {e}")
+            finally:
+                # 释放锁
+                n8n_workflow_lock["is_running"] = False
+                n8n_workflow_lock["started_at"] = None
+                print('n8n_workflow_lock----', '释放锁')
+        else:
+            # 工作流正在运行，记录日志
+            print('n8n工作流已在运行，跳过本次调用')
     
     return JSONResponse(
         status_code=exc.status_code,
@@ -109,8 +157,10 @@ async def response_validation_error_handler(request: Request, exc: ResponseValid
     2. 如果是字典，对比字典中的字段是否有符合定义要求的，有则覆盖，没有则提取
     3. 如果不是字典，则把对应的值放到指定格式的data字段中
     4. 其余字段自动补齐
+    5. 如果原始响应中包含headers字段，则将其设置为响应头
     """
-    
+    # print('response_validation_error_handler----exc----response----', request.headers)
+    # print('response_validation_error_handler----exc----', exc)
     # 获取请求信息
     request_method = request.method
     request_url = request.url.path
@@ -126,9 +176,19 @@ async def response_validation_error_handler(request: Request, exc: ResponseValid
         "ret": ["SUCCESS::请求成功"],
         "v": settings.VERSION
     }
-    print('response_validation_error_handler----original_response----', original_response)
+    
+    # 初始化headers变量，用于存储需要设置的响应头
+    response_headers = {}
+    
     # 检查原始响应是否为字典类型
     if isinstance(original_response, dict):
+        # 检查是否包含headers字段
+        if "headers" in original_response:
+            # 提取headers字段
+            response_headers = original_response["headers"]
+            # 从原始响应中移除headers字段
+            original_response = {k: v for k, v in original_response.items() if k != "headers" and k != "cookie_str" and k != "token" and k != "cookies"}
+        
         # 检查字典中是否包含符合ApiResponseData模型要求的字段
         required_fields = ["platform", "api", "data", "ret", "v"]
         existing_fields = {}
@@ -163,7 +223,26 @@ async def response_validation_error_handler(request: Request, exc: ResponseValid
         # 如果原始响应不是字典类型，直接将其放入data字段
         formatted_response["data"] = original_response
     
-    return JSONResponse(
+    # 创建响应对象
+    response = JSONResponse(
         status_code=200,  # 使用200状态码，因为这是一个有效的响应
         content=formatted_response
     )
+    
+    # 设置响应头
+    if response_headers:
+        for key, value in response_headers.items():
+            if key == 'Set-Cookie' or key == 'set-cookie':
+                cookie_list = []
+                if isinstance(value, str):
+                    cookie_list = value.split(';')
+                elif isinstance(value, list):
+                    cookie_list = value
+                # 设置多个cookie
+                for cookieValue in cookie_list:
+                    # 去除左右两边空格
+                    cookieValue = cookieValue.strip()
+                    response.headers.append("Set-Cookie", cookieValue)
+            else:
+                response.headers[key] = value
+    return response

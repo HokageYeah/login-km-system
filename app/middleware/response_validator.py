@@ -121,6 +121,18 @@ class ResponseValidatorMiddleware(BaseHTTPMiddleware):
                         print('formatted_response-----', formatted_response)
                         # 返回格式化后的响应
                         formatted_body = json.dumps(formatted_response).encode("utf-8")
+
+                        # 保留原始响应头中的自定义头信息
+                        headers = [
+                            (b"content-type", b"application/json"),
+                            (b"content-length", str(len(formatted_body)).encode())
+                        ]
+
+                        # 添加原始响应头中的自定义头信息（排除content-type和content-length）
+                        for header in original_response["headers"]:
+                            if header[0] != b"content-type" and header[0] != b"content-length":
+                                headers.append(header)
+                                
                         await request.send({
                             "type": "http.response.start",
                             "status": original_response["status"],  # 保持原始状态码

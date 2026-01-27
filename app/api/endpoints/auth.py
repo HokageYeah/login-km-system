@@ -5,7 +5,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_current_user
+from app.utils.dependencies import get_db, get_current_user
 from app.services.auth_service import AuthService
 from app.schemas.auth import (
     UserRegisterRequest,
@@ -16,7 +16,7 @@ from app.schemas.auth import (
 )
 from app.core.logging_uru import logger
 
-router = APIRouter(prefix="/auth", tags=["认证"])
+router = APIRouter()
 
 
 @router.post(
