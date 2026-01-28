@@ -108,7 +108,7 @@ async def create_app(
     )
 
 
-@router.put(
+@router.post(
     "/{app_id}/status",
     response_model=UpdateAppStatusResponse,
     summary="更新应用状态",
