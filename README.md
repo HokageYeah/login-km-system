@@ -368,17 +368,80 @@ GET /api/v1/auth/me
 Authorization: Bearer <token>
 ```
 
-### 卡密接口（开发中）
-- 查询我的卡密
-- 绑定卡密
-- 解绑设备
-- 权限校验
+### 卡密接口
+
+#### 查询我的卡密
+```http
+GET /api/v1/card/my
+Authorization: Bearer <token>
+```
+
+#### 绑定卡密
+```http
+POST /api/v1/card/bind
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "card_key": "A3KD-Q7LM-P2E8-W9RZ",
+  "device_id": "device-001",
+  "device_name": "我的电脑"
+}
+```
+
+#### 解绑设备
+```http
+POST /api/v1/card/unbind-device
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "card_id": 1,
+  "device_id": "device-001"
+}
+```
+
+#### 查询卡密详情
+```http
+GET /api/v1/card/{card_id}
+Authorization: Bearer <token>
+```
+
+### 应用管理接口（需要管理员权限）
+
+#### 查询应用列表
+```http
+GET /api/v1/app/list
+Authorization: Bearer <admin_token>
+```
+
+#### 创建应用
+```http
+POST /api/v1/app/create
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "app_name": "新应用"
+}
+```
+
+#### 更新应用状态
+```http
+PUT /api/v1/app/{app_id}/status
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "status": "disabled"
+}
+```
 
 ### 管理后台接口（开发中）
 - 批量生成卡密
 - 用户管理
-- 卡密管理
 - 设备管理
+- 权限校验
 
 ## 日志系统
 

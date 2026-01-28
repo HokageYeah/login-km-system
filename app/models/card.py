@@ -30,8 +30,8 @@ class Card(Base):
     max_device_count = Column(Integer, default=1, nullable=False, comment="最大可绑定设备数")
     permissions = Column(JSON, nullable=True, comment="权限配置 JSON")
     remark = Column(String(255), nullable=True, comment="备注（套餐名称等）")
-    created_at = Column(DateTime, default=func.now(), comment="创建时间")
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment="更新时间")
+    created_at = Column(DateTime, default=func.now(), nullable=False, comment="创建时间")
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False, comment="更新时间")
 
     # 关系映射
     app = relationship("App", back_populates="cards")

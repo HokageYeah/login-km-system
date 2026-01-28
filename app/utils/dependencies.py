@@ -11,7 +11,7 @@ from app.db.sqlalchemy_db import get_sqlalchemy_db
 from app.services.auth_service import AuthService
 from app.models.user import UserRole
 import colorama
-
+from loguru import logger
 # HTTP Bearer Token 认证方案
 security = HTTPBearer()
 

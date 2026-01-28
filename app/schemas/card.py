@@ -78,7 +78,7 @@ class CardDetailResponse(BaseModel):
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
     remark: Optional[str] = Field(None, description="备注")
     devices: List[DeviceInfo] = Field(default_factory=list, description="绑定的设备列表")
-    created_at: datetime = Field(..., description="创建时间")
+    created_at: Optional[datetime] = Field(None, description="创建时间")
 
     class Config:
         from_attributes = True

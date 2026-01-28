@@ -1,0 +1,199 @@
+"""
+应用管理相关API接口
+提供应用的创建、查询、状态管理等功能（需要管理员权限）
+"""
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.utils.dependencies import get_db, get_current_admin
+from app.services.app_service import AppService
+from app.schemas.app import (
+    AppCreateRequest,
+    AppCreateResponse,
+    AppInfo,
+    AppListResponse,
+    UpdateAppStatusRequest,
+    UpdateAppStatusResponse
+)
+from app.core.logging_uru import logger
+
+router = APIRouter()
+
+
+@router.get(
+    "/list",
+    response_model=AppListResponse,
+    summary="查询应用列表",
+    description="查询所有应用（需要管理员权限）"
+)
+async def get_app_list(
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    查询应用列表
+    
+    返回系统中所有应用的信息
+    """
+    app_service = AppService(db)
+    
+    apps = app_service.get_app_list()
+    
+    app_list = [
+        AppInfo(
+            id=app.id,
+            app_key=app.app_key,
+            app_name=app.app_name,
+            status=app.status.value,
+            created_at=app.created_at
+        )
+        for app in apps
+    ]
+    
+    logger.info(f"管理员 {current_admin['username']} 查询应用列表，共 {len(app_list)} 个")
+    
+    return AppListResponse(
+        total=len(app_list),
+        apps=app_list
+    )
+
+
+@router.post(
+    "/create",
+    response_model=AppCreateResponse,
+    summary="创建应用",
+    description="创建新应用（需要管理员权限）"
+)
+async def create_app(
+    request: AppCreateRequest,
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    创建应用
+    
+    - **app_name**: 应用名称（必填）
+    - **app_key**: 应用唯一标识（可选，不填则自动生成）
+    
+    自动生成的 app_key 格式：应用名称_随机后缀
+    例如：wx_crawler_a8f3e9
+    """
+    app_service = AppService(db)
+    
+    # 创建应用
+    app, error = app_service.create_app(
+        app_name=request.app_name,
+        app_key=request.app_key
+    )
+    
+    if error:
+        logger.warning(f"管理员 {current_admin['username']} 创建应用失败: {request.app_name}, 原因: {error}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+    
+    logger.info(f"管理员 {current_admin['username']} 创建应用成功: {app.app_name} (app_key: {app.app_key})")
+    
+    return AppCreateResponse(
+        success=True,
+        message="应用创建成功",
+        app=AppInfo(
+            id=app.id,
+            app_key=app.app_key,
+            app_name=app.app_name,
+            status=app.status.value,
+            created_at=app.created_at
+        )
+    )
+
+
+@router.put(
+    "/{app_id}/status",
+    response_model=UpdateAppStatusResponse,
+    summary="更新应用状态",
+    description="启用或禁用应用（需要管理员权限）"
+)
+async def update_app_status(
+    app_id: int,
+    request: UpdateAppStatusRequest,
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    更新应用状态
+    
+    - **status**: 应用状态（normal-正常, disabled-禁用）
+    
+    禁用应用后：
+    - 该应用下的所有用户将无法登录
+    - 已登录的用户将无法使用功能
+    """
+    app_service = AppService(db)
+    
+    # 更新状态
+    app, error = app_service.update_app_status(app_id, request.status)
+    
+    if error:
+        logger.warning(
+            f"管理员 {current_admin['username']} 更新应用状态失败: "
+            f"应用ID {app_id}, 原因: {error}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+    
+    logger.info(
+        f"管理员 {current_admin['username']} 更新应用状态成功: "
+        f"{app.app_name} -> {request.status}"
+    )
+    
+    return UpdateAppStatusResponse(
+        success=True,
+        message="应用状态更新成功",
+        app=AppInfo(
+            id=app.id,
+            app_key=app.app_key,
+            app_name=app.app_name,
+            status=app.status.value,
+            created_at=app.created_at
+        )
+    )
+
+
+@router.get(
+    "/{app_id}",
+    response_model=AppInfo,
+    summary="查询应用详情",
+    description="查询指定应用的详细信息（需要管理员权限）"
+)
+async def get_app_detail(
+    app_id: int,
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    查询应用详情
+    
+    返回指定应用的完整信息
+    """
+    app_service = AppService(db)
+    
+    app = app_service.get_app_by_id(app_id)
+    
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="应用不存在"
+        )
+    
+    logger.info(f"管理员 {current_admin['username']} 查询应用详情: {app.app_name} (ID: {app_id})")
+    
+    return AppInfo(
+        id=app.id,
+        app_key=app.app_key,
+        app_name=app.app_name,
+        status=app.status.value,
+        created_at=app.created_at
+    )
