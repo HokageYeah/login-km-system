@@ -4,17 +4,17 @@
 >
 > 技术栈：
 >
-> * Vue 3
-> * TypeScript
-> * Element Plus
-> * Tailwind CSS
-> * Vite
+> - Vue 3
+> - TypeScript
+> - Element Plus
+> - Tailwind CSS
+> - Vite
 >
 > 目标：
 >
-> * 提供一套 **清晰、可维护、可扩展** 的前端架构
-> * 支持 **管理员 / 普通用户** 不同权限视图
-> * 覆盖《系统使用手册》中提到的管理后台功能
+> - 提供一套 **清晰、可维护、可扩展** 的前端架构
+> - 支持 **管理员 / 普通用户** 不同权限视图
+> - 覆盖《系统使用手册》中提到的管理后台功能
 
 ---
 
@@ -28,19 +28,19 @@
 
 用于：
 
-* 管理应用
-* 管理用户
-* 管理卡密
-* 查看统计数据
+- 管理应用
+- 管理用户
+- 管理卡密
+- 查看统计数据
 
 ---
 
 ### 2️⃣ 角色划分
 
-| 角色         | 说明    | 可见页面       |
-| ---------- | ----- | ---------- |
-| 管理员（admin） | 系统运营者 | 所有功能模块     |
-| 普通用户（user） | 被授权用户 | 仅“获取统计数据表” |
+| 角色             | 说明       | 可见页面               |
+| ---------------- | ---------- | ---------------------- |
+| 管理员（admin）  | 系统运营者 | 所有功能模块           |
+| 普通用户（user） | 被授权用户 | “统计数据”、“个人中心” |
 
 角色由后端返回，例如：
 
@@ -56,13 +56,13 @@
 
 ### 1️⃣ 技术选型
 
-* **Vue 3**：Composition API
-* **TypeScript**：强类型
-* **Element Plus**：表单 / 表格 / 弹窗
-* **Tailwind CSS**：布局 / 间距 / 视觉规范
-* **Vue Router**：路由权限控制
-* **Pinia**：全局状态管理
-* **Axios**：HTTP 请求
+- **Vue 3**：Composition API
+- **TypeScript**：强类型
+- **Element Plus**：表单 / 表格 / 弹窗
+- **Tailwind CSS**：布局 / 间距 / 视觉规范
+- **Vue Router**：路由权限控制
+- **Pinia**：全局状态管理
+- **Axios**：HTTP 请求
 
 ---
 
@@ -95,6 +95,9 @@ src/
 │   ├─ stats/
 │   │   ├─ components/ # 统计数据模块组件
 │   │   └─ index.vue
+│   ├─ profile/
+│   │   ├─ components/ # 个人中心模块组件
+│   │   └─ index.vue
 │   └─ forbidden/
 │       ├─ components/ # 无权限提示相关组件
 │       └─ index.vue
@@ -112,14 +115,14 @@ src/
 
 **功能**：
 
-* 用户名 + 密码登录
-* 登录成功后获取 token + role
+- 用户名 + 密码登录
+- 登录成功后获取 token + role
 
 **UI 结构**：
 
-* 居中卡片
-* Element Plus `el-form`
-* 登录按钮 loading 状态
+- 居中卡片
+- Element Plus `el-form`
+- 登录按钮 loading 状态
 
 ---
 
@@ -135,6 +138,7 @@ src/
 ```
 
 **参数说明**：
+
 - `username`: 用户名
 - `password`: 密码
 - `app_key`: 应用唯一标识（可选，默认使用当前应用）
@@ -155,6 +159,7 @@ src/
 ```
 
 **字段说明**：
+
 - `token`: JWT Token，后续API调用的身份验证凭证
 - `user_status`: 用户状态（normal/banned）
 - `has_card`: 是否已绑定卡密
@@ -171,14 +176,14 @@ src/
 
 ```ts
 interface UserState {
-  token: string
-  role: 'admin' | 'user'
-  username: string
+  token: string;
+  role: "admin" | "user";
+  username: string;
 }
 ```
 
-* token 持久化到 localStorage
-* 页面刷新自动恢复登录态
+- token 持久化到 localStorage
+- 页面刷新自动恢复登录态
 
 ---
 
@@ -186,16 +191,16 @@ interface UserState {
 
 ```ts
 interface UserState {
-  token: string
-  role: 'admin' | 'user'
-  username: string
-  user_status: 'normal' | 'banned'
-  has_card: boolean
+  token: string;
+  role: "admin" | "user";
+  username: string;
+  user_status: "normal" | "banned";
+  has_card: boolean;
 }
 ```
 
-* token 持久化到 localStorage
-* 页面刷新自动恢复登录态
+- token 持久化到 localStorage
+- 页面刷新自动恢复登录态
 
 ---
 
@@ -744,12 +749,6 @@ Response:
 }
 ```
 
----
-
-## 四、整体布局设计（Layout）
-
----
-
 ## 四、整体布局设计（Layout）
 
 ### 1️⃣ 布局结构
@@ -763,8 +762,8 @@ Response:
 └───────┴───────┘
 ```
 
-* 管理员：显示完整菜单
-* 普通用户：只显示【统计数据】
+- 管理员：显示完整菜单
+- 普通用户：只显示【统计数据】、【个人中心】
 
 ---
 
@@ -773,16 +772,9 @@ Response:
 菜单数据由前端根据 role 生成：
 
 ```ts
-const adminMenus = [
-  '应用管理',
-  '用户管理',
-  '卡密管理',
-  '统计数据'
-]
+const adminMenus = ["应用管理", "用户管理", "卡密管理", "统计数据", "个人中心"];
 
-const userMenus = [
-  '统计数据'
-]
+const userMenus = ["统计数据", "个人中心"];
 ```
 
 ---
@@ -797,16 +789,16 @@ const userMenus = [
 
 **功能**：
 
-* 用户总数、今日新增
-* 卡密总数、未使用/已使用/禁用
-* 设备总数、活跃设备
-* 应用总数、正常应用
+- 用户总数、今日新增
+- 卡密总数、未使用/已使用/禁用
+- 设备总数、活跃设备
+- 应用总数、正常应用
 
 **实现建议**：
 
-* Element Plus `el-card`
-* Tailwind Grid 布局
-* 显示统计数据卡片
+- Element Plus `el-card`
+- Tailwind Grid 布局
+- 显示统计数据卡片
 
 ---
 
@@ -815,27 +807,28 @@ const userMenus = [
 **路径**：`/app`
 
 **接口列表**：
-* `GET /api/v1/app/list` - 查询应用列表
-* `POST /api/v1/app/create` - 创建应用
-* `POST /api/v1/app/{app_id}/status` - 更新应用状态
-* `GET /api/v1/app/{app_id}` - 查询应用详情
+
+- `GET /api/v1/app/list` - 查询应用列表
+- `POST /api/v1/app/create` - 创建应用
+- `POST /api/v1/app/{app_id}/status` - 更新应用状态
+- `GET /api/v1/app/{app_id}` - 查询应用详情
 
 功能：
 
-* 应用列表（表格展示）
-* 新增应用（弹窗）
-* 启用/禁用应用
+- 应用列表（表格展示）
+- 新增应用（弹窗）
+- 启用/禁用应用
 
 页面结构：
 
-* 表格（应用名称、app_key、状态、创建时间、操作）
-* 新增按钮
-* 新增/编辑弹窗
+- 表格（应用名称、app_key、状态、创建时间、操作）
+- 新增按钮
+- 新增/编辑弹窗
 
 **新增应用表单字段**：
 
-* 应用名称
-* app_key（可选，不填自动生成）
+- 应用名称
+- app_key（可选，不填自动生成）
 
 ---
 
@@ -844,28 +837,29 @@ const userMenus = [
 **路径**：`/user`
 
 **接口列表**：
-* `GET /api/v1/admin/users?page={page}&size={size}&status={status}&keyword={keyword}` - 查询用户列表
-* `POST /api/v1/admin/user/{user_id}/status?status={status}` - 更新用户状态
+
+- `GET /api/v1/admin/users?page={page}&size={size}&status={status}&keyword={keyword}` - 查询用户列表
+- `POST /api/v1/admin/user/{user_id}/status?status={status}` - 更新用户状态
 
 功能：
 
-* 用户列表（分页、状态筛选、关键词搜索）
-* 封禁/解封用户
+- 用户列表（分页、状态筛选、关键词搜索）
+- 封禁/解封用户
 
 重点：
 
-* 状态列高亮（normal-绿色、banned-红色）
-* 操作二次确认
+- 状态列高亮（normal-绿色、banned-红色）
+- 操作二次确认
 
 **用户列表表格字段**：
 
-* ID
-* 用户名
-* 角色
-* 状态
-* 创建时间
-* 最后登录时间
-* 操作（封禁/解封）
+- ID
+- 用户名
+- 角色
+- 状态
+- 创建时间
+- 最后登录时间
+- 操作（封禁/解封）
 
 ---
 
@@ -874,62 +868,63 @@ const userMenus = [
 **路径**：`/card`
 
 **接口列表**：
-* `GET /api/v1/admin/cards?page={page}&size={size}&app_id={app_id}&status={status}&keyword={keyword}` - 查询卡密列表
-* `POST /api/v1/admin/card/generate` - 生成卡密
-* `POST /api/v1/admin/card/{card_id}/status` - 更新卡密状态
-* `POST /api/v1/admin/card/{card_id}/permissions` - 更新卡密权限
-* `GET /api/v1/admin/devices?card_id={card_id}` - 查询设备列表
+
+- `GET /api/v1/admin/cards?page={page}&size={size}&app_id={app_id}&status={status}&keyword={keyword}` - 查询卡密列表
+- `POST /api/v1/admin/card/generate` - 生成卡密
+- `POST /api/v1/admin/card/{card_id}/status` - 更新卡密状态
+- `POST /api/v1/admin/card/{card_id}/permissions` - 更新卡密权限
+- `GET /api/v1/admin/devices?card_id={card_id}` - 查询设备列表
 
 功能：
 
-* 卡密列表（分页、应用筛选、状态筛选、搜索）
-* 生成卡密
-* 禁用/启用卡密
-* 修改权限
-* 查看绑定设备
+- 卡密列表（分页、应用筛选、状态筛选、搜索）
+- 生成卡密
+- 禁用/启用卡密
+- 修改权限
+- 查看绑定设备
 
 #### 卡密列表表格字段
 
-* ID
-* 卡密
-* 应用名称
-* 状态（unused/used/disabled）
-* 过期时间
-* 最大设备数
-* 已绑定设备数
-* 权限
-* 备注
-* 创建时间
-* 操作（禁用/启用、修改权限、查看设备）
+- ID
+- 卡密
+- 应用名称
+- 状态（unused/used/disabled）
+- 过期时间
+- 最大设备数
+- 已绑定设备数
+- 权限
+- 备注
+- 创建时间
+- 操作（禁用/启用、修改权限、查看设备）
 
 #### 卡密生成弹窗
 
 字段：
 
-* 应用（下拉选择）
-* 数量（数字输入）
-* 过期时间（日期时间选择器）
-* 最大设备数（数字输入）
-* 权限（多选框）
-* 备注（文本输入）
+- 应用（下拉选择）
+- 数量（数字输入）
+- 过期时间（日期时间选择器）
+- 最大设备数（数字输入）
+- 权限（多选框）
+- 备注（文本输入）
 
 #### 修改权限弹窗
 
 字段：
 
-* 权限（多选框，动态添加选项）
+- 权限（多选框，动态添加选项）
 
 #### 设备列表弹窗
 
 表格字段：
 
-* 设备ID
-* 设备名称
-* 用户名
-* 绑定时间
-* 最后活跃时间
-* 状态
-* 操作（禁用/启用）
+- 设备ID
+- 设备名称
+- 用户名
+- 绑定时间
+- 最后活跃时间
+- 状态
+- 操作（禁用/启用）
 
 ---
 
@@ -941,20 +936,50 @@ const userMenus = [
 
 功能：
 
-* 与仪表盘相同的统计数据展示
-* 数据可视化（图表，可选）
-* 导出数据（可选）
+- 与仪表盘相同的统计数据展示
+- 数据可视化（图表，可选）
+- 导出数据（可选）
 
 **数据展示**：
 
-* 用户统计：总数、今日新增、活跃用户
-* 卡密统计：总数、未使用、已使用、禁用、今日生成
-* 设备统计：总数、活跃设备、今日新增
-* 应用统计：总数、正常应用
+- 用户统计：总数、今日新增、活跃用户
+- 卡密统计：总数、未使用、已使用、禁用、今日生成
+- 设备统计：总数、活跃设备、今日新增
+- 应用统计：总数、正常应用
 
 普通用户登录后：
 
-> **只显示该页面，其余菜单不可见**
+> **只显示该页面，以及“个人中心”**
+
+---
+
+### 6️⃣ 个人中心（Personal Center）【所有用户】
+
+**路径**：`/profile`
+
+**接口列表**：
+
+- `GET /api/v1/auth/me` - 获取当前用户信息
+- `GET /api/v1/card/my` - 查询我的卡密
+- `POST /api/v1/card/bind` - 绑定卡密
+- `POST /api/v1/card/unbind-device` - 解绑设备
+
+**功能**：
+
+- **基本信息卡片**：
+  - 显示头像（可选/默认）、用户名、角色、注册时间
+  - 修改密码（可选，需后端支持，暂时没有先隐藏）
+- **我的卡密卡片**：
+  - 显示当前绑定的卡密信息（卡密号、过期时间、权限、设备数）
+  - **绑定新卡密**：输入框 + 绑定按钮
+  - **设备管理**：显示当前卡密绑定的设备列表，支持解绑操作
+
+**页面结构**：
+
+- 左/上：用户信息
+- 右/下：卡密信息（若无卡密显示“未绑定”，并提供绑定入口）
+
+---
 
 ---
 
@@ -974,9 +999,9 @@ v-permission="'admin'"
 
 封装：
 
-* loading
-* 分页
-* 搜索栏
+- loading
+- 分页
+- 搜索栏
 
 ---
 
@@ -984,9 +1009,9 @@ v-permission="'admin'"
 
 ### 1️⃣ Axios 封装
 
-* 自动携带 token
-* 401 → 跳登录
-* 403 → 跳 forbidden
+- 自动携带 token
+- 401 → 跳登录
+- 403 → 跳 forbidden
 
 ---
 
@@ -1002,12 +1027,11 @@ v-permission="'admin'"
 
 ## 八、UI 与样式约定
 
-* Element Plus 负责功能组件
-* Tailwind 负责：
-
-  * 布局
-  * 间距
-  * 响应式
+- Element Plus 负责功能组件
+- Tailwind 负责：
+  - 布局
+  - 间距
+  - 响应式
 
 风格目标：
 
@@ -1028,9 +1052,9 @@ v-permission="'admin'"
 
 ## 十、设计原则总结
 
-* 权限控制 **前后端双重校验**
-* 菜单 ≠ 权限（仅做 UI 引导）
-* 所有核心规则由后端决定
+- 权限控制 **前后端双重校验**
+- 菜单 ≠ 权限（仅做 UI 引导）
+- 所有核心规则由后端决定
 
 ---
 
@@ -1045,25 +1069,25 @@ v-permission="'admin'"
 
 ```ts
 // 用户状态
-export type UserRole = 'admin' | 'user'
-export type UserStatus = 'normal' | 'banned'
+export type UserRole = "admin" | "user";
+export type UserStatus = "normal" | "banned";
 
 // 用户信息
 export interface User {
-  id: number
-  username: string
-  status: UserStatus
-  role: UserRole
-  created_at: string
-  last_login_at?: string
+  id: number;
+  username: string;
+  status: UserStatus;
+  role: UserRole;
+  created_at: string;
+  last_login_at?: string;
 }
 
 // 用户列表响应
 export interface UserListResponse {
-  total: number
-  page: number
-  size: number
-  users: User[]
+  total: number;
+  page: number;
+  size: number;
+  users: User[];
 }
 ```
 
@@ -1071,21 +1095,21 @@ export interface UserListResponse {
 
 ```ts
 // 应用状态
-export type AppStatus = 'normal' | 'disabled'
+export type AppStatus = "normal" | "disabled";
 
 // 应用信息
 export interface App {
-  id: number
-  app_key: string
-  app_name: string
-  status: AppStatus
-  created_at: string
+  id: number;
+  app_key: string;
+  app_name: string;
+  status: AppStatus;
+  created_at: string;
 }
 
 // 应用列表响应
 export interface AppListResponse {
-  total: number
-  apps: App[]
+  total: number;
+  apps: App[];
 }
 ```
 
@@ -1093,53 +1117,53 @@ export interface AppListResponse {
 
 ```ts
 // 卡密状态
-export type CardStatus = 'unused' | 'used' | 'disabled'
+export type CardStatus = "unused" | "used" | "disabled";
 
 // 卡密信息
 export interface Card {
-  id: number
-  card_id: number
-  card_key: string
-  app_id?: number
-  app_name?: string
-  status: CardStatus
-  expire_time: string
-  max_device_count: number
-  permissions: string[]
-  bind_count?: number
-  bind_devices?: number
-  remark?: string
-  created_at: string
+  id: number;
+  card_id: number;
+  card_key: string;
+  app_id?: number;
+  app_name?: string;
+  status: CardStatus;
+  expire_time: string;
+  max_device_count: number;
+  permissions: string[];
+  bind_count?: number;
+  bind_devices?: number;
+  remark?: string;
+  created_at: string;
 }
 
 // 卡密列表响应
 export interface CardListResponse {
-  total: number
-  page: number
-  size: number
-  cards: Card[]
+  total: number;
+  page: number;
+  size: number;
+  cards: Card[];
 }
 
 // 设备信息
 export interface Device {
-  id: number
-  card_id: number
-  card_key: string
-  user_id?: number
-  username?: string
-  device_id: string
-  device_name?: string
-  bind_time: string
-  last_active_at: string
-  status: 'active' | 'disabled'
+  id: number;
+  card_id: number;
+  card_key: string;
+  user_id?: number;
+  username?: string;
+  device_id: string;
+  device_name?: string;
+  bind_time: string;
+  last_active_at: string;
+  status: "active" | "disabled";
 }
 
 // 设备列表响应
 export interface DeviceListResponse {
-  total: number
-  page: number
-  size: number
-  devices: Device[]
+  total: number;
+  page: number;
+  size: number;
+  devices: Device[];
 }
 ```
 
@@ -1148,17 +1172,17 @@ export interface DeviceListResponse {
 ```ts
 // 统计数据
 export interface Statistics {
-  total_users: number
-  total_cards: number
-  unused_cards: number
-  used_cards: number
-  disabled_cards: number
-  total_devices: number
-  active_devices: number
-  total_apps: number
-  normal_apps: number
-  today_new_users: number
-  today_new_cards: number
+  total_users: number;
+  total_cards: number;
+  unused_cards: number;
+  used_cards: number;
+  disabled_cards: number;
+  total_devices: number;
+  active_devices: number;
+  total_apps: number;
+  normal_apps: number;
+  today_new_users: number;
+  today_new_cards: number;
 }
 ```
 
@@ -1167,41 +1191,41 @@ export interface Statistics {
 ```ts
 // 登录请求
 export interface LoginRequest {
-  username: string
-  password: string
-  app_key?: string
-  device_id?: string
+  username: string;
+  password: string;
+  app_key?: string;
+  device_id?: string;
 }
 
 // 登录响应
 export interface LoginResponse {
-  token: string
-  user_status: UserStatus
-  has_card: boolean
-  username: string
-  role: UserRole
+  token: string;
+  user_status: UserStatus;
+  has_card: boolean;
+  username: string;
+  role: UserRole;
 }
 
 // 创建应用请求
 export interface CreateAppRequest {
-  app_name: string
-  app_key?: string
+  app_name: string;
+  app_key?: string;
 }
 
 // 生成卡密请求
 export interface GenerateCardRequest {
-  app_id: number
-  count: number
-  expire_time: string
-  max_device_count: number
-  permissions: string[]
-  remark?: string
+  app_id: number;
+  count: number;
+  expire_time: string;
+  max_device_count: number;
+  permissions: string[];
+  remark?: string;
 }
 
 // 通用响应
 export interface CommonResponse {
-  success: boolean
-  message: string
+  success: boolean;
+  message: string;
 }
 ```
 
@@ -1223,15 +1247,15 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 
 ```ts
 // src/api/config.ts
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json'
-  }
-})
+    "Content-Type": "application/json",
+  },
+});
 ```
 
 ---
@@ -1240,32 +1264,32 @@ export const api = axios.create({
 
 ### 1️⃣ 安全性
 
-* Token 必须存储在 localStorage 中
-* 敏感操作需要二次确认
-* 不要在前端显示完整卡密（除管理员查看）
-* 登出时清除 Token
+- Token 必须存储在 localStorage 中
+- 敏感操作需要二次确认
+- 不要在前端显示完整卡密（除管理员查看）
+- 登出时清除 Token
 
 ### 2️⃣ 性能优化
 
-* 使用分页加载数据
-* 避免频繁的 API 调用
-* 合理使用缓存
-* 组件懒加载
+- 使用分页加载数据
+- 避免频繁的 API 调用
+- 合理使用缓存
+- 组件懒加载
 
 ### 3️⃣ 用户体验
 
-* 加载状态提示
-* 错误信息友好提示
-* 操作成功反馈
-* 表单验证提示
+- 加载状态提示
+- 错误信息友好提示
+- 操作成功反馈
+- 表单验证提示
 
 ### 4️⃣ 代码规范
 
-* 使用 TypeScript 类型
-* 组件命名规范
-* 文件命名规范
-* 注释清晰
-* 代码格式化（Prettier）
+- 使用 TypeScript 类型
+- 组件命名规范
+- 文件命名规范
+- 注释清晰
+- 代码格式化（Prettier）
 
 ---
 
@@ -1273,20 +1297,20 @@ export const api = axios.create({
 
 ### 1️⃣ 单元测试
 
-* 组件测试
-* 工具函数测试
-* Store 测试
+- 组件测试
+- 工具函数测试
+- Store 测试
 
 ### 2️⃣ 集成测试
 
-* 页面功能测试
-* API 调用测试
-* 路由测试
+- 页面功能测试
+- API 调用测试
+- 路由测试
 
 ### 3️⃣ E2E 测试
 
-* 完整流程测试
-* 用户场景测试
+- 完整流程测试
+- 用户场景测试
 
 ---
 
