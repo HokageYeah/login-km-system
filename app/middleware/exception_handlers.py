@@ -5,8 +5,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.exceptions import ResponseValidationError
 from app.schemas.common_data import ApiResponseData, PlatformEnum
 from app.core.config import settings
+from app.core.exceptions import (
+    AuthException, CardException, PermissionException,
+    UserException, DeviceException, AppException,
+    ValidationException, DatabaseException
+)
 import httpx
 from datetime import datetime, timedelta
+from loguru import logger
 
 # 创建一个简单的内存锁，用于防止重复调用n8n
 n8n_workflow_lock = {
@@ -246,3 +252,108 @@ async def response_validation_error_handler(request: Request, exc: ResponseValid
             else:
                 response.headers[key] = value
     return response
+
+
+# 业务异常处理器
+async def auth_exception_handler(request: Request, exc: AuthException):
+    """认证异常处理器"""
+    logger.warning(f"认证异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "success": False,
+            "message": exc.message,
+            "code": exc.code
+        }
+    )
+
+
+async def card_exception_handler(request: Request, exc: CardException):
+    """卡密异常处理器"""
+    logger.warning(f"卡密异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "success": False,
+            "message": exc.message,
+            "code": exc.code
+        }
+    )
+
+
+async def permission_exception_handler(request: Request, exc: PermissionException):
+    """权限异常处理器"""
+    logger.warning(f"权限异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={
+            "success": False,
+            "message": exc.message,
+            "code": exc.code
+        }
+    )
+
+
+async def user_exception_handler(request: Request, exc: UserException):
+    """用户异常处理器"""
+    logger.warning(f"用户异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "success": False,
+            "message": exc.message,
+            "code": exc.code
+        }
+    )
+
+
+async def device_exception_handler(request: Request, exc: DeviceException):
+    """设备异常处理器"""
+    logger.warning(f"设备异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "success": False,
+            "message": exc.message,
+            "code": exc.code
+        }
+    )
+
+
+async def app_exception_handler(request: Request, exc: AppException):
+    """应用异常处理器"""
+    logger.warning(f"应用异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "success": False,
+            "message": exc.message,
+            "code": exc.code
+        }
+    )
+
+
+async def validation_exception_handler(request: Request, exc: ValidationException):
+    """数据验证异常处理器"""
+    logger.warning(f"数据验证异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "success": False,
+            "message": exc.message,
+            "code": exc.code
+        }
+    )
+
+
+async def database_exception_handler(request: Request, exc: DatabaseException):
+    """数据库异常处理器"""
+    logger.error(f"数据库异常: {exc.message} - 路径: {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "success": False,
+            "message": "数据库操作失败，请稍后重试",
+            "code": exc.code
+        }
+    )

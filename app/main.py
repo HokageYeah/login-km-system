@@ -8,7 +8,17 @@ from app.core.logging import setup_logging
 from app.api.api import api_router
 from app.db.sqlalchemy_db import database
 from fastapi.exceptions import RequestValidationError, HTTPException, ResponseValidationError
-from app.middleware.exception_handlers import request_validation_error_handler, http_exception_handler, response_validation_error_handler
+from app.middleware.exception_handlers import (
+    request_validation_error_handler, http_exception_handler, response_validation_error_handler,
+    auth_exception_handler, card_exception_handler, permission_exception_handler,
+    user_exception_handler, device_exception_handler, app_exception_handler,
+    validation_exception_handler, database_exception_handler
+)
+from app.core.exceptions import (
+    AuthException, CardException, PermissionException,
+    UserException, DeviceException, AppException,
+    ValidationException, DatabaseException
+)
 from app.middleware.response_validator import ResponseValidatorMiddleware
 from app.schemas.common_data import ApiResponseData, PlatformEnum
 
@@ -45,6 +55,16 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 
 # 定义全局响应格式验证异常处理器
 app.add_exception_handler(ResponseValidationError, response_validation_error_handler)
+
+# 注册自定义业务异常处理器
+app.add_exception_handler(AuthException, auth_exception_handler)
+app.add_exception_handler(CardException, card_exception_handler)
+app.add_exception_handler(PermissionException, permission_exception_handler)
+app.add_exception_handler(UserException, user_exception_handler)
+app.add_exception_handler(DeviceException, device_exception_handler)
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(ValidationException, validation_exception_handler)
+app.add_exception_handler(DatabaseException, database_exception_handler)
 
 # 添加响应格式验证中间件
 app.add_middleware(ResponseValidatorMiddleware)

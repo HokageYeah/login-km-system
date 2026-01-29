@@ -14,3 +14,8 @@ passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
 python-multipart>=0.0.6
 colorama==0.4.6
+
+# 测试依赖
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
