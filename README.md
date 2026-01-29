@@ -437,11 +437,41 @@ Content-Type: application/json
 }
 ```
 
+### 权限校验接口
+
+#### 权限校验
+```http
+POST /api/v1/permission/check
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "permission": "wechat",
+  "device_id": "device-001"
+}
+```
+
+#### 批量权限校验
+```http
+POST /api/v1/permission/batch-check
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "permissions": ["wechat", "ximalaya", "douyin"]
+}
+```
+
+#### 查询我的权限
+```http
+GET /api/v1/permission/my-permissions
+Authorization: Bearer <token>
+```
+
 ### 管理后台接口（开发中）
 - 批量生成卡密
 - 用户管理
 - 设备管理
-- 权限校验
 
 ## 日志系统
 

@@ -45,11 +45,13 @@
 
 ---
 
-## 🔑 权限校验接口（开发中）
+## 🔑 权限校验接口
 
 | 方法 | 路径 | 说明 | 请求体 | 权限 |
 |------|------|------|--------|------|
-| POST | `/api/v1/permission/check` | 权限校验 | `{permission, device_id}` | 🔒 登录 |
+| POST | `/api/v1/permission/check` | 权限校验 | `{permission, device_id?}` | 🔒 登录 |
+| POST | `/api/v1/permission/batch-check` | 批量权限校验 | `{permissions, device_id?}` | 🔒 登录 |
+| GET | `/api/v1/permission/my-permissions` | 查询我的权限 | - | 🔒 登录 |
 
 ---
 
@@ -131,11 +133,9 @@ http://localhost:8003/docs
 - 认证接口：5个
 - 卡密管理接口：4个
 - 应用管理接口：4个
+- 权限校验接口：3个
 
-**共计：13个接口**
-
-### 开发中接口（🚧）
-- 权限校验接口：1个
+**共计：16个接口**
 
 ### 待开发接口（⏳）
 - 管理后台接口：约10个

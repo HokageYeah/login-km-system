@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.endpoints import wx_public, test_api, auth, card, app
+from app.api.endpoints import wx_public, test_api, auth, card, app, permission
 
 api_router = APIRouter()
 
@@ -12,6 +12,9 @@ api_router.include_router(card.router, prefix="/card", tags=["卡密管理"])
 
 # 应用管理接口
 api_router.include_router(app.router, prefix="/app", tags=["应用管理"])
+
+# 权限校验接口
+api_router.include_router(permission.router, prefix="/permission", tags=["权限校验"])
 
 # 原有接口
 api_router.include_router(wx_public.router, prefix="/wx/public", tags=["微信公众号"])
