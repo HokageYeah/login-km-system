@@ -43,13 +43,13 @@ class AdminCardInfo(BaseModel):
     app_name: str = Field(..., description="应用名称")
     card_key: str = Field(..., description="卡密字符串")
     status: str = Field(..., description="卡密状态")
-    expire_time: datetime = Field(..., description="过期时间")
+    expire_time: Optional[datetime] = Field(None, description="过期时间")
     max_device_count: int = Field(..., description="最大设备数")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
     remark: Optional[str] = Field(None, description="备注")
     bind_user_count: int = Field(..., description="绑定用户数")
     bind_device_count: int = Field(..., description="绑定设备数")
-    created_at: datetime = Field(..., description="创建时间")
+    created_at: Optional[datetime] = Field(None, description="创建时间")
 
 
 class AdminCardListResponse(BaseModel):
