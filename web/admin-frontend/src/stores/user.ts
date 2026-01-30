@@ -57,10 +57,11 @@ export const useUserStore = defineStore('user', () => {
    * @description 更新用户的基本信息状态
    * @param data主要包含用户名、角色、状态等
    */
-  function setUserInfo(data: { username: string; role: UserRole; user_status: UserStatus; has_card: boolean }) {
+  function setUserInfo(data: { username: string; role: UserRole; user_status: string; has_card: boolean }) {
     username.value = data.username
     role.value = data.role
-    userStatus.value = data.user_status
+    // 转换为小写
+    userStatus.value = data.user_status.toLowerCase() as UserStatus
     hasCard.value = data.has_card
   }
 
@@ -72,11 +73,13 @@ export const useUserStore = defineStore('user', () => {
   async function login(loginData: LoginRequest) {
     try {
       const data = await apiLogin(loginData)
+      console.log('登录成功，用户信息：', data)
       setToken(data.token)
       setUserInfo({
         username: data.username,
         role: data.role,
-        user_status: data.user_status,
+        // 转换为小写
+        user_status: data.user_status.toLowerCase() as UserStatus,
         has_card: data.has_card
       })
       return data

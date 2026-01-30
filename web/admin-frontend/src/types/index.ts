@@ -120,18 +120,55 @@ export interface Device {
  * 统计数据接口
  * @description 系统各项数据的统计信息
  */
+/**
+ * 统计数据接口
+ * @description 系统各项数据的统计信息（嵌套结构）
+ */
 export interface Statistics {
-  total_users: number           // 用户总数
-  total_cards: number           // 卡密总数
-  unused_cards: number          // 未使用卡密数
-  used_cards: number            // 已使用卡密数
-  disabled_cards: number        // 已禁用卡密数
-  total_devices: number         // 设备总数
-  active_devices: number        // 活跃设备数
-  total_apps: number            // 应用总数
-  normal_apps: number           // 正常应用数
-  today_new_users: number       // 今日新增用户数
-  today_new_cards: number       // 今日新增卡密数
+  users: UserStatistics          // 用户统计
+  cards: CardStatistics          // 卡密统计
+  devices: DeviceStatistics      // 设备统计
+  apps: AppStatistics          // 应用统计
+}
+
+/**
+ * 用户统计接口
+ * @description 用户相关统计数据
+ */
+export interface UserStatistics {
+  total: number                 // 用户总数
+  normal: number                // 正常用户数
+  banned: number                // 封禁用户数
+}
+
+/**
+ * 卡密统计接口
+ * @description 卡密相关统计数据
+ */
+export interface CardStatistics {
+  total: number                 // 卡密总数
+  unused: number                // 未使用卡密数
+  used: number                  // 已使用卡密数
+  disabled: number              // 禁用卡密数
+}
+
+/**
+ * 设备统计接口
+ * @description 设备相关统计数据
+ */
+export interface DeviceStatistics {
+  total: number                 // 设备总数
+  active: number                // 活跃设备数
+  disabled: number              // 禁用设备数
+}
+
+/**
+ * 应用统计接口
+ * @description 应用相关统计数据
+ */
+export interface AppStatistics {
+  total: number                 // 应用总数
+  active: number                // 正常应用数
 }
 
 // ==================== 分页相关类型 ====================
