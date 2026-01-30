@@ -5,6 +5,7 @@ from app.models.card import Card, CardStatus
 from app.models.user_card import UserCard, UserCardStatus
 from app.models.card_device import CardDevice, CardDeviceStatus
 from app.models.user_token import UserToken
+from app.models.feature_permission import FeaturePermission, FeaturePermissionStatus
 
 __all__ = [
     "Article",
@@ -20,4 +21,6 @@ __all__ = [
     "CardDevice",
     "CardDeviceStatus",
     "UserToken",
+    "FeaturePermission",
+    "FeaturePermissionStatus",
 ]

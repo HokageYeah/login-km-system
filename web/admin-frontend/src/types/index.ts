@@ -212,3 +212,22 @@ export interface ErrorResponse {
   detail: string                // 错误详情
   status_code?: number          // HTTP状态码（可选）
 }
+
+// ==================== 功能权限相关类型 ====================
+
+/**
+ * 功能权限信息接口
+ * @description 功能权限的详细信息
+ */
+export interface FeaturePermission {
+  id: number                    // 功能权限ID
+  permission_key: string         // 权限标识（如：wechat, ximalaya）
+  permission_name: string         // 权限名称（如：微信抓取、喜马拉雅播放）
+  description?: string            // 权限描述（可选）
+  category?: string               // 权限分类（可选，如：数据抓取、媒体播放）
+  icon?: string                  // 图标（可选）
+  sort_order: number             // 排序，数字越小越靠前
+  status: 'normal' | 'disabled'  // 状态：normal-正常，disabled-禁用
+  created_at?: string            // 创建时间（可选）
+  updated_at?: string            // 更新时间（可选）
+}

@@ -31,7 +31,8 @@ export const routes: RouteRecordRaw[] = [
         meta: { 
           title: '仪表盘',                     // 菜单标题
           icon: 'DataLine',                    // 菜单图标
-          roles: ['admin']                     // 允许访问的角色
+          roles: ['admin'],                     // 允许访问的角色
+          hidden: true                         // 不在菜单中显示
         }
       },
       // 用户管理（仅管理员）
@@ -42,7 +43,8 @@ export const routes: RouteRecordRaw[] = [
         meta: { 
           title: '用户管理', 
           icon: 'User', 
-          roles: ['admin'] 
+          roles: ['admin'],
+          hidden: true                         // 不在菜单中显示
         }
       },
       // 卡密管理（仅管理员）
@@ -53,7 +55,8 @@ export const routes: RouteRecordRaw[] = [
         meta: { 
           title: '卡密管理', 
           icon: 'Ticket', 
-          roles: ['admin'] 
+          roles: ['admin'],
+          hidden: true                         // 不在菜单中显示
         }
       },
       // 设备管理（仅管理员）
@@ -64,7 +67,8 @@ export const routes: RouteRecordRaw[] = [
         meta: { 
           title: '设备管理', 
           icon: 'Monitor', 
-          roles: ['admin'] 
+          roles: ['admin'],
+          hidden: true                         // 不在菜单中显示
         }
       },
       // 应用管理（仅管理员）
@@ -72,10 +76,23 @@ export const routes: RouteRecordRaw[] = [
         path: 'apps',
         name: 'Apps',
         component: () => import('@/views/app/index.vue'),
-        meta: { 
-          title: '应用管理', 
-          icon: 'Grid', 
-          roles: ['admin'] 
+        meta: {
+          title: '应用管理',
+          icon: 'Grid',
+          roles: ['admin'],
+          hidden: true                         // 不在菜单中显示
+        }
+      },
+      // 功能权限管理（仅管理员）
+      {
+        path: 'card-permissions',
+        name: 'CardPermissions',
+        component: () => import('@/views/card-permission/index.vue'),
+        meta: {
+          title: '功能权限管理',
+          icon: 'Lock',
+          roles: ['admin'],
+          hidden: true                         // 不在菜单中显示
         }
       },
       // 统计数据（管理员和普通用户都可访问）
@@ -86,7 +103,8 @@ export const routes: RouteRecordRaw[] = [
         meta: { 
           title: '统计数据', 
           icon: 'DataAnalysis', 
-          roles: ['admin', 'user']            // 两种角色都可以访问
+          roles: ['admin', 'user'],
+          hidden: true                         // 不在菜单中显示
         }
       },
       // 个人中心（管理员和普通用户都可访问）
@@ -97,7 +115,8 @@ export const routes: RouteRecordRaw[] = [
         meta: { 
           title: '个人中心', 
           icon: 'User', 
-          roles: ['admin', 'user']
+          roles: ['admin', 'user'],
+          hidden: true                         // 不在菜单中显示
         }
       }
     ]
