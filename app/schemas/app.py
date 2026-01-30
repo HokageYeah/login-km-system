@@ -44,3 +44,15 @@ class UpdateAppStatusResponse(BaseModel):
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="提示信息")
     app: Optional[AppInfo] = Field(None, description="应用信息")
+
+
+class AppSimpleInfo(BaseModel):
+    """应用简要信息（公开）"""
+    app_key: str = Field(..., description="应用唯一标识")
+    app_name: str = Field(..., description="应用名称")
+
+
+class AppSimpleListResponse(BaseModel):
+    """应用简要列表响应"""
+    total: int = Field(..., description="总数")
+    apps: list[AppSimpleInfo] = Field(..., description="应用列表")

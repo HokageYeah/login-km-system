@@ -13,11 +13,52 @@ from app.schemas.app import (
     AppInfo,
     AppListResponse,
     UpdateAppStatusRequest,
-    UpdateAppStatusResponse
+    UpdateAppStatusResponse,
+    AppSimpleListResponse,
+    AppSimpleInfo
 )
 from app.core.logging_uru import logger
 
 router = APIRouter()
+
+
+
+@router.get(
+    "/public/list",
+    response_model=AppSimpleListResponse,
+    summary="查询所有应用列表（公开）",
+    description="查询所有正常状态的应用列表，不需要鉴权，用于登录页展示"
+)
+async def get_public_app_list(
+    db: Session = Depends(get_db)
+):
+    """
+    查询所有应用列表（公开）
+    
+    返回所有状态为正常的应用简要信息
+    """
+    app_service = AppService(db)
+    
+    # 获取所有应用（这里复用get_app_list，后续可能需要Service层支持只查正常的）
+    # 暂时查所有，前端过滤或者Service加过滤。通常登录只需要正常的。
+    # 为了简单，这里先查所有，生产环境建议Service层加 status 过滤
+    apps = app_service.get_app_list()
+    
+    # 过滤出正常的应用
+    normal_apps = [app for app in apps if app.status.value == 'normal']
+    
+    app_list = [
+        AppSimpleInfo(
+            app_key=app.app_key,
+            app_name=app.app_name
+        )
+        for app in normal_apps
+    ]
+    
+    return AppSimpleListResponse(
+        total=len(app_list),
+        apps=app_list
+    )
 
 
 @router.get(
