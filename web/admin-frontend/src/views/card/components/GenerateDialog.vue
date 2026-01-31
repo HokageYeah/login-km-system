@@ -71,12 +71,25 @@
           multiple
           placeholder="请选择权限"
           class="w-full"
+          v-loading="loadingPermissions"
         >
-          <el-option label="基础功能" value="basic" />
-          <el-option label="高级功能" value="advanced" />
-          <el-option label="管理功能" value="admin" />
-          <el-option label="API访问" value="api" />
-          <el-option label="数据导出" value="export" />
+          <el-option
+            v-for="permission in availablePermissions"
+            :key="permission.permission_key"
+            :label="`${permission.permission_key} - ${permission.permission_name}`"
+            :value="permission.permission_key"
+            :disabled="permission.status === 'disabled'"
+          >
+            <div class="permission-option">
+              <div class="option-main">
+                <span class="permission-key">{{ permission.permission_key }} - {{ permission.permission_name }}</span>
+                <el-tag v-if="permission.category" size="small" type="info" class="ml-2">
+                  {{ permission.category }}
+                </el-tag>
+              </div>
+              <!-- <div class="option-desc">{{ permission.description || '暂无描述' }}</div> -->
+            </div>
+          </el-option>
         </el-select>
         <div class="form-tip">可多选，至少选择一项权限</div>
       </el-form-item>
@@ -161,7 +174,8 @@ import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { CircleCheckFilled, CopyDocument, Download } from '@element-plus/icons-vue'
 import { generateCards } from '@/api/admin'
-import type { App } from '@/types'
+import { getFeaturePermissionList } from '@/api/feature-permission'
+import type { App, FeaturePermission } from '@/types'
 
 /**
  * Props 定义
@@ -196,6 +210,8 @@ const loading = ref(false)                              // 加载状态
 const generated = ref(false)                            // 是否已生成
 const generatedCards = ref<string[]>([])                // 生成的卡密列表
 const formRef = ref<FormInstance>()                     // 表单引用
+const availablePermissions = ref<FeaturePermission[]>([])  // 可用权限列表
+const loadingPermissions = ref(false)                    // 加载权限列表状态
 
 /**
  * 表单数据
@@ -239,6 +255,30 @@ const rules: FormRules = {
  */
 const disabledDate = (time: Date) => {
   return time.getTime() < Date.now()
+}
+
+/**
+ * 加载权限列表
+ */
+const loadPermissions = async () => {
+  loadingPermissions.value = true
+  try {
+    const response = await getFeaturePermissionList({
+      page: 1,
+      size: 100  // 获取所有权限
+    })
+    // 只显示正常状态的权限
+    availablePermissions.value = response.permissions.filter(p => p.status === 'normal')
+  } catch (error: any) {
+    console.error('加载权限列表失败:', error)
+    if (error.response?.data?.detail) {
+      ElMessage.error(error.response.data.detail)
+    } else {
+      ElMessage.error('加载权限列表失败')
+    }
+  } finally {
+    loadingPermissions.value = false
+  }
 }
 
 /**
@@ -344,13 +384,17 @@ const resetForm = () => {
   form.max_device_count = 1
   form.permissions = []
   form.remark = ''
+  availablePermissions.value = []
 }
 
 /**
- * 监听弹窗关闭，重置表单
+ * 监听弹窗打开，加载权限列表
  */
 watch(dialogVisible, (newVal) => {
-  if (!newVal) {
+  if (newVal) {
+    // 打开弹窗时加载权限列表
+    loadPermissions()
+  } else {
     setTimeout(resetForm, 300)
   }
 })
@@ -364,6 +408,25 @@ watch(dialogVisible, (newVal) => {
 
 .form-tip {
   @apply text-xs text-gray-500 mt-1;
+}
+
+/* 权限选项样式 */
+.permission-option {
+  @apply w-full;
+}
+
+.option-main {
+  @apply flex items-center justify-between;
+  @apply mb-1;
+}
+
+.permission-key {
+  @apply text-sm font-medium text-gray-900;
+}
+
+.option-desc {
+  @apply text-xs text-gray-500;
+  @apply mt-1;
 }
 
 /* 生成结果 */

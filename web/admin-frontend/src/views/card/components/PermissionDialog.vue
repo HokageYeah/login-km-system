@@ -1,8 +1,9 @@
+```html
 <template>
   <el-dialog
     v-model="dialogVisible"
     title="修改卡密权限"
-    width="500px"
+    width="600px"
     :close-on-click-modal="false"
     @close="handleClose"
   >
@@ -30,38 +31,42 @@
         class="permission-form"
       >
         <el-form-item label="权限配置" prop="permissions">
-          <el-checkbox-group v-model="form.permissions" class="permission-group">
-            <el-checkbox label="basic" class="permission-checkbox">
-              <div class="checkbox-content">
-                <span class="checkbox-label">基础功能</span>
-                <span class="checkbox-desc">访问基本功能模块</span>
-              </div>
-            </el-checkbox>
-            <el-checkbox label="advanced" class="permission-checkbox">
-              <div class="checkbox-content">
-                <span class="checkbox-label">高级功能</span>
-                <span class="checkbox-desc">访问高级功能模块</span>
-              </div>
-            </el-checkbox>
-            <el-checkbox label="admin" class="permission-checkbox">
-              <div class="checkbox-content">
-                <span class="checkbox-label">管理功能</span>
-                <span class="checkbox-desc">访问管理功能模块</span>
-              </div>
-            </el-checkbox>
-            <el-checkbox label="api" class="permission-checkbox">
-              <div class="checkbox-content">
-                <span class="checkbox-label">API访问</span>
-                <span class="checkbox-desc">调用系统API接口</span>
-              </div>
-            </el-checkbox>
-            <el-checkbox label="export" class="permission-checkbox">
-              <div class="checkbox-content">
-                <span class="checkbox-label">数据导出</span>
-                <span class="checkbox-desc">导出系统数据</span>
-              </div>
-            </el-checkbox>
-          </el-checkbox-group>
+          <div v-loading="loadingPermissions" class="permission-container">
+            <el-checkbox-group v-model="form.permissions" class="permission-group">
+              <template v-if="availablePermissions.length > 0">
+                <div
+                  v-for="permission in availablePermissions"
+                  :key="permission.permission_key"
+                  class="permission-card"
+                  :class="{
+                    'permission-card-checked': form.permissions.includes(permission.permission_key),
+                    'permission-card-disabled': permission.status === 'disabled'
+                  }"
+                >
+                  <el-checkbox
+                    :label="permission.permission_key"
+                    :disabled="permission.status === 'disabled'"
+                    class="permission-checkbox"
+                  >
+                    <div class="checkbox-content">
+                      <div class="checkbox-header">
+                        <el-icon v-if="permission.icon" class="checkbox-icon">
+                          <component :is="getIconComponent(permission.icon)" />
+                        </el-icon>
+                        <span class="checkbox-label">{{ permission.permission_key }}</span>
+                        <span class="checkbox-label">{{ `(${permission.permission_name})` }}</span>
+                        <el-tag v-if="permission.category" size="small" type="info" class="category-tag">
+                          {{ permission.category }}
+                        </el-tag>
+                      </div>
+                      <!-- <span class="checkbox-desc">{{ permission.description || '暂无描述' }}</span> -->
+                    </div>
+                  </el-checkbox>
+                </div>
+              </template>
+              <el-empty v-else description="暂无可用权限" />
+            </el-checkbox-group>
+          </div>
         </el-form-item>
       </el-form>
 
@@ -97,12 +102,12 @@
 <script setup lang="ts">
 /**
  * 修改权限弹窗组件
- * @description 修改卡密的权限配置
+ * @description 修改卡密的权限配置，从后端动态加载可用权限列表
  */
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { updateCardPermissions } from '@/api/admin'
-import type { Card } from '@/types'
+import { getCardFeaturePermissions, updateCardFeaturePermissions } from '@/api/feature-permission'
+import type { Card, FeaturePermission } from '@/types'
 
 /**
  * Props 定义
@@ -110,6 +115,7 @@ import type { Card } from '@/types'
 interface Props {
   modelValue: boolean           // 弹窗显示状态
   card: Card | null             // 卡密信息
+  permissions?: string[]        // 已有的权限列表（用于默认选中）
 }
 
 const props = defineProps<Props>()
@@ -133,8 +139,10 @@ const dialogVisible = computed({
 /**
  * 状态定义
  */
-const loading = ref(false)                              // 加载状态
+const loading = ref(false)                              // 提交加载状态
+const loadingPermissions = ref(false)                    // 加载权限列表状态
 const formRef = ref<FormInstance>()                     // 表单引用
+const availablePermissions = ref<FeaturePermission[]>([])  // 可用权限列表
 
 /**
  * 表单数据
@@ -181,18 +189,44 @@ const getStatusText = (status: string) => {
 }
 
 /**
- * 获取权限列表
- * @param permissions 权限数据（可能是数组或对象）
- * @returns 权限字符串数组
+ * 获取图标组件
+ * @param iconName 图标名称
+ * @returns 图标组件
  */
-const getPermissions = (permissions: any): string[] => {
-  if (Array.isArray(permissions)) {
-    return permissions
+const getIconComponent = (iconName: string) => {
+  // 这里可以根据实际的图标名称返回对应的组件
+  // 暂时返回 null，如果需要可以添加实际的图标映射
+  return null
+}
+
+/**
+ * 加载卡密权限数据
+ */
+const loadCardPermissions = async () => {
+  if (!props.card) return
+
+  loadingPermissions.value = true
+  try {
+    const response = await getCardFeaturePermissions(props.card.id)
+    // 设置可用权限列表
+    availablePermissions.value = response.available_permissions || []
+    
+    // 优先使用 props 传入的权限，其次使用 API 返回的权限
+    if (props.permissions && props.permissions.length > 0) {
+      form.permissions = [...props.permissions]
+    } else {
+      form.permissions = response.permission_keys || []
+    }
+  } catch (error: any) {
+    console.error('加载卡密权限失败:', error)
+    if (error.response?.data?.detail) {
+      ElMessage.error(error.response.data.detail)
+    } else {
+      ElMessage.error('加载权限列表失败')
+    }
+  } finally {
+    loadingPermissions.value = false
   }
-  if (typeof permissions === 'object' && permissions !== null) {
-    return Object.keys(permissions)
-  }
-  return []
 }
 
 /**
@@ -200,16 +234,16 @@ const getPermissions = (permissions: any): string[] => {
  */
 const handleSubmit = async () => {
   if (!formRef.value || !props.card) return
-  
+
   try {
     // 验证表单
     await formRef.value.validate()
-    
+
     loading.value = true
-    
+
     // 调用更新权限 API
-    await updateCardPermissions(props.card.id, form.permissions)
-    
+    await updateCardFeaturePermissions(props.card.id, form.permissions)
+
     ElMessage.success('权限修改成功')
     emit('success')
     handleClose()
@@ -233,83 +267,210 @@ const handleClose = () => {
 }
 
 /**
- * 监听卡密变化，初始化权限
- */
-watch(() => props.card, (newCard) => {
-  if (newCard) {
-    form.permissions = getPermissions(newCard.permissions)
-  }
-}, { immediate: true })
-
-/**
- * 监听弹窗关闭，重置表单
+ * 监听弹窗打开，加载权限列表
+ * NOTE: 只在弹窗打开时加载，避免重复调用接口
  */
 watch(dialogVisible, (newVal) => {
+  if (newVal && props.card) {
+    // 弹窗打开时加载权限
+    loadCardPermissions()
+  }
+
+  // 监听弹窗关闭，重置表单
   if (!newVal && formRef.value) {
     setTimeout(() => {
       formRef.value?.resetFields()
+      availablePermissions.value = []
     }, 300)
   }
 })
 </script>
 
 <style scoped>
-@reference "../../../styles/index.css";
 .permission-dialog {
-  @apply py-4;
+  padding: 16px 0;
 }
 
 /* 卡密信息 */
 .card-info {
-  @apply bg-gray-50 rounded-lg p-4 mb-6;
-  @apply space-y-2;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 24px;
 }
 
 .info-item {
-  @apply flex items-center gap-2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .info-label {
-  @apply text-sm font-medium text-gray-600;
+  font-size: 14px;
+  color: #666;
 }
 
 .info-value {
-  @apply text-sm font-mono font-medium text-gray-900;
+  font-size: 14px;
+  font-family: monospace;
+  font-weight: 500;
+  color: #333;
 }
 
 /* 权限表单 */
 .permission-form {
-  @apply mb-0;
+  margin-bottom: 0;
+}
+
+.permission-container {
+  width: 100%;
+  min-height: 100px;
 }
 
 .permission-group {
-  @apply w-full flex flex-col gap-3;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
+/* 简洁权限卡片样式 */
+.permission-card {
+  width: 100%;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.permission-card:hover {
+  border-color: #409eff;
+  background-color: #f0f7ff;
+}
+
+/* 选中状态 */
+.permission-card-checked {
+  border-color: #409eff;
+  background-color: #ecf5ff;
+}
+
+/* 禁用状态 */
+.permission-card-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #fafafa;
+}
+
+.permission-card-disabled:hover {
+  border-color: #e0e0e0;
+  background-color: #fafafa;
+}
+
+/* 复选框样式 */
 .permission-checkbox {
-  @apply w-full;
-  @apply bg-white rounded-lg p-4;
-  @apply border border-gray-200;
-  @apply transition-all duration-200;
+  width: 100%;
+  padding: 12px 16px;
+  margin: 0;
 }
 
-.permission-checkbox:hover {
-  @apply border-blue-300 shadow-sm;
+:deep(.el-checkbox__label) {
+  width: 100%;
 }
 
+/* 复选框内容 */
 .checkbox-content {
-  @apply flex flex-col gap-1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkbox-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.checkbox-icon {
+  color: #409eff;
+  font-size: 18px;
 }
 
 .checkbox-label {
-  @apply text-sm font-medium text-gray-900;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.permission-card-checked .checkbox-label {
+  color: #409eff;
+}
+
+.category-tag {
+  font-size: 12px;
 }
 
 .checkbox-desc {
-  @apply text-xs text-gray-500;
+  font-size: 13px;
+  color: #999;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 
+/* 滚动条样式 */
+.permission-group::-webkit-scrollbar {
+  width: 6px;
+}
+
+.permission-group::-webkit-scrollbar-track {
+  background-color: #f0f0f0;
+  border-radius: 3px;
+}
+
+.permission-group::-webkit-scrollbar-thumb {
+  background-color: #d0d0d0;
+  border-radius: 3px;
+}
+
+.permission-group::-webkit-scrollbar-thumb:hover {
+  background-color: #b0b0b0;
+}
+
+/* 对话框底部按钮 */
 .dialog-footer {
-  @apply flex justify-end gap-3;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 优化复选框原始样式 */
+:deep(.el-checkbox__input) {
+  transition: all 0.2s;
+}
+
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: #409eff;
+  border-color: #409eff;
+}
+
+:deep(.el-checkbox__inner) {
+  width: 16px;
+  height: 16px;
+}
+
+:deep(.el-checkbox__input:hover .el-checkbox__inner) {
+  border-color: #409eff;
+}
+
+/* Empty 状态 */
+:deep(.el-empty) {
+  padding: 32px 0;
 }
 </style>
+```

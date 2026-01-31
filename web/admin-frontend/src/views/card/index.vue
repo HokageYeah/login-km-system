@@ -206,6 +206,7 @@
     <PermissionDialog
       v-model="permissionDialogVisible"
       :card="currentCard"
+      :permissions="getPermissions(currentCard?.permissions)"
       @success="handlePermissionSuccess"
     />
 
