@@ -594,6 +594,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@reference "../../styles/index.css";
 .permission-container {
   @apply w-full h-full;
   @apply p-8;

@@ -2,20 +2,65 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 /**
- * 路由配置
- * @description 定义系统所有路由，包括页面路径、权限要求等
+ * 基础路由集合（登录页、403、404等）
+ * @description 从 basic.ts 模块导入
+ */
+import basicRoutes from './basic'
+
+/**
+ * 业务路由集合（管理后台和通用页面）
+ * @description 从 admin.ts 和 common.ts 模块导入
+ */
+import commonRoutes from './common'
+
+/**
+ * 动态导入所有路由模块
+ * 使用 Vite 的 glob 导入功能，自动发现 modules 目录下的所有路由文件
+ */
+const modules = import.meta.glob("./modules/**/*.ts", { eager: true });
+
+/**
+ * 构建路由配置
+ * 遍历所有动态导入的模块，提取路由配置
+ */
+const allRoutes: any[] = [];
+
+console.log("routes: 所有的modules---", modules);
+// 处理所有模块
+Object.values(modules).forEach((module) => {
+  console.log("routes: module---", module);
+  // 获取模块的 default 导出
+  const routeConfig = (module as any).default;
+
+  console.log("routes: routeConfig---", routeConfig);
+
+  if (routeConfig) {
+    if (Array.isArray(routeConfig)) {
+      // 如果是数组，使用 spread operator 添加
+      allRoutes.push(...routeConfig);
+    } else if (typeof routeConfig === "object") {
+      // 如果是对象，直接添加
+      allRoutes.push(routeConfig);
+    }
+  }
+});
+
+/**
+ * 根据 meta.sort 排序路由
+ * sort 值越小越靠前，没有 sort 的默认排在最后
+ */
+allRoutes.sort((a, b) => {
+  const sortA = a.meta?.sort ?? Infinity;
+  const sortB = b.meta?.sort ?? Infinity;
+  return sortA - sortB;
+});
+
+/**
+ * 构建路由配置
+ * @description 将所有路由模块整合为完整的路由配置
  */
 export const routes: RouteRecordRaw[] = [
-  // 登录页（无需认证）
-  {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/login/index.vue'),
-    meta: {
-        title: '登录',
-        hidden: true // 不在菜单中显示
-    }
-  },
+  ...basicRoutes,
   // 主应用布局（需要认证）
   {
     path: '/',
@@ -23,117 +68,9 @@ export const routes: RouteRecordRaw[] = [
     redirect: '/dashboard',
     meta: { requiresAuth: true },
     children: [
-      // 仪表盘（仅管理员）
-      {
-        path: 'dashboard',
-        name: 'Dashboard',
-        component: () => import('@/views/dashboard/index.vue'),
-        meta: { 
-          title: '仪表盘',                     // 菜单标题
-          icon: 'DataLine',                    // 菜单图标
-          roles: ['admin'],                     // 允许访问的角色
-          hidden: true                         // 不在菜单中显示
-        }
-      },
-      // 用户管理（仅管理员）
-      {
-        path: 'users',
-        name: 'Users',
-        component: () => import('@/views/user/index.vue'),
-        meta: { 
-          title: '用户管理', 
-          icon: 'User', 
-          roles: ['admin'],
-          hidden: true                         // 不在菜单中显示
-        }
-      },
-      // 卡密管理（仅管理员）
-      {
-        path: 'cards',
-        name: 'Cards',
-        component: () => import('@/views/card/index.vue'),
-        meta: { 
-          title: '卡密管理', 
-          icon: 'Ticket', 
-          roles: ['admin'],
-          hidden: true                         // 不在菜单中显示
-        }
-      },
-      // 设备管理（仅管理员）
-      {
-        path: 'devices',
-        name: 'Devices',
-        component: () => import('@/views/device/index.vue'),
-        meta: { 
-          title: '设备管理', 
-          icon: 'Monitor', 
-          roles: ['admin'],
-          hidden: true                         // 不在菜单中显示
-        }
-      },
-      // 应用管理（仅管理员）
-      {
-        path: 'apps',
-        name: 'Apps',
-        component: () => import('@/views/app/index.vue'),
-        meta: {
-          title: '应用管理',
-          icon: 'Grid',
-          roles: ['admin'],
-          hidden: true                         // 不在菜单中显示
-        }
-      },
-      // 功能权限管理（仅管理员）
-      {
-        path: 'card-permissions',
-        name: 'CardPermissions',
-        component: () => import('@/views/card-permission/index.vue'),
-        meta: {
-          title: '功能权限管理',
-          icon: 'Lock',
-          roles: ['admin'],
-          hidden: true                         // 不在菜单中显示
-        }
-      },
-      // 统计数据（管理员和普通用户都可访问）
-      {
-        path: 'stats',
-        name: 'Stats',
-        component: () => import('@/views/stats/index.vue'),
-        meta: { 
-          title: '统计数据', 
-          icon: 'DataAnalysis', 
-          roles: ['admin', 'user'],
-          hidden: true                         // 不在菜单中显示
-        }
-      },
-      // 个人中心（管理员和普通用户都可访问）
-      {
-        path: 'profile',
-        name: 'Profile',
-        component: () => import('@/views/profile/index.vue'),
-        meta: { 
-          title: '个人中心', 
-          icon: 'User', 
-          roles: ['admin', 'user'],
-          hidden: true                         // 不在菜单中显示
-        }
-      }
+      ...allRoutes,
+      ...commonRoutes
     ]
-  },
-  // 403无权限页面
-  {
-    path: '/forbidden',
-    name: 'Forbidden',
-    component: () => import('@/views/error/403.vue'),
-    meta: { title: '无权限', hidden: true }
-  },
-  // 404页面（匹配所有未定义的路由）
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: () => import('@/views/error/404.vue'),
-    meta: { title: '404', hidden: true }
   }
 ]
 

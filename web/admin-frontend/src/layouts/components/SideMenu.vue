@@ -24,32 +24,27 @@
         mode="vertical"
       >
         <!-- 递归生成菜单 -->
-        <!-- 暂时写死菜单以验证布局，后续结合路由动态生成 -->
-        <el-menu-item index="/dashboard" @click="handleMenuClick('/dashboard')">
-          <el-icon><DataLine /></el-icon>
-          <template #title>仪表盘</template>
-        </el-menu-item>
-
-        <el-menu-item index="/users" @click="handleMenuClick('/users')">
-          <el-icon><User /></el-icon>
-          <template #title>用户管理</template>
-        </el-menu-item>
-
-        <el-menu-item index="/cards" @click="handleMenuClick('/cards')">
-          <el-icon><Ticket /></el-icon>
-          <template #title>卡密管理</template>
-        </el-menu-item>
-        
-        <el-menu-item index="/devices" @click="handleMenuClick('/devices')">
-          <el-icon><Monitor /></el-icon>
-          <template #title>设备管理</template>
-        </el-menu-item>
-
-        <el-menu-item index="/apps" @click="handleMenuClick('/apps')">
-          <el-icon><Grid /></el-icon>
-          <template #title>应用管理</template>
-        </el-menu-item>
-        
+        <template v-for="menu in menus" :key="menu.path">
+          <!-- 有子菜单的情况 -->
+          <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="menu.path">
+            <template #title>
+              <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
+              <span>{{ menu.title }}</span>
+            </template>
+            <!-- 递归渲染子菜单 -->
+            <template v-for="subMenu in menu.children" :key="subMenu.path">
+              <el-menu-item :index="subMenu.path" @click="handleMenuClick(subMenu.path)">
+                <el-icon><component :is="getIconComponent(subMenu.icon)" /></el-icon>
+                <template #title>{{ subMenu.title }}</template>
+              </el-menu-item>
+            </template>
+          </el-sub-menu>
+          <!-- 没有子菜单的情况 -->
+          <el-menu-item v-else :index="menu.path" @click="handleMenuClick(menu.path)">
+            <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
+            <template #title>{{ menu.title }}</template>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-scrollbar>
   </el-aside>
@@ -58,18 +53,23 @@
 <script setup lang="ts">
 /**
  * 侧边栏组件
- * @description 应用左侧导航菜单，支持折叠展开，响应式布局。
+ * @description 应用左侧导航菜单，支持折叠展开，响应式布局。根据路由配置和用户权限动态生成菜单。
  */
-import { computed } from 'vue'
+import { computed, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { generateMenus } from '@/utils/menu'
+import router from '@/router'
 import {
   DataLine,
   User,
   Ticket,
   Monitor,
   Grid,
-  ElementPlus
+  ElementPlus,
+  DataAnalysis,
+  Lock
 } from '@element-plus/icons-vue'
+import type { MenuItem } from '@/utils/menu'
 
 // Props 定义
 const props = defineProps<{
@@ -77,7 +77,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const router = useRouter()
+const vueRouter = useRouter()
 
 /**
  * 当前激活的菜单项
@@ -93,7 +93,44 @@ const activeMenu = computed(() => {
  * @param path 路由路径
  */
 const handleMenuClick = (path: string) => {
-  router.push(path)
+  vueRouter.push(path)
+}
+
+/**
+ * 生成菜单数据
+ * @description 根据路由配置和用户权限动态生成菜单
+ */
+const menus = computed<MenuItem[]>(() => {
+  console.log('router.options.routes', router.options.routes)
+  const generated = generateMenus(router.options.routes)
+  console.log('generated menus', generated)
+  return generated
+})
+
+/**
+ * 图标组件映射
+ * @description 将字符串图标名称映射到对应的 Element Plus 图标组件
+ */
+const iconMap = markRaw({
+  DataLine,
+  User,
+  Ticket,
+  Monitor,
+  Grid,
+  DataAnalysis,
+  Lock,
+})
+
+/**
+ * 获取图标组件
+ * @param iconName 图标名称字符串
+ * @returns 对应的图标组件，如果找不到则返回默认图标
+ */
+const getIconComponent = (iconName: string | undefined) => {
+  if (!iconName) {
+    return ElementPlus // 默认图标
+  }
+  return iconMap[iconName as keyof typeof iconMap] || ElementPlus
 }
 </script>
 
