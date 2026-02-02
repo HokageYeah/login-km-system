@@ -3,7 +3,7 @@
 处理用户注册、登录、Token验证等业务逻辑
 """
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from loguru import logger
@@ -280,6 +280,57 @@ class AuthService:
             用户对象
         """
         return self.db.query(User).filter(User.username == username).first()
+    
+    def batch_delete_users(self, user_ids: List[int]) -> Tuple[int, List[int], Optional[str]]:
+        """
+        批量删除用户
+        
+        Args:
+            user_ids: 要删除的用户ID列表
+            
+        Returns:
+            (成功删除数量, 失败的ID列表, 错误信息)
+        """
+        if not user_ids:
+            return 0, [], "用户ID列表不能为空"
+        
+        deleted_count = 0
+        failed_ids = []
+        
+        for user_id in user_ids:
+            try:
+                # 查询用户是否存在
+                user = self.get_user_by_id(user_id)
+                if not user:
+                    logger.warning(f"用户不存在，跳过删除: ID {user_id}")
+                    failed_ids.append(user_id)
+                    continue
+                
+                # 不允许删除管理员账户
+                if user.role == UserRole.ADMIN:
+                    logger.warning(f"不允许删除管理员账户: {user.username} (ID: {user_id})")
+                    failed_ids.append(user_id)
+                    continue
+                
+                # 先删除用户的所有 Token（避免外键约束问题）
+                self.db.query(UserToken).filter(UserToken.user_id == user_id).delete()
+                
+                # 删除用户的所有卡密绑定
+                self.db.query(UserCard).filter(UserCard.user_id == user_id).delete()
+                
+                # 最后删除用户
+                self.db.delete(user)
+                self.db.commit()
+                
+                deleted_count += 1
+                logger.info(f"成功删除用户: {user.username} (ID: {user_id})")
+                
+            except Exception as e:
+                self.db.rollback()
+                logger.error(f"删除用户失败: ID {user_id}, 错误: {str(e)}")
+                failed_ids.append(user_id)
+        
+        return deleted_count, failed_ids, None
 
 
 def get_auth_service(db: Session) -> AuthService:

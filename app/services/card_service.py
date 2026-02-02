@@ -354,6 +354,51 @@ class CardService:
                 return card, None
         
         return None, "该设备未绑定有效卡密"
+    
+    def batch_delete_cards(self, card_ids: List[int]) -> Tuple[int, List[int], Optional[str]]:
+        """
+        批量删除卡密
+        
+        Args:
+            card_ids: 要删除的卡密ID列表
+            
+        Returns:
+            (成功删除数量, 失败的ID列表, 错误信息)
+        """
+        if not card_ids:
+            return 0, [], "卡密ID列表不能为空"
+        
+        deleted_count = 0
+        failed_ids = []
+        
+        for card_id in card_ids:
+            try:
+                # 查询卡密是否存在
+                card = self.db.query(Card).filter(Card.id == card_id).first()
+                if not card:
+                    logger.warning(f"卡密不存在，跳过删除: ID {card_id}")
+                    failed_ids.append(card_id)
+                    continue
+                
+                # 先删除卡密的设备绑定（避免外键约束问题）
+                self.db.query(CardDevice).filter(CardDevice.card_id == card_id).delete()
+                
+                # 删除卡密的用户绑定
+                self.db.query(UserCard).filter(UserCard.card_id == card_id).delete()
+                
+                # 最后删除卡密
+                self.db.delete(card)
+                self.db.commit()
+                
+                deleted_count += 1
+                logger.info(f"成功删除卡密: {card.card_key} (ID: {card_id})")
+                
+            except Exception as e:
+                self.db.rollback()
+                logger.error(f"删除卡密失败: ID {card_id}, 错误: {str(e)}")
+                failed_ids.append(card_id)
+        
+        return deleted_count, failed_ids, None
 
 
 def get_card_service(db: Session) -> CardService:

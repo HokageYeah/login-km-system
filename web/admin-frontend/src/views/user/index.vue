@@ -46,12 +46,35 @@
 
     <!-- 用户列表表格 -->
     <div class="table-section">
+      <!-- 批量操作工具栏 -->
+      <div v-if="selectedUsers.length > 0" class="batch-actions-bar">
+        <div class="selected-info">
+          <el-icon class="info-icon"><InfoFilled /></el-icon>
+          <span>已选择 <strong>{{ selectedUsers.length }}</strong> 个用户</span>
+        </div>
+        <div class="action-buttons">
+          <el-button
+            type="danger"
+            :icon="Delete"
+            @click="handleBatchDelete"
+          >
+            批量删除
+          </el-button>
+          <el-button @click="clearSelection">
+            取消选择
+          </el-button>
+        </div>
+      </div>
+
       <el-table
+        ref="tableRef"
         v-loading="loading"
         :data="userList"
         stripe
         class="user-table"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="55" :selectable="checkSelectable" />
         <el-table-column prop="id" label="ID" width="80" />
         
         <el-table-column prop="username" label="用户名" min-width="150">
@@ -112,20 +135,31 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button
-              v-if="row.role !== 'admin'"
-              size="small"
-              :type="row.status === 'banned' ? 'success' : 'danger'"
-              :icon="row.status === 'banned' ? CircleCheck : CircleClose"
-              @click="handleStatusChange(row)"
-            >
-              {{ row.status === 'banned' ? '解封' : '封禁' }}
-            </el-button>
-            <el-tag v-else type="info" size="small">
-              管理员
-            </el-tag>
+            <div class="action-buttons">
+              <el-button
+                v-if="row.role !== 'admin'"
+                size="small"
+                :type="row.status === 'banned' ? 'success' : 'danger'"
+                :icon="row.status === 'banned' ? CircleCheck : CircleClose"
+                @click="handleStatusChange(row)"
+              >
+                {{ row.status === 'banned' ? '解封' : '封禁' }}
+              </el-button>
+              <el-button
+                v-if="row.role !== 'admin'"
+                size="small"
+                type="danger"
+                :icon="Delete"
+                @click="handleDelete(row)"
+              >
+                删除
+              </el-button>
+              <el-tag v-if="row.role === 'admin'" type="info" size="small">
+                管理员
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -159,9 +193,13 @@ import {
   User,
   Clock,
   CircleCheck,
-  CircleClose
+  CircleClose,
+  Delete,
+  InfoFilled
 } from '@element-plus/icons-vue'
+import type { ElTable } from 'element-plus'
 import { getUserList, updateUserStatus } from '@/api/admin'
+import { batchDeleteUsers } from '@/api/auth'
 import type { User as UserType } from '@/types'
 
 /**
@@ -169,6 +207,8 @@ import type { User as UserType } from '@/types'
  */
 const loading = ref(false)                              // 加载状态
 const userList = ref<UserType[]>([])                    // 用户列表
+const selectedUsers = ref<UserType[]>([])               // 选中的用户
+const tableRef = ref<InstanceType<typeof ElTable>>()    // 表格引用
 
 /**
  * 筛选表单
@@ -202,6 +242,127 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+/**
+ * 检查行是否可选择
+ * @param row 用户信息
+ * @returns 是否可选择
+ */
+const checkSelectable = (row: UserType) => {
+  // 管理员账户不可选择
+  return row.role !== 'admin'
+}
+
+/**
+ * 处理选择变化
+ * @param selection 选中的用户列表
+ */
+const handleSelectionChange = (selection: UserType[]) => {
+  selectedUsers.value = selection
+}
+
+/**
+ * 清除选择
+ */
+const clearSelection = () => {
+  tableRef.value?.clearSelection()
+}
+
+/**
+ * 处理单个删除
+ * @param user 用户信息
+ */
+const handleDelete = async (user: UserType) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除用户 ${user.username} 吗？`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        message: `
+          <div>
+            <p>用户名：<strong>${user.username}</strong></p>
+            <p>角色：<strong>${user.role === 'admin' ? '管理员' : '普通用户'}</strong></p>
+            <p style="color: #f56c6c; margin-top: 10px;">
+              <strong>警告：</strong>删除操作不可恢复！
+            </p>
+            <p style="color: #f56c6c;">
+              该用户的所有数据（Token、卡密绑定等）将被永久删除。
+            </p>
+          </div>
+        `
+      }
+    )
+    
+    const result = await batchDeleteUsers([user.id])
+    
+    if (result.deleted_count > 0) {
+      ElMessage.success('删除成功')
+      loadUserList()
+    } else {
+      ElMessage.warning('删除失败，该用户可能是管理员账户')
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+      console.error('删除用户失败:', error)
+    }
+  }
+}
+
+/**
+ * 处理批量删除
+ */
+const handleBatchDelete = async () => {
+  if (selectedUsers.value.length === 0) {
+    ElMessage.warning('请先选择要删除的用户')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedUsers.value.length} 个用户吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        message: `
+          <div>
+            <p>即将删除 <strong>${selectedUsers.value.length}</strong> 个用户</p>
+            <p style="color: #f56c6c; margin-top: 10px;">
+              <strong>警告：</strong>批量删除操作不可恢复！
+            </p>
+            <p style="color: #f56c6c;">
+              所有选中用户的数据（Token、卡密绑定等）将被永久删除。
+            </p>
+            <p style="color: #909399; margin-top: 10px; font-size: 12px;">
+              注意：管理员账户会被自动跳过，不会被删除。
+            </p>
+          </div>
+        `
+      }
+    )
+    
+    const userIds = selectedUsers.value.map(user => user.id)
+    const result = await batchDeleteUsers(userIds)
+    
+    ElMessage.success(result.message)
+    
+    // 清除选择并刷新列表
+    clearSelection()
+    loadUserList()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除失败')
+      console.error('批量删除用户失败:', error)
+    }
+  }
 }
 
 /**
@@ -396,6 +557,28 @@ onMounted(() => {
   @apply flex justify-end mt-6;
 }
 
+/* 批量操作工具栏 */
+.batch-actions-bar {
+  @apply flex justify-between items-center mb-4 p-4;
+  @apply bg-blue-50 border border-blue-200 rounded-xl;
+}
+
+.selected-info {
+  @apply flex items-center gap-2 text-blue-700;
+}
+
+.info-icon {
+  @apply text-lg;
+}
+
+.selected-info strong {
+  @apply text-blue-900 font-bold;
+}
+
+.action-buttons {
+  @apply flex gap-2;
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
   .page-header {
@@ -408,6 +591,18 @@ onMounted(() => {
 
   .filter-select,
   .filter-input {
+    @apply w-full;
+  }
+
+  .batch-actions-bar {
+    @apply flex-col gap-3;
+  }
+
+  .action-buttons {
+    @apply w-full flex-col;
+  }
+
+  .action-buttons .el-button {
     @apply w-full;
   }
 }

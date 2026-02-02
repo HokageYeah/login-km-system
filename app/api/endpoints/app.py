@@ -2,6 +2,7 @@
 应用管理相关API接口
 提供应用的创建、查询、状态管理等功能（需要管理员权限）
 """
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -238,3 +239,46 @@ async def get_app_detail(
         status=app.status.value,
         created_at=app.created_at
     )
+
+
+@router.post(
+    "/batch-delete",
+    summary="批量删除应用",
+    description="批量删除指定的应用（需要管理员权限）"
+)
+async def batch_delete_apps(
+    app_ids: List[int],
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    from app.api.endpoints.common.common_api import handle_batch_delete
+    from app.services.app_service import AppService
+    
+    """
+    批量删除应用
+    
+    - **app_ids**: 要删除的应用ID列表
+    
+    注意事项：
+    1. 只有管理员可以执行此操作
+    2. 删除应用会同时删除该应用下的所有卡密、用户Token等关联数据
+    3. 建议在删除前先禁用应用，确认无影响后再删除
+    
+    返回：
+    - success: 是否成功
+    - message: 操作结果消息
+    - deleted_count: 成功删除的数量
+    - failed_ids: 删除失败的应用ID列表（如果有）
+    """
+    app_service = AppService(db)
+    
+    return handle_batch_delete(
+        items=app_ids,
+        service_name="应用",
+        batch_delete_method=app_service.batch_delete_apps,
+        current_admin=current_admin,
+        item_name="应用",
+        admin_permission="管理员",
+        service_class_name="应用服务"
+    )
+

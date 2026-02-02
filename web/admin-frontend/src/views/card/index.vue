@@ -73,13 +73,36 @@
 
     <!-- 卡密列表表格 -->
     <div class="table-section">
+      <!-- 批量操作工具栏 -->
+      <div v-if="selectedCards.length > 0" class="batch-actions-bar">
+        <div class="selected-info">
+          <el-icon class="info-icon"><InfoFilled /></el-icon>
+          <span>已选择 <strong>{{ selectedCards.length }}</strong> 个卡密</span>
+        </div>
+        <div class="action-buttons">
+          <el-button
+            type="danger"
+            :icon="Delete"
+            @click="handleBatchDelete"
+          >
+            批量删除
+          </el-button>
+          <el-button @click="clearSelection">
+            取消选择
+          </el-button>
+        </div>
+      </div>
+
       <el-table
+        ref="tableRef"
         v-loading="loading"
         :data="cardList"
         stripe
         class="card-table"
         @sort-change="handleSortChange"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="id" label="ID" width="80" sortable="custom" />
         
         <el-table-column prop="card_key" label="卡密" min-width="200">
@@ -151,7 +174,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="350" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button
@@ -175,6 +198,14 @@
                 @click="handleStatusChange(row)"
               >
                 {{ row.status === 'disabled' ? '启用' : '禁用' }}
+              </el-button>
+              <el-button
+                size="small"
+                type="danger"
+                :icon="Delete"
+                @click="handleDelete(row)"
+              >
+                删除
               </el-button>
             </div>
           </template>
@@ -234,9 +265,13 @@ import {
   View,
   Edit,
   CircleCheck,
-  CircleClose
+  CircleClose,
+  Delete,
+  InfoFilled
 } from '@element-plus/icons-vue'
+import type { ElTable } from 'element-plus'
 import { getCardList, updateCardStatus } from '@/api/admin'
+import { batchDeleteCards } from '@/api/card'
 import { getAppList } from '@/api/app'
 import type { Card, App } from '@/types'
 import GenerateDialog from './components/GenerateDialog.vue'
@@ -250,6 +285,8 @@ const loading = ref(false)                              // 加载状态
 const cardList = ref<Card[]>([])                        // 卡密列表
 const appList = ref<App[]>([])                          // 应用列表
 const currentCard = ref<Card | null>(null)              // 当前操作的卡密
+const selectedCards = ref<Card[]>([])                   // 选中的卡密
+const tableRef = ref<InstanceType<typeof ElTable>>()    // 表格引用
 
 /**
  * 弹窗显示状态
@@ -346,6 +383,118 @@ const copyCardKey = async (cardKey: string) => {
     ElMessage.success('卡密已复制到剪贴板')
   } catch (error) {
     ElMessage.error('复制失败，请手动复制')
+  }
+}
+
+/**
+ * 处理选择变化
+ * @param selection 选中的卡密列表
+ */
+const handleSelectionChange = (selection: Card[]) => {
+  selectedCards.value = selection
+}
+
+/**
+ * 清除选择
+ */
+const clearSelection = () => {
+  tableRef.value?.clearSelection()
+}
+
+/**
+ * 处理单个删除
+ * @param card 卡密信息
+ */
+const handleDelete = async (card: Card) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除卡密 ${card.card_key} 吗？`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        message: `
+          <div>
+            <p>卡密：<strong>${card.card_key}</strong></p>
+            <p>应用：<strong>${card.app_name}</strong></p>
+            <p>状态：<strong>${getStatusText(card.status)}</strong></p>
+            <p style="color: #f56c6c; margin-top: 10px;">
+              <strong>警告：</strong>删除操作不可恢复！
+            </p>
+            <p style="color: #f56c6c;">
+              该卡密的所有绑定数据（用户绑定、设备绑定等）将被永久删除。
+            </p>
+          </div>
+        `
+      }
+    )
+    
+    const result = await batchDeleteCards([card.id])
+    
+    if (result.deleted_count > 0) {
+      ElMessage.success('删除成功')
+      loadCardList()
+    } else {
+      ElMessage.warning('删除失败')
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+      console.error('删除卡密失败:', error)
+    }
+  }
+}
+
+/**
+ * 处理批量删除
+ */
+const handleBatchDelete = async () => {
+  if (selectedCards.value.length === 0) {
+    ElMessage.warning('请先选择要删除的卡密')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedCards.value.length} 个卡密吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        message: `
+          <div>
+            <p>即将删除 <strong>${selectedCards.value.length}</strong> 个卡密</p>
+            <p style="color: #f56c6c; margin-top: 10px;">
+              <strong>警告：</strong>批量删除操作不可恢复！
+            </p>
+            <p style="color: #f56c6c;">
+              所有选中卡密的绑定数据（用户绑定、设备绑定等）将被永久删除。
+            </p>
+            <p style="color: #f56c6c;">
+              已绑定的用户将无法继续使用这些卡密。
+            </p>
+          </div>
+        `
+      }
+    )
+    
+    const cardIds = selectedCards.value.map(card => card.id)
+    const result = await batchDeleteCards(cardIds)
+    
+    ElMessage.success(result.message)
+    
+    // 清除选择并刷新列表
+    clearSelection()
+    loadCardList()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除失败')
+      console.error('批量删除卡密失败:', error)
+    }
   }
 }
 
@@ -615,6 +764,24 @@ onMounted(() => {
   @apply bg-blue-50 text-blue-700 border-blue-200;
 }
 
+/* 批量操作工具栏 */
+.batch-actions-bar {
+  @apply flex justify-between items-center mb-4 p-4;
+  @apply bg-blue-50 border border-blue-200 rounded-xl;
+}
+
+.selected-info {
+  @apply flex items-center gap-2 text-blue-700;
+}
+
+.info-icon {
+  @apply text-lg;
+}
+
+.selected-info strong {
+  @apply text-blue-900 font-bold;
+}
+
 /* 操作按钮 */
 .action-buttons {
   @apply flex gap-2;
@@ -646,6 +813,10 @@ onMounted(() => {
   .filter-select,
   .filter-input {
     @apply w-full;
+  }
+
+  .batch-actions-bar {
+    @apply flex-col gap-3;
   }
 
   .action-buttons {

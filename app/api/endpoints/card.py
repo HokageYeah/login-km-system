@@ -2,10 +2,11 @@
 卡密管理相关API接口
 提供卡密查询、绑定、解绑等功能
 """
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.utils.dependencies import get_db, get_current_user
+from app.utils.dependencies import get_db, get_current_user, get_current_admin
 from app.services.card_service import CardService
 from app.schemas.card import (
     CardBindRequest,
@@ -256,3 +257,47 @@ async def get_card_detail(
         devices=devices,
         created_at=card_detail["created_at"]
     )
+
+
+@router.post(
+    "/batch-delete",
+    summary="批量删除卡密",
+    description="批量删除指定的卡密（需要管理员权限）"
+)
+async def batch_delete_cards(
+    card_ids: List[int],
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    from app.api.endpoints.common.common_api import handle_batch_delete
+    from app.services.card_service import CardService
+    
+    """
+    批量删除卡密
+    
+    - **card_ids**: 要删除的卡密ID列表
+    
+    注意事项：
+    1. 只有管理员可以执行此操作
+    2. 删除卡密会同时删除该卡密的所有用户绑定、设备绑定等关联数据
+    3. 建议在删除前先禁用卡密，确认无影响后再删除
+    4. 已绑定的用户将无法继续使用该卡密
+    
+    返回：
+    - success: 是否成功
+    - message: 操作结果消息
+    - deleted_count: 成功删除的数量
+    - failed_ids: 删除失败的卡密ID列表（如果有）
+    """
+    card_service = CardService(db)
+    
+    return handle_batch_delete(
+        items=card_ids,
+        service_name="卡密",
+        batch_delete_method=card_service.batch_delete_cards,
+        current_admin=current_admin,
+        item_name="卡密",
+        admin_permission="管理员",
+        service_class_name="卡密服务"
+    )
+

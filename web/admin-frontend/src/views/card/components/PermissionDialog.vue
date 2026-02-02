@@ -200,6 +200,25 @@ const getIconComponent = (iconName: string) => {
 }
 
 /**
+ * 处理卡片点击
+ * @param permissionKey 权限标识
+ * @param status 权限状态
+ */
+const handleCardClick = (permissionKey: string, status: string) => {
+  // 如果权限被禁用，不允许切换
+  if (status === 'disabled') return
+
+  const index = form.permissions.indexOf(permissionKey)
+  if (index > -1) {
+    // 已选中，取消选中
+    form.permissions.splice(index, 1)
+  } else {
+    // 未选中，添加选中
+    form.permissions.push(permissionKey)
+  }
+}
+
+/**
  * 加载卡密权限数据
  */
 const loadCardPermissions = async () => {

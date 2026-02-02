@@ -145,6 +145,71 @@ class AppService:
         
         return app, None
     
+    def batch_delete_apps(self, app_ids: List[int]) -> Tuple[int, List[int], Optional[str]]:
+        """
+        批量删除应用
+        
+        Args:
+            app_ids: 要删除的应用ID列表
+            
+        Returns:
+            (成功删除数量, 失败的ID列表, 错误信息)
+        """
+        if not app_ids:
+            return 0, [], "应用ID列表不能为空"
+        
+        deleted_count = 0
+        failed_ids = []
+        
+        for app_id in app_ids:
+            try:
+                # 查询应用是否存在
+                app = self.get_app_by_id(app_id)
+                if not app:
+                    logger.warning(f"应用不存在，跳过删除: ID {app_id}")
+                    failed_ids.append(app_id)
+                    continue
+                
+                # 检查是否是默认应用（app_key 为 default_app）
+                if app.app_key == 'default_app':
+                    logger.warning(f"不能删除默认应用: {app.app_name} (app_key: {app.app_key})")
+                    failed_ids.append(app_id)
+                    continue
+                
+                # 先删除该应用下的所有 Token（避免外键约束问题）
+                from app.models.user_token import UserToken
+                self.db.query(UserToken).filter(UserToken.app_id == app_id).delete()
+                
+                # 删除该应用下的所有卡密（会级联删除卡密的绑定关系）
+                from app.models.card import Card
+                from app.models.user_card import UserCard
+                from app.models.card_device import CardDevice
+                
+                # 获取该应用下的所有卡密ID
+                card_ids = [card.id for card in self.db.query(Card).filter(Card.app_id == app_id).all()]
+                
+                # 删除卡密的设备绑定
+                if card_ids:
+                    self.db.query(CardDevice).filter(CardDevice.card_id.in_(card_ids)).delete(synchronize_session=False)
+                    # 删除卡密的用户绑定
+                    self.db.query(UserCard).filter(UserCard.card_id.in_(card_ids)).delete(synchronize_session=False)
+                    # 删除卡密
+                    self.db.query(Card).filter(Card.app_id == app_id).delete()
+                
+                # 最后删除应用
+                self.db.delete(app)
+                self.db.commit()
+                
+                deleted_count += 1
+                logger.info(f"成功删除应用: {app.app_name} (ID: {app_id})")
+                
+            except Exception as e:
+                self.db.rollback()
+                logger.error(f"删除应用失败: ID {app_id}, 错误: {str(e)}")
+                failed_ids.append(app_id)
+        
+        return deleted_count, failed_ids, None
+    
     def _generate_app_key(self, app_name: str) -> str:
         """
         生成应用标识

@@ -45,3 +45,13 @@ export const updateAppStatus = (appId: number, status: string) => {
 export const getAppDetail = (appId: number) => {
   return request.get<App>(`/app/${appId}`)
 }
+
+/**
+ * 批量删除应用
+ * @description 批量删除指定的应用（需要管理员权限）
+ * @param appIds 要删除的应用ID列表
+ * @returns Promise 删除结果
+ */
+export const batchDeleteApps = (appIds: number[]) => {
+  return request.post('/app/batch-delete', appIds)
+}

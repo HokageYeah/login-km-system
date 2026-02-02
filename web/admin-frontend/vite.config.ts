@@ -6,6 +6,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
+// 将启动端口换更改为http://127.0.0.1:5174
 export default defineConfig({
   plugins: [
     vue(),
@@ -26,6 +27,7 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
+    port: 5174,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8003',

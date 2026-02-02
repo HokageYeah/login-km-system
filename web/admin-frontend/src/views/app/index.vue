@@ -20,12 +20,35 @@
 
     <!-- 应用列表表格 -->
     <div class="table-section">
+      <!-- 批量操作工具栏 -->
+      <div v-if="selectedApps.length > 0" class="batch-actions-bar">
+        <div class="selected-info">
+          <el-icon class="info-icon"><InfoFilled /></el-icon>
+          <span>已选择 <strong>{{ selectedApps.length }}</strong> 个应用</span>
+        </div>
+        <div class="action-buttons">
+          <el-button
+            type="danger"
+            :icon="Delete"
+            @click="handleBatchDelete"
+          >
+            批量删除
+          </el-button>
+          <el-button @click="clearSelection">
+            取消选择
+          </el-button>
+        </div>
+      </div>
+
       <el-table
+        ref="tableRef"
         v-loading="loading"
         :data="appList"
         stripe
         class="app-table"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="55" :selectable="checkSelectable" />
         <el-table-column prop="id" label="ID" width="80" />
         
         <el-table-column prop="app_name" label="应用名称" min-width="200">
@@ -73,16 +96,30 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button
-              size="small"
-              :type="row.status === 'disabled' ? 'success' : 'danger'"
-              :icon="row.status === 'disabled' ? CircleCheck : CircleClose"
-              @click="handleStatusChange(row)"
-            >
-              {{ row.status === 'disabled' ? '启用' : '禁用' }}
-            </el-button>
+            <div class="action-buttons">
+              <el-button
+                size="small"
+                :type="row.status === 'disabled' ? 'success' : 'danger'"
+                :icon="row.status === 'disabled' ? CircleCheck : CircleClose"
+                @click="handleStatusChange(row)"
+              >
+                {{ row.status === 'disabled' ? '启用' : '禁用' }}
+              </el-button>
+              <el-button
+                v-if="row.app_key !== 'default_app'"
+                size="small"
+                type="danger"
+                :icon="Delete"
+                @click="handleDelete(row)"
+              >
+                删除
+              </el-button>
+              <el-tag v-else type="info" size="small">
+                默认应用
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -158,9 +195,12 @@ import {
   CopyDocument,
   CircleCheck,
   CircleClose,
-  Refresh
+  Refresh,
+  Delete,
+  InfoFilled
 } from '@element-plus/icons-vue'
-import { getAppList, createApp, updateAppStatus } from '@/api/app'
+import type { ElTable } from 'element-plus'
+import { getAppList, createApp, updateAppStatus, batchDeleteApps } from '@/api/app'
 import type { App } from '@/types'
 
 /**
@@ -171,6 +211,8 @@ const submitting = ref(false)                           // 提交状态
 const appList = ref<App[]>([])                          // 应用列表
 const createDialogVisible = ref(false)                  // 创建弹窗显示状态
 const formRef = ref<FormInstance>()                     // 表单引用
+const selectedApps = ref<App[]>([])                     // 选中的应用
+const tableRef = ref<InstanceType<typeof ElTable>>()    // 表格引用
 
 /**
  * 表单数据
@@ -205,6 +247,140 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+/**
+ * 检查行是否可选择
+ * @param row 应用信息
+ * @returns 是否可选择
+ */
+const checkSelectable = (row: App) => {
+  // 默认应用不可选择
+  return row.app_key !== 'default_app'
+}
+
+/**
+ * 处理选择变化
+ * @param selection 选中的应用列表
+ */
+const handleSelectionChange = (selection: App[]) => {
+  selectedApps.value = selection
+}
+
+/**
+ * 清除选择
+ */
+const clearSelection = () => {
+  tableRef.value?.clearSelection()
+}
+
+/**
+ * 处理单个删除
+ * @param app 应用信息
+ */
+const handleDelete = async (app: App) => {
+  // 检查是否是默认应用
+  if (app.app_key === 'default_app') {
+    ElMessage.warning('默认应用不能删除')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除应用 ${app.app_name} 吗？`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        message: `
+          <div>
+            <p>应用名称：<strong>${app.app_name}</strong></p>
+            <p>AppKey：<strong>${app.app_key}</strong></p>
+            <p>状态：<strong>${app.status === 'normal' ? '正常' : '禁用'}</strong></p>
+            <p style="color: #f56c6c; margin-top: 10px;">
+              <strong>警告：</strong>删除操作不可恢复！
+            </p>
+            <p style="color: #f56c6c;">
+              该应用下的所有卡密、用户Token等数据将被永久删除。
+            </p>
+            <p style="color: #f56c6c;">
+              建议在删除前先禁用应用，确认无影响后再删除。
+            </p>
+          </div>
+        `
+      }
+    )
+    
+    const result = await batchDeleteApps([app.id])
+    
+    if (result.deleted_count > 0) {
+      ElMessage.success('删除成功')
+      loadAppList()
+    } else {
+      ElMessage.warning('删除失败')
+    }
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+      console.error('删除应用失败:', error)
+    }
+  }
+}
+
+/**
+ * 处理批量删除
+ */
+const handleBatchDelete = async () => {
+  if (selectedApps.value.length === 0) {
+    ElMessage.warning('请先选择要删除的应用')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedApps.value.length} 个应用吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        message: `
+          <div>
+            <p>即将删除 <strong>${selectedApps.value.length}</strong> 个应用</p>
+            <p style="color: #f56c6c; margin-top: 10px;">
+              <strong>警告：</strong>批量删除操作不可恢复！
+            </p>
+            <p style="color: #f56c6c;">
+              所有选中应用下的卡密、用户Token等数据将被永久删除。
+            </p>
+            <p style="color: #f56c6c;">
+              建议在删除前先禁用应用，确认无影响后再删除。
+            </p>
+            <p style="color: #909399; margin-top: 10px; font-size: 12px;">
+              注意：默认应用（default_app）会被自动跳过，不会被删除。
+            </p>
+          </div>
+        `
+      }
+    )
+    
+    const appIds = selectedApps.value.map(app => app.id)
+    const result = await batchDeleteApps(appIds)
+    
+    ElMessage.success(result.message)
+    
+    // 清除选择并刷新列表
+    clearSelection()
+    loadAppList()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除失败')
+      console.error('批量删除应用失败:', error)
+    }
+  }
 }
 
 /**
@@ -433,6 +609,28 @@ onMounted(() => {
   @apply flex items-center gap-2 text-sm text-gray-600;
 }
 
+/* 批量操作工具栏 */
+.batch-actions-bar {
+  @apply flex justify-between items-center mb-4 p-4;
+  @apply bg-blue-50 border border-blue-200 rounded-xl;
+}
+
+.selected-info {
+  @apply flex items-center gap-2 text-blue-700;
+}
+
+.info-icon {
+  @apply text-lg;
+}
+
+.selected-info strong {
+  @apply text-blue-900 font-bold;
+}
+
+.action-buttons {
+  @apply flex gap-2;
+}
+
 /* 创建表单 */
 .create-form {
   @apply py-4;
@@ -458,6 +656,14 @@ onMounted(() => {
 
   .create-btn {
     @apply w-full;
+  }
+
+  .batch-actions-bar {
+    @apply flex-col gap-3;
+  }
+
+  .action-buttons {
+    @apply flex-col;
   }
 }
 </style>

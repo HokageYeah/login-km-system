@@ -53,3 +53,13 @@ export const getCardDetail = (cardId: number) => {
     devices: Device[]
   }>(`/card/${cardId}`)
 }
+
+/**
+ * 批量删除卡密
+ * @description 批量删除指定的卡密（需要管理员权限）
+ * @param cardIds 要删除的卡密ID列表
+ * @returns Promise 删除结果
+ */
+export const batchDeleteCards = (cardIds: number[]) => {
+  return request.post('/card/batch-delete', cardIds)
+}

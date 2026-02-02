@@ -2,10 +2,11 @@
 用户认证相关API接口
 提供注册、登录、Token验证等功能
 """
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.utils.dependencies import get_db, get_current_user
+from app.utils.dependencies import get_db, get_current_user, get_current_admin
 from app.services.auth_service import AuthService
 from app.schemas.auth import (
     UserRegisterRequest,
@@ -190,3 +191,47 @@ async def get_current_user_info(
         app_id=current_user["app_id"],
         device_id=current_user["device_id"]
     )
+
+
+@router.post(
+    "/batch-delete-users",
+    summary="批量删除用户",
+    description="批量删除指定的用户（需要管理员权限）"
+)
+async def batch_delete_users(
+    user_ids: List[int],
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    from app.api.endpoints.common.common_api import handle_batch_delete
+    from app.services.auth_service import AuthService
+    
+    """
+    批量删除用户
+    
+    - **user_ids**: 要删除的用户ID列表
+    
+    注意事项：
+    1. 只有管理员可以执行此操作
+    2. 不允许删除管理员账户
+    3. 删除用户会同时删除该用户的所有Token、卡密绑定等关联数据
+    4. 建议在删除前先封禁用户，确认无影响后再删除
+    
+    返回：
+    - success: 是否成功
+    - message: 操作结果消息
+    - deleted_count: 成功删除的数量
+    - failed_ids: 删除失败的用户ID列表（如果有）
+    """
+    auth_service = AuthService(db)
+    
+    return handle_batch_delete(
+        items=user_ids,
+        service_name="用户",
+        batch_delete_method=auth_service.batch_delete_users,
+        current_admin=current_admin,
+        item_name="用户",
+        admin_permission="管理员",
+        service_class_name="认证服务"
+    )
+

@@ -36,6 +36,16 @@ export const logout = () => {
 }
 
 /**
+ * 批量删除用户
+ * @description 批量删除指定的用户（需要管理员权限）
+ * @param userIds 要删除的用户ID列表
+ * @returns Promise 删除结果
+ */
+export const batchDeleteUsers = (userIds: number[]) => {
+  return request.post('/auth/batch-delete-users', userIds)
+}
+
+/**
  * 获取公开应用列表
  * @returns Promise<{ total: number, apps: Array<{ app_key: string, app_name: string }> }>
  */
