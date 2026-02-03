@@ -17,13 +17,14 @@ from app.schemas.permission import (
     UserPermissionsResponse
 )
 from app.core.logging_uru import logger
+from app.schemas.common_data import ApiResponseData
 
 router = APIRouter()
 
 
 @router.post(
     "/check",
-    response_model=PermissionCheckResponse,
+    response_model=ApiResponseData,
     summary="权限校验",
     description="检查用户在指定设备上是否有指定权限"
 )
@@ -94,12 +95,12 @@ async def check_permission(
         allowed=allowed,
         message=message,
         expire_time=expire_time
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/batch-check",
-    response_model=BatchPermissionCheckResponse,
+    response_model=ApiResponseData,
     summary="批量权限校验",
     description="批量检查多个权限"
 )
@@ -150,12 +151,12 @@ async def batch_check_permissions(
     
     return BatchPermissionCheckResponse(
         results=results
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.get(
     "/my-permissions",
-    response_model=UserPermissionsResponse,
+    response_model=ApiResponseData,
     summary="查询我的权限",
     description="获取当前用户在指定设备上的所有权限"
 )
@@ -208,4 +209,4 @@ async def get_my_permissions(
         has_permission=has_permission,
         permissions=permissions,
         expire_time=expire_time
-    )
+    ).model_dump(mode='json', exclude_none=True)

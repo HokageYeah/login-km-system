@@ -20,15 +20,18 @@ from app.schemas.admin import (
     AdminDeviceListResponse,
     AdminDeviceInfo,
     UpdateDeviceStatusRequest,
-    UpdateDeviceStatusResponse
+    UpdateDeviceStatusResponse,
+    AdminUserListResponse,
+    AdminUserInfo,
+    StatisticsResponse
 )
 from app.schemas.user import UserInfo
-from app.schemas.common_data import CommonResponse
+from app.schemas.common_data import CommonResponse, ApiResponseData
 
 router = APIRouter()
 
 
-@router.post("/card/generate", response_model=CardGenerateResponse)
+@router.post("/card/generate", response_model=ApiResponseData)
 async def generate_cards(
     request: CardGenerateRequest,
     admin: dict = Depends(get_current_admin),
@@ -58,10 +61,10 @@ async def generate_cards(
         message=f"成功生成 {len(cards)} 个卡密",
         count=len(cards),
         cards=cards
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.get("/users", response_model=dict)
+@router.get("/users", response_model=ApiResponseData)
 async def get_users_list(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -87,15 +90,29 @@ async def get_users_list(
     if error:
         raise HTTPException(status_code=400, detail=error)
     
-    return {
-        "total": total,
-        "page": page,
-        "size": size,
-        "users": users
-    }
+    # 转换为 Pydantic 模型
+    user_infos = [
+        AdminUserInfo(
+            id=user["id"],
+            username=user["username"],
+            status=user["status"],
+            role=user["role"],
+            card_count=user["card_count"],
+            created_at=user.get("created_at"),
+            last_login_at=user.get("last_login_at")
+        )
+        for user in users
+    ]
+    
+    return AdminUserListResponse(
+        total=total,
+        page=page,
+        size=size,
+        users=user_infos
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.post("/user/{user_id}/status", response_model=CommonResponse)
+@router.post("/user/{user_id}/status", response_model=ApiResponseData)
 async def update_user_status(
     user_id: int,
     status: str = Query(..., description="状态: normal-正常, banned-封禁"),
@@ -117,10 +134,10 @@ async def update_user_status(
     return CommonResponse(
         success=True,
         message=f"用户状态更新成功: {status}"
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.get("/cards", response_model=AdminCardListResponse)
+@router.get("/cards", response_model=ApiResponseData)
 async def get_cards_list(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -156,10 +173,10 @@ async def get_cards_list(
         page=page,
         size=size,
         cards=card_infos
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.post("/card/{card_id}/status", response_model=UpdateCardResponse)
+@router.post("/card/{card_id}/status", response_model=ApiResponseData)
 async def update_card_status(
     card_id: int,
     request: UpdateCardStatusRequest,
@@ -181,10 +198,10 @@ async def update_card_status(
     return UpdateCardResponse(
         success=True,
         message=f"卡密状态更新成功: {request.status}"
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.post("/card/{card_id}/permissions", response_model=UpdateCardResponse)
+@router.post("/card/{card_id}/permissions", response_model=ApiResponseData)
 async def update_card_permissions(
     card_id: int,
     request: UpdateCardPermissionsRequest,
@@ -206,10 +223,10 @@ async def update_card_permissions(
     return UpdateCardResponse(
         success=True,
         message="卡密权限更新成功"
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.get("/devices", response_model=AdminDeviceListResponse)
+@router.get("/devices", response_model=ApiResponseData)
 async def get_devices_list(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -245,10 +262,10 @@ async def get_devices_list(
         page=page,
         size=size,
         devices=device_infos
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.post("/device/{device_id}/status", response_model=UpdateDeviceStatusResponse)
+@router.post("/device/{device_id}/status", response_model=ApiResponseData)
 async def update_device_status(
     device_id: int,
     request: UpdateDeviceStatusRequest,
@@ -270,10 +287,10 @@ async def update_device_status(
     return UpdateDeviceStatusResponse(
         success=True,
         message=f"设备状态更新成功: {request.status}"
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
-@router.get("/statistics", response_model=dict)
+@router.get("/statistics", response_model=ApiResponseData)
 async def get_statistics(
     admin: dict = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -290,4 +307,11 @@ async def get_statistics(
     if error:
         raise HTTPException(status_code=400, detail=error)
     
-    return statistics
+    return StatisticsResponse(
+        user_count=statistics["user_count"],
+        card_count=statistics["card_count"],
+        device_count=statistics["device_count"],
+        app_count=statistics["app_count"],
+        active_device_count=statistics["active_device_count"],
+        active_user_count=statistics["active_user_count"]
+    ).model_dump(mode='json', exclude_none=True)

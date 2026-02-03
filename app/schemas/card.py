@@ -28,6 +28,11 @@ class CardInfo(BaseModel):
     max_device_count: int = Field(..., description="最大可绑定设备数")
     status: str = Field(..., description="卡密状态")
     remark: Optional[str] = Field(None, description="备注")
+    app_name: str = Field(..., description="应用名称")
+    app_id: int = Field(..., description="应用ID")
+    app_key: str = Field(..., description="应用唯一标识")
+    app_status: str = Field(..., description="应用状态")
+    app_created_at: datetime = Field(..., description="创建时间")
 
 
 class MyCardResponse(BaseModel):

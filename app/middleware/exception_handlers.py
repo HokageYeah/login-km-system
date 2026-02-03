@@ -20,6 +20,17 @@ n8n_workflow_lock = {
     "started_at": None,
     "max_duration": 300  # 锁定最长时间，单位秒，防止锁死
 }
+platform_mapping = {
+    "wx/public": PlatformEnum.WX_PUBLIC,
+    "license": PlatformEnum.LICENSE,
+    "wx/public/system": PlatformEnum.SYSTEM,
+    "auth": PlatformEnum.LICENSE,
+    "card": PlatformEnum.LICENSE,
+    "app": PlatformEnum.LICENSE,
+    "permission": PlatformEnum.LICENSE,
+    "admin": PlatformEnum.LICENSE,
+    "admin/feature-permissions": PlatformEnum.LICENSE,
+}
 # 自定义HTTP异常处理器
 async def http_exception_handler(request: Request, exc: HTTPException):
     """
@@ -35,11 +46,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     
     # 获取路径信息
     path = request.url.path
-    platform = "unknown"
+    # platform = "unknown"
     
-    # 根据路径判断平台
-    if "wx/public" in path:
-        platform = "WX_PUBLIC"
+    # # 根据路径判断平台
+    # if "wx/public" in path:
+    #     platform = "WX_PUBLIC"
+    platform = next((v for k, v in platform_mapping.items() if k in path), PlatformEnum.UNKNOWN)
     
     # 构建标准响应格式
     response_content = {
@@ -139,9 +151,11 @@ async def request_validation_error_handler(request: Request, exc: RequestValidat
     request_url = request.url.path
     
     # 根据路径判断平台
-    platform = "WX_MINI"
-    if "wx/public" in request_url:
-        platform = "WX_PUBLIC"
+    # platform = "WX_MINI"
+    # if "wx/public" in request_url:
+    #     platform = "WX_PUBLIC"
+
+    platform = next((v for k, v in platform_mapping.items() if k in request_url), PlatformEnum.UNKNOWN)
     
     return JSONResponse(
         status_code=422,
@@ -173,7 +187,8 @@ async def response_validation_error_handler(request: Request, exc: ResponseValid
     original_response = exc.body
     
     # 根据路径判断平台
-    platform = PlatformEnum.WX_PUBLIC if "wx/public" in request_url else "unknown"
+    # platform = PlatformEnum.WX_PUBLIC if "wx/public" in request_url else "unknown"
+    platform = next((v for k, v in platform_mapping.items() if k in request_url), PlatformEnum.UNKNOWN)
     
     # 初始化标准响应格式
     formatted_response = {

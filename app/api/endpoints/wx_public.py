@@ -15,13 +15,13 @@ from app.decorators.cache_decorator import ttl_cache, timed_cache, get_cache
 router = APIRouter()
 
 
-@router.get("/search")
+@router.get("/search", response_model=ApiResponseData)
 async def search_wx_articles(query: str = Query(..., description="搜索关键词")):
     """搜索微信公众号文章"""
     result = await fetch_wx_articles(query)
     return result
 
-@router.post("/articles")
+@router.post("/articles", response_model=ApiResponseData)
 async def search_wx_article_detail(article_id: str = Query(..., description="文章ID")):
     """搜索微信公众号文章详情（使用Query参数）"""
     result = await fetch_wx_article_detail(article_id)

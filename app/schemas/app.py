@@ -50,6 +50,9 @@ class AppSimpleInfo(BaseModel):
     """应用简要信息（公开）"""
     app_key: str = Field(..., description="应用唯一标识")
     app_name: str = Field(..., description="应用名称")
+    app_id: int = Field(..., description="应用ID")
+    app_status: str = Field(..., description="应用状态")
+    app_created_at: datetime = Field(..., description="创建时间")
 
 
 class AppSimpleListResponse(BaseModel):

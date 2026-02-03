@@ -16,13 +16,14 @@ from app.schemas.auth import (
     TokenVerifyResponse
 )
 from app.core.logging_uru import logger
+from app.schemas.common_data import ApiResponseData
 
 router = APIRouter()
 
 
 @router.post(
     "/register",
-    response_model=UserRegisterResponse,
+    response_model=ApiResponseData,
     summary="用户注册",
     description="创建新用户账号"
 )
@@ -59,12 +60,12 @@ async def register(
         status=user.status.value,
         role=user.role.value,
         created_at=user.created_at
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/login",
-    response_model=LoginResponse,
+    response_model=ApiResponseData,
     summary="用户登录",
     description="用户登录获取Token"
 )
@@ -107,12 +108,12 @@ async def login(
         has_card=user_info["has_card"],
         username=user_info["username"],
         role=user_info["role"]
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.get(
     "/verify",
-    response_model=TokenVerifyResponse,
+    response_model=ApiResponseData,
     summary="验证Token",
     description="验证Token是否有效并返回用户信息"
 )
@@ -138,11 +139,12 @@ async def verify_token(
         role=current_user["role"],
         app_id=current_user["app_id"],
         device_id=current_user["device_id"]
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/logout",
+    response_model=ApiResponseData,
     summary="用户登出",
     description="登出当前用户，使Token失效"
 )
@@ -171,7 +173,7 @@ async def logout(
 
 @router.get(
     "/me",
-    response_model=TokenVerifyResponse,
+    response_model=ApiResponseData,
     summary="获取当前用户信息",
     description="获取当前登录用户的详细信息"
 )
@@ -190,11 +192,12 @@ async def get_current_user_info(
         role=current_user["role"],
         app_id=current_user["app_id"],
         device_id=current_user["device_id"]
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/batch-delete-users",
+    response_model=ApiResponseData,
     summary="批量删除用户",
     description="批量删除指定的用户（需要管理员权限）"
 )

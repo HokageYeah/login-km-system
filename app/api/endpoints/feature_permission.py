@@ -18,16 +18,18 @@ from app.schemas.feature_permission import (
     FeaturePermissionInfo,
     UpdateFeaturePermissionsRequest,
     UpdateCardFeaturePermissionsResponse,
-    GetCardFeaturePermissionsResponse
+    GetCardFeaturePermissionsResponse,
+    PermissionCategoryResponse
 )
 from app.core.logging_uru import logger
+from app.schemas.common_data import ApiResponseData
 
 router = APIRouter()
 
 
 @router.get(
     "/list",
-    response_model=FeaturePermissionListResponse,
+    response_model=ApiResponseData,
     summary="查询功能权限列表",
     description="查询所有功能权限（需要管理员权限）"
 )
@@ -87,11 +89,12 @@ async def get_feature_permissions_list(
     return FeaturePermissionListResponse(
         total=total,
         permissions=permission_infos
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.get(
     "/categories",
+    response_model=ApiResponseData,
     summary="查询权限分类列表",
     description="查询所有权限分类（需要管理员权限）"
 )
@@ -112,15 +115,15 @@ async def get_permission_categories(
         f"管理员 {current_admin['username']} 查询权限分类，共 {len(categories)} 个"
     )
     
-    return {
-        "total": len(categories),
-        "categories": categories
-    }
+    return PermissionCategoryResponse(
+        total=len(categories),
+        categories=categories
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/create",
-    response_model=FeaturePermissionCreateResponse,
+    response_model=ApiResponseData,
     summary="创建功能权限",
     description="创建新的功能权限（需要管理员权限）"
 )
@@ -180,12 +183,12 @@ async def create_feature_permission(
             created_at=permission.created_at,
             updated_at=permission.updated_at
         )
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/update/{permission_id}",
-    response_model=FeaturePermissionUpdateResponse,
+    response_model=ApiResponseData,
     summary="更新功能权限",
     description="更新功能权限信息（需要管理员权限）"
 )
@@ -243,12 +246,12 @@ async def update_feature_permission(
             created_at=permission.created_at,
             updated_at=permission.updated_at
         )
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/delete/{permission_id}",
-    response_model=FeaturePermissionDeleteResponse,
+    response_model=ApiResponseData,
     summary="删除功能权限",
     description="删除功能权限（需要管理员权限）"
 )
@@ -283,12 +286,12 @@ async def delete_feature_permission(
     return FeaturePermissionDeleteResponse(
         success=True,
         message="功能权限删除成功"
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.get(
     "/card/{card_id}/permissions",
-    response_model=GetCardFeaturePermissionsResponse,
+    response_model=ApiResponseData,
     summary="查询卡密功能权限",
     description="查询指定卡密的功能权限列表（需要管理员权限）"
 )
@@ -345,12 +348,12 @@ async def get_card_feature_permissions(
         card_id=card_id,
         permission_keys=permission_keys,
         available_permissions=available_permissions
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/card/{card_id}/update-permissions",
-    response_model=UpdateCardFeaturePermissionsResponse,
+    response_model=ApiResponseData,
     summary="更新卡密功能权限",
     description="更新卡密的功能权限配置（需要管理员权限）"
 )
@@ -393,4 +396,4 @@ async def update_card_feature_permissions(
         success=True,
         message="卡密功能权限更新成功",
         permissions=request.permission_keys
-    )
+    ).model_dump(mode='json', exclude_none=True)

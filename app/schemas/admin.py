@@ -113,3 +113,32 @@ class UpdateDeviceStatusResponse(BaseModel):
     """更新设备状态响应"""
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="提示信息")
+
+
+class AdminUserInfo(BaseModel):
+    """管理员用户信息"""
+    id: int = Field(..., description="用户ID")
+    username: str = Field(..., description="用户名")
+    status: str = Field(..., description="用户状态: normal-正常, banned-封禁")
+    role: str = Field(..., description="用户角色: user-普通用户, admin-管理员")
+    card_count: int = Field(..., description="绑定卡密数量")
+    created_at: Optional[datetime] = Field(None, description="创建时间")
+    last_login_at: Optional[datetime] = Field(None, description="最后登录时间")
+
+
+class AdminUserListResponse(BaseModel):
+    """管理员用户列表响应"""
+    total: int = Field(..., description="总数")
+    page: int = Field(..., description="当前页")
+    size: int = Field(..., description="每页数量")
+    users: List[AdminUserInfo] = Field(..., description="用户列表")
+
+
+class StatisticsResponse(BaseModel):
+    """统计数据响应"""
+    user_count: int = Field(..., description="用户总数")
+    card_count: int = Field(..., description="卡密总数")
+    device_count: int = Field(..., description="设备总数")
+    app_count: int = Field(..., description="应用总数")
+    active_device_count: int = Field(..., description="活跃设备数")
+    active_user_count: int = Field(..., description="活跃用户数")

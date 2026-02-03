@@ -19,6 +19,7 @@ from app.schemas.app import (
     AppSimpleInfo
 )
 from app.core.logging_uru import logger
+from app.schemas.common_data import ApiResponseData
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ router = APIRouter()
 
 @router.get(
     "/public/list",
-    response_model=AppSimpleListResponse,
+    response_model=ApiResponseData,
     summary="查询所有应用列表（公开）",
     description="查询所有正常状态的应用列表，不需要鉴权，用于登录页展示"
 )
@@ -50,8 +51,11 @@ async def get_public_app_list(
     
     app_list = [
         AppSimpleInfo(
+            app_id=app.id,
             app_key=app.app_key,
-            app_name=app.app_name
+            app_name=app.app_name,
+            app_status=app.status,
+            app_created_at=app.created_at
         )
         for app in normal_apps
     ]
@@ -59,12 +63,12 @@ async def get_public_app_list(
     return AppSimpleListResponse(
         total=len(app_list),
         apps=app_list
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.get(
     "/list",
-    response_model=AppListResponse,
+    response_model=ApiResponseData,
     summary="查询应用列表",
     description="查询所有应用（需要管理员权限）"
 )
@@ -86,7 +90,7 @@ async def get_app_list(
             id=app.id,
             app_key=app.app_key,
             app_name=app.app_name,
-            status=app.status.value,
+            status=app.status,
             created_at=app.created_at
         )
         for app in apps
@@ -97,12 +101,12 @@ async def get_app_list(
     return AppListResponse(
         total=len(app_list),
         apps=app_list
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/create",
-    response_model=AppCreateResponse,
+    response_model=ApiResponseData,
     summary="创建应用",
     description="创建新应用（需要管理员权限）"
 )
@@ -147,12 +151,12 @@ async def create_app(
             status=app.status.value,
             created_at=app.created_at
         )
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/{app_id}/status",
-    response_model=UpdateAppStatusResponse,
+    response_model=ApiResponseData,
     summary="更新应用状态",
     description="启用或禁用应用（需要管理员权限）"
 )
@@ -201,12 +205,12 @@ async def update_app_status(
             status=app.status.value,
             created_at=app.created_at
         )
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.get(
     "/{app_id}",
-    response_model=AppInfo,
+    response_model=ApiResponseData,
     summary="查询应用详情",
     description="查询指定应用的详细信息（需要管理员权限）"
 )
@@ -238,11 +242,12 @@ async def get_app_detail(
         app_name=app.app_name,
         status=app.status.value,
         created_at=app.created_at
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/batch-delete",
+    response_model=ApiResponseData,
     summary="批量删除应用",
     description="批量删除指定的应用（需要管理员权限）"
 )

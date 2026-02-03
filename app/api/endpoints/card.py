@@ -19,13 +19,14 @@ from app.schemas.card import (
     DeviceInfo
 )
 from app.core.logging_uru import logger
+from app.schemas.common_data import ApiResponseData
 
 router = APIRouter()
 
 
 @router.get(
     "/my",
-    response_model=MyCardResponse,
+    response_model=ApiResponseData,
     summary="查询我的卡密",
     description="查询当前用户绑定的所有卡密"
 )
@@ -53,11 +54,16 @@ async def get_my_cards(
             card_id=card["card_id"],
             card_key=card["card_key"],
             expire_time=card["expire_time"],
+            app_id=card["app_id"],
+            app_key=card["app_key"],
+            app_name=card["app_name"],
+            app_status=card["app_status"],
+            app_created_at=card["app_created_at"],
             permissions=card["permissions"],
             bind_devices=card["bind_devices"],
             max_device_count=card["max_device_count"],
             status=card["status"],
-            remark=card["remark"]
+            remark=card["remark"],
         )
         for card in cards_data
     ]
@@ -69,12 +75,12 @@ async def get_my_cards(
     return MyCardResponse(
         has_card=has_card,
         cards=cards
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/bind",
-    response_model=CardBindResponse,
+    response_model=ApiResponseData,
     summary="绑定卡密",
     description="绑定卡密到当前用户和设备"
 )
@@ -134,14 +140,19 @@ async def bind_card(
             bind_devices=1,  # 刚绑定，显示1
             max_device_count=card_info["max_device_count"],
             status="used",
-            remark=card_info["remark"]
+            remark=card_info["remark"],
+            app_name=card_info["app_name"],
+            app_id=card_info["app_id"],
+            app_key=card_info["app_key"],
+            app_status=card_info["app_status"],
+            app_created_at=card_info["app_created_at"]
         )
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/unbind-device",
-    response_model=UnbindDeviceResponse,
+    response_model=ApiResponseData,
     summary="解绑设备",
     description="从卡密中解绑指定设备"
 )
@@ -188,12 +199,12 @@ async def unbind_device(
     return UnbindDeviceResponse(
         success=True,
         message="设备解绑成功"
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.get(
     "/{card_id}",
-    response_model=CardDetailResponse,
+    response_model=ApiResponseData,
     summary="查询卡密详情",
     description="查询指定卡密的详细信息"
 )
@@ -256,11 +267,12 @@ async def get_card_detail(
         remark=card_detail["remark"],
         devices=devices,
         created_at=card_detail["created_at"]
-    )
+    ).model_dump(mode='json', exclude_none=True)
 
 
 @router.post(
     "/batch-delete",
+    response_model=ApiResponseData,
     summary="批量删除卡密",
     description="批量删除指定的卡密（需要管理员权限）"
 )

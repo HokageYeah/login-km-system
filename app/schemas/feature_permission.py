@@ -99,3 +99,9 @@ class GetCardFeaturePermissionsResponse(BaseModel):
     card_id: int = Field(..., description="卡密ID")
     permission_keys: List[str] = Field(..., description="权限标识列表")
     available_permissions: List[FeaturePermissionInfo] = Field(..., description="所有可用的功能权限列表")
+
+
+class PermissionCategoryResponse(BaseModel):
+    """权限分类列表响应"""
+    total: int = Field(..., description="分类总数")
+    categories: List[str] = Field(..., description="分类列表")

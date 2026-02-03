@@ -11,6 +11,17 @@ from fastapi.exceptions import ResponseValidationError
 from app.schemas.common_data import ApiResponseData, PlatformEnum
 from app.core.config import settings
 
+platform_mapping = {
+    "wx/public": PlatformEnum.WX_PUBLIC,
+    "license": PlatformEnum.LICENSE,
+    "wx/public/system": PlatformEnum.SYSTEM,
+    "auth": PlatformEnum.LICENSE,
+    "card": PlatformEnum.LICENSE,
+    "app": PlatformEnum.LICENSE,
+    "permission": PlatformEnum.LICENSE,
+    "admin": PlatformEnum.LICENSE,
+    "admin/feature-permissions": PlatformEnum.LICENSE,
+}
 class ResponseValidatorMiddleware(BaseHTTPMiddleware):
     """
     响应格式验证中间件
@@ -106,9 +117,10 @@ class ResponseValidatorMiddleware(BaseHTTPMiddleware):
                             "more_body": False
                         })
                     except ValidationError:
-                        # 获取路径信息
+                        # 获取路径信息并确定平台
                         path = request.url.path
-                        platform = PlatformEnum.WX_PUBLIC if "wx/public" in path else "unknown"
+                        print('path-----', path)
+                        platform = next((v for k, v in platform_mapping.items() if k in path), PlatformEnum.UNKNOWN)
                         
                         # 将原始响应数据包装到ApiResponseData格式中
                         formatted_response = {
