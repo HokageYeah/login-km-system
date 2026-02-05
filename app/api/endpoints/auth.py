@@ -103,6 +103,7 @@ async def login(
     logger.info(f"用户登录成功: {user_info['username']} (ID: {user_info['user_id']}), 设备: {request.device_id}")
     
     return LoginResponse(
+        user_id=user_info["user_id"],
         token=token,
         user_status=user_info["status"],
         has_card=user_info["has_card"],

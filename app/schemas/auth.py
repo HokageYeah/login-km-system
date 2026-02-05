@@ -31,6 +31,7 @@ class LoginResponse(BaseModel):
     has_card: bool = Field(..., description="是否已绑定卡密")
     username: Optional[str] = Field(None, description="用户名")
     role: Optional[str] = Field(None, description="用户角色")
+    user_id: Optional[int] = Field(None, description="用户ID")
 
 
 class UserRegisterResponse(BaseModel):
