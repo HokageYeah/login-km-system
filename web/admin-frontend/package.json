@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
-    "@fingerprintjs/fingerprintjs": "^4.5.1",
+    "@fingerprintjs/fingerprintjs": "^4.6.2",
     "@types/nprogress": "^0.2.3",
     "axios": "^1.13.4",
     "echarts": "^5.6.0",

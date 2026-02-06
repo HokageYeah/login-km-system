@@ -171,14 +171,22 @@ class CardService:
         
         logger.info(f"用户 {user_id} 成功绑定卡密 {card_key}，设备: {device_id}")
         
-        # 10. 返回卡密信息
+        # 10. 查询应用信息
+        app = self.db.query(App).filter(App.id == card.app_id).first()
+        
+        # 11. 返回卡密信息（包含应用信息）
         return {
             "card_id": card.id,
             "card_key": card.card_key,
             "expire_time": card.expire_time,
             "permissions": card.permissions,
             "max_device_count": card.max_device_count,
-            "remark": card.remark
+            "remark": card.remark,
+            "app_name": app.app_name if app else "",
+            "app_id": app.id if app else None,
+            "app_key": app.app_key if app else "",
+            "app_status": app.status if app else "",
+            "app_created_at": app.created_at if app else None
         }, None
     
     def unbind_device(

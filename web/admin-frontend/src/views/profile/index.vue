@@ -428,7 +428,9 @@ const handleBindCard = async () => {
 
     bindLoading.value = true
     try {
-      const deviceId = userStore.username || ''  // 使用用户名作为设备ID
+      const { getDeviceId } = await import('@/utils/fingerprint')
+      const deviceId = await getDeviceId()
+      // const deviceId = userStore.username || ''  // 使用用户名作为设备ID
       await bindCard({
         card_key: bindForm.value.card_key,
         device_id: deviceId,
