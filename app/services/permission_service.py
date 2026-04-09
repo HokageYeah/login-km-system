@@ -7,10 +7,11 @@ from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from app.models.user import User, UserStatus
+from app.models.user import User, UserStatus, UserRole
 from app.models.card import Card, CardStatus
 from app.models.user_card import UserCard, UserCardStatus
 from app.models.card_device import CardDevice, CardDeviceStatus
+from app.models.feature_permission import FeaturePermission, FeaturePermissionStatus
 from app.core.logging_uru import logger
 
 
@@ -19,6 +20,31 @@ class PermissionService:
     
     def __init__(self, db: Session):
         self.db = db
+
+    def _is_admin_user(self, user: User) -> bool:
+        """
+        判断用户是否为管理员
+
+        管理员属于系统级操作身份，不应再被卡密绑定和设备绑定限制。
+        将判断统一收口到服务层，避免各个接口各自打补丁。
+        """
+        return user.role == UserRole.ADMIN
+
+    def _get_admin_permissions(self) -> list:
+        """
+        获取管理员可见的全部权限标识
+
+        管理员天然拥有全部权限，因此这里优先返回权限元数据表中的正常权限，
+        让“查询我的权限”与实际的权限校验结果保持一致。
+        """
+        permissions = self.db.query(FeaturePermission).filter(
+            FeaturePermission.status == FeaturePermissionStatus.NORMAL.value
+        ).order_by(
+            FeaturePermission.sort_order.asc(),
+            FeaturePermission.id.asc()
+        ).all()
+
+        return [item.permission_key for item in permissions]
     
     def check_permission(
         self,
@@ -64,7 +90,15 @@ class PermissionService:
         if user.status == UserStatus.BANNED:
             logger.warning(f"权限校验失败: 用户已被封禁 (user_id={user_id}, username={user.username})")
             return False, "用户已被封禁", None
-        
+
+        # 管理员是系统级身份，不需要绑定卡密和设备即可访问所有权限接口
+        if self._is_admin_user(user):
+            logger.info(
+                f"权限校验通过: 管理员免卡密校验 "
+                f"(user_id={user_id}, username={user.username}, permission={permission})"
+            )
+            return True, "管理员默认拥有全部权限", None
+
         # 步骤 3: 查询用户绑定的卡密
         user_cards = self.db.query(UserCard, Card).join(
             Card, UserCard.card_id == Card.id
@@ -242,7 +276,15 @@ class PermissionService:
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user or user.status == UserStatus.BANNED:
             return False, [], None
-        
+
+        if self._is_admin_user(user):
+            admin_permissions = self._get_admin_permissions()
+            logger.info(
+                f"获取管理员权限: user_id={user_id}, username={user.username}, "
+                f"permissions={admin_permissions}"
+            )
+            return True, admin_permissions, None
+
         # 查询用户绑定的卡密
         user_cards = self.db.query(UserCard, Card).join(
             Card, UserCard.card_id == Card.id

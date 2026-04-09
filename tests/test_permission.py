@@ -138,6 +138,60 @@ class TestPermissionService:
         assert "已过期" in message or "没有有效的卡密" in message
         assert expire_time is None
 
+    def test_admin_permission_check_without_card(self, db_session, test_admin):
+        """测试管理员无卡密时也能通过权限校验"""
+        from app.services.permission_service import PermissionService
+
+        permission_service = PermissionService(db_session)
+
+        allowed, message, expire_time = permission_service.check_permission(
+            user_id=test_admin.id,
+            device_id="admin_device_001",
+            permission="test_permission"
+        )
+
+        assert allowed is True
+        assert "管理员" in message
+        assert expire_time is None
+
+    def test_admin_get_permissions_without_card(self, db_session, test_admin):
+        """测试管理员无卡密时可获取全部正常权限"""
+        from app.services.permission_service import PermissionService
+        from app.models.feature_permission import FeaturePermission, FeaturePermissionStatus
+
+        db_session.add_all([
+            FeaturePermission(
+                permission_key="wechat",
+                permission_name="微信抓取",
+                status=FeaturePermissionStatus.NORMAL.value,
+                sort_order=2
+            ),
+            FeaturePermission(
+                permission_key="ximalaya",
+                permission_name="喜马拉雅",
+                status=FeaturePermissionStatus.NORMAL.value,
+                sort_order=1
+            ),
+            FeaturePermission(
+                permission_key="disabled_permission",
+                permission_name="已禁用权限",
+                status=FeaturePermissionStatus.DISABLED.value,
+                sort_order=3
+            )
+        ])
+        db_session.commit()
+
+        permission_service = PermissionService(db_session)
+
+        has_permission, permissions, expire_time = permission_service.get_user_permissions(
+            user_id=test_admin.id,
+            device_id="admin_device_001"
+        )
+
+        assert has_permission is True
+        assert permissions == ["ximalaya", "wechat"]
+        assert expire_time is None
+
 
 class TestPermissionAPI:
     """权限API测试"""
