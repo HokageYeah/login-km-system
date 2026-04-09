@@ -81,6 +81,49 @@ const parseErrorMessage = (statusCode: string): string => {
 }
 
 /**
+ * 是否为需要强制退回登录页的鉴权失效错误
+ * @description 统一识别 Token 过期、Token 无效、未登录等 401 场景，
+ * 避免只对某一条固定文案做脆弱判断。
+ */
+const isAuthExpiredError = (status: number, errorMessage: string, requestUrl?: string): boolean => {
+  if (status !== 401) {
+    return false
+  }
+
+  // 登录接口本身返回 401 表示账号密码错误，不应触发强制登出跳转
+  if (requestUrl?.includes('/auth/login')) {
+    return false
+  }
+
+  const normalizedMessage = errorMessage.trim()
+  const authExpiredKeywords = [
+    'Token已过期',
+    'Token无效',
+    '未登录',
+    '认证失效',
+    '登录已过期',
+    '请重新登录'
+  ]
+
+  return authExpiredKeywords.some((keyword) => normalizedMessage.includes(keyword))
+}
+
+/**
+ * 统一处理鉴权失效
+ * @description 先提示用户，再清理本地登录态并跳转到登录页。
+ */
+const handleAuthExpired = async (message: string) => {
+  const userStore = useUserStore()
+
+  ElMessage.error(message || '登录已过期，请重新登录')
+  userStore.clearToken()
+
+  if (router.currentRoute.value.path !== '/login') {
+    await router.push('/login')
+  }
+}
+
+/**
  * 响应拦截器
  * @description 统一处理响应和错误，适配 ApiResponseData 格式
  */
@@ -160,7 +203,7 @@ request.interceptors.response.use(
       )
     }
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     // HTTP 状态码错误或网络错误
     console.error('响应拦截器错误:', error)
 
@@ -189,12 +232,9 @@ request.interceptors.response.use(
         }
       }
 
-      // 401: 未授权，Token 过期或无效
-      if (status === 401 && errorMessage.includes('HTTP')) {
-        const userStore = useUserStore()
-        userStore.clearToken()                      // 清除本地 Token
-        router.push('/login')                       // 跳转到登录页
-        ElMessage.error('登录已过期，请重新登录')
+      // 401: 未授权，统一处理 Token 失效类场景
+      if (isAuthExpiredError(status, errorMessage, error.config?.url)) {
+        await handleAuthExpired(errorMessage)
       }
       // 403: 无权限
       else if (status === 403 && errorMessage.includes('HTTP')) {
