@@ -60,6 +60,15 @@
             :prefix-icon="Search"
           />
         </el-form-item>
+
+        <el-form-item label="用户名">
+          <el-input
+            v-model="filterForm.username"
+            placeholder="搜索关联用户名"
+            clearable
+            class="filter-input"
+          />
+        </el-form-item>
         
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">
@@ -159,6 +168,26 @@
             <el-tag type="info" size="small">
               {{ row.bind_device_count || 0 }} / {{ row.max_device_count }}
             </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="关联用户" min-width="220">
+          <template #default="{ row }">
+            <div v-if="getRelatedUsers(row).length" class="related-users-cell">
+              <el-tag
+                v-for="username in getRelatedUsers(row)"
+                :key="username"
+                size="small"
+                class="related-user-tag"
+                effect="plain"
+              >
+                {{ username }}
+              </el-tag>
+              <span v-if="(row.bind_user_count || 0) > getRelatedUsers(row).length" class="related-user-more">
+                +{{ (row.bind_user_count || 0) - getRelatedUsers(row).length }}
+              </span>
+            </div>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         
@@ -312,7 +341,8 @@ const deviceDialogVisible = ref(false)                  // 查看设备弹窗
 const filterForm = reactive({
   app_id: undefined as number | undefined,
   status: '',
-  keyword: ''
+  keyword: '',
+  username: ''
 })
 
 /**
@@ -391,6 +421,14 @@ const getPermissions = (permissions: any): string[] => {
   if (typeof permissions === 'object' && permissions !== null) {
     return Object.keys(permissions)
   }
+  return []
+}
+
+const getRelatedUsers = (card: Card) => {
+  if (Array.isArray(card.related_usernames) && card.related_usernames.length > 0) {
+    return card.related_usernames.slice(0, 3)
+  }
+
   return []
 }
 
@@ -588,6 +626,7 @@ const handleReset = () => {
   filterForm.app_id = undefined
   filterForm.status = ''
   filterForm.keyword = ''
+  filterForm.username = ''
   pagination.page = 1
   loadCardList()
 }
@@ -650,6 +689,9 @@ const loadCardList = async () => {
     }
     if (filterForm.keyword) {
       params.keyword = filterForm.keyword
+    }
+    if (filterForm.username.trim()) {
+      params.username = filterForm.username.trim()
     }
     
     const data = await getCardList(params)
@@ -764,6 +806,18 @@ onMounted(() => {
 
 .copy-btn {
   @apply text-blue-600;
+}
+
+.related-users-cell {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.related-user-tag {
+  @apply max-w-full;
+}
+
+.related-user-more {
+  @apply text-xs text-gray-500;
 }
 
 /* 状态标签 */

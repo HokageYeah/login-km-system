@@ -143,6 +143,82 @@ class AdminService:
         except Exception as e:
             logger.error(f"查询用户列表失败: {e}")
             return [], 0, f"查询用户列表失败: {str(e)}"
+
+    def get_user_active_cards(
+        self,
+        user_id: int
+    ) -> Tuple[Optional[Dict], Optional[str]]:
+        """
+        查询用户当前有效卡密详情
+
+        Args:
+            user_id: 用户ID
+
+        Returns:
+            (用户有效卡密详情, 错误信息)
+        """
+        try:
+            now = datetime.now()
+            user = self.db.query(User).filter(User.id == user_id).first()
+            if not user:
+                return None, "用户不存在"
+
+            user_cards = self.db.query(UserCard, Card, App).join(
+                Card, UserCard.card_id == Card.id
+            ).join(
+                App, Card.app_id == App.id
+            ).filter(
+                UserCard.user_id == user_id,
+                UserCard.status == "active",
+                Card.status != CardStatus.DISABLED,
+                Card.expire_time > now
+            ).order_by(UserCard.bind_time.desc()).all()
+
+            if not user_cards:
+                return {
+                    "user_id": user.id,
+                    "username": user.username,
+                    "total": 0,
+                    "cards": []
+                }, None
+
+            card_ids = [card.id for _, card, _ in user_cards]
+            active_device_rows = self.db.query(
+                CardDevice.card_id,
+                func.count(CardDevice.id)
+            ).filter(
+                CardDevice.card_id.in_(card_ids),
+                CardDevice.status == CardDeviceStatus.ACTIVE
+            ).group_by(CardDevice.card_id).all()
+            bind_device_count_map = {card_id: count for card_id, count in active_device_rows}
+
+            cards = []
+            for user_card, card, app in user_cards:
+                cards.append({
+                    "card_id": card.id,
+                    "card_key": card.card_key,
+                    "app_id": app.id,
+                    "app_name": app.app_name,
+                    "status": card.status.value,
+                    "is_expired": bool(card.expire_time and card.expire_time < now),
+                    "expire_time": card.expire_time,
+                    "max_device_count": card.max_device_count,
+                    "bind_device_count": bind_device_count_map.get(card.id, 0),
+                    "permissions": card.permissions,
+                    "remark": card.remark,
+                    "bind_time": user_card.bind_time
+                })
+
+            return {
+                "user_id": user.id,
+                "username": user.username,
+                "total": len(cards),
+                "cards": cards
+            }, None
+
+        except Exception as e:
+            logger.error(f"查询用户有效卡密详情失败: user_id={user_id}, error={e}")
+            return None, f"查询用户有效卡密详情失败: {str(e)}"
     
     def update_user_status(
         self,
@@ -185,7 +261,8 @@ class AdminService:
         size: int = 20,
         app_id: Optional[int] = None,
         status: Optional[str] = None,
-        keyword: Optional[str] = None
+        keyword: Optional[str] = None,
+        username: Optional[str] = None
     ) -> Tuple[List[Dict], int, Optional[str]]:
         """
         查询卡密列表
@@ -196,6 +273,7 @@ class AdminService:
             app_id: 应用ID筛选
             status: 状态筛选
             keyword: 关键词搜索（卡密、备注）
+            username: 用户名筛选
             
         Returns:
             (卡密列表, 总数, 错误信息)
@@ -223,6 +301,15 @@ class AdminService:
                     Card.card_key.like(f"%{keyword}%"),
                     Card.remark.like(f"%{keyword}%")
                 ))
+
+            if username:
+                username_card_subquery = self.db.query(UserCard.card_id).join(
+                    User, User.id == UserCard.user_id
+                ).filter(
+                    UserCard.status == "active",
+                    User.username.ilike(f"%{username.strip()}%")
+                )
+                query = query.filter(Card.id.in_(username_card_subquery))
             
             # 获取总数
             total = query.count()
@@ -230,28 +317,43 @@ class AdminService:
             # 分页查询
             cards = query.order_by(Card.created_at.desc()).offset((page - 1) * size).limit(size).all()
             
-            # 统计每个卡密的绑定信息
+            if not cards:
+                return [], total, None
+
+            card_ids = [card.id for card in cards]
+
+            user_bindings = self.db.query(
+                UserCard.card_id,
+                User.username
+            ).join(User, User.id == UserCard.user_id).filter(
+                UserCard.card_id.in_(card_ids),
+                UserCard.status == "active"
+            ).all()
+
+            card_usernames_map: Dict[int, List[str]] = {}
+            for binding in user_bindings:
+                usernames = card_usernames_map.setdefault(binding.card_id, [])
+                usernames.append(binding.username)
+
+            active_device_rows = self.db.query(
+                CardDevice.card_id,
+                func.count(CardDevice.id)
+            ).filter(
+                CardDevice.card_id.in_(card_ids),
+                CardDevice.status == CardDeviceStatus.ACTIVE
+            ).group_by(CardDevice.card_id).all()
+            bind_device_count_map = {card_id: count for card_id, count in active_device_rows}
+
+            app_name_map = {card.app_id: card.app.app_name if card.app else "未知应用" for card in cards}
+
             card_list = []
             for card in cards:
-                # 查询绑定的用户数量
-                bind_user_count = self.db.query(UserCard).filter(
-                    UserCard.card_id == card.id,
-                    UserCard.status == "active"
-                ).count()
-                
-                # 查询绑定的设备数量
-                bind_device_count = self.db.query(CardDevice).filter(
-                    CardDevice.card_id == card.id,
-                    CardDevice.status == CardDeviceStatus.ACTIVE
-                ).count()
-                
-                # 获取应用信息
-                app = self.db.query(App).filter(App.id == card.app_id).first()
+                related_usernames = card_usernames_map.get(card.id, [])
                 
                 card_list.append({
                     "id": card.id,
                     "app_id": card.app_id,
-                    "app_name": app.app_name if app else "未知应用",
+                    "app_name": app_name_map.get(card.app_id, "未知应用"),
                     "card_key": card.card_key,
                     "status": card.status.value,
                     "is_expired": bool(card.expire_time and card.expire_time < now),
@@ -259,8 +361,9 @@ class AdminService:
                     "max_device_count": card.max_device_count,
                     "permissions": card.permissions,
                     "remark": card.remark,
-                    "bind_user_count": bind_user_count,
-                    "bind_device_count": bind_device_count,
+                    "bind_user_count": len(related_usernames),
+                    "related_usernames": related_usernames,
+                    "bind_device_count": bind_device_count_map.get(card.id, 0),
                     "created_at": card.created_at
                 })
             
@@ -344,6 +447,8 @@ class AdminService:
         size: int = 20,
         card_id: Optional[int] = None,
         user_id: Optional[int] = None,
+        card_key: Optional[str] = None,
+        username: Optional[str] = None,
         status: Optional[str] = None
     ) -> Tuple[List[Dict], int, Optional[str]]:
         """
@@ -354,26 +459,46 @@ class AdminService:
             size: 每页数量
             card_id: 卡密ID筛选
             user_id: 用户ID筛选
+            card_key: 卡密字符串筛选
+            username: 用户名筛选
             status: 状态筛选
             
         Returns:
             (设备列表, 总数, 错误信息)
         """
         try:
-            query = self.db.query(CardDevice).join(Card, CardDevice.card_id == Card.id)
-            
+            query = self.db.query(CardDevice)
+
             # 卡密筛选
             if card_id:
                 query = query.filter(CardDevice.card_id == card_id)
-            
+
+            # 卡密字符串筛选
+            if card_key:
+                card_id_subquery = self.db.query(Card.id).filter(
+                    Card.card_key.ilike(f"%{card_key.strip()}%")
+                )
+                query = query.filter(CardDevice.card_id.in_(card_id_subquery))
+
             # 用户筛选
             if user_id:
-                # 通过 UserCard 关联查询
-                query = query.join(UserCard, UserCard.card_id == Card.id).filter(
+                # 使用子查询按卡密筛选，避免直接关联 user_cards 后造成设备记录重复。
+                user_card_subquery = self.db.query(UserCard.card_id).filter(
                     UserCard.user_id == user_id,
                     UserCard.status == "active"
                 )
-            
+                query = query.filter(CardDevice.card_id.in_(user_card_subquery))
+
+            # 用户名筛选
+            if username:
+                username_card_subquery = self.db.query(UserCard.card_id).join(
+                    User, User.id == UserCard.user_id
+                ).filter(
+                    UserCard.status == "active",
+                    User.username.ilike(f"%{username.strip()}%")
+                )
+                query = query.filter(CardDevice.card_id.in_(username_card_subquery))
+
             # 状态筛选
             if status:
                 query = query.filter(CardDevice.status == status)
@@ -383,18 +508,50 @@ class AdminService:
             
             # 分页查询
             devices = query.order_by(CardDevice.bind_time.desc()).offset((page - 1) * size).limit(size).all()
-            
+
+            if not devices:
+                return [], total, None
+
+            card_ids = list({device.card_id for device in devices})
+
+            # 批量查询卡密，避免循环内 N+1。
+            cards = self.db.query(Card.id, Card.card_key).filter(Card.id.in_(card_ids)).all()
+            card_key_map = {card.id: card.card_key for card in cards}
+
+            # 批量聚合同一卡密下的有效绑定用户，设备页需要按“多用户”语义展示。
+            user_bindings = self.db.query(
+                UserCard.card_id,
+                User.id,
+                User.username
+            ).join(User, User.id == UserCard.user_id).filter(
+                UserCard.card_id.in_(card_ids),
+                UserCard.status == "active"
+            ).all()
+
+            card_user_map: Dict[int, List[Dict[str, Union[int, str]]]] = {}
+            for binding in user_bindings:
+                related_users = card_user_map.setdefault(binding.card_id, [])
+                related_users.append({
+                    "id": binding.id,
+                    "username": binding.username
+                })
+
             # 构建返回数据
             device_list = []
             for device in devices:
-                card = self.db.query(Card).filter(Card.id == device.card_id).first()
-                
+                related_users = card_user_map.get(device.card_id, [])
+                related_user_ids = [user["id"] for user in related_users]
+                related_usernames = [user["username"] for user in related_users]
+
                 device_list.append({
                     "id": device.id,
                     "card_id": device.card_id,
-                    "card_key": card.card_key if card else "未知",
+                    "card_key": card_key_map.get(device.card_id, "未知"),
                     "device_id": device.device_id,
                     "device_name": device.device_name,
+                    "related_user_ids": related_user_ids,
+                    "related_usernames": related_usernames,
+                    "related_user_count": len(related_usernames),
                     "bind_time": device.bind_time,
                     "last_active_at": device.last_active_at,
                     "status": device.status.value

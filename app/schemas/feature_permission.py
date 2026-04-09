@@ -59,6 +59,8 @@ class FeaturePermissionInfo(BaseModel):
 class FeaturePermissionListResponse(BaseModel):
     """功能权限列表响应"""
     total: int = Field(..., description="总数")
+    card_id: Optional[int] = Field(None, description="卡密ID筛选")
+    card_key: Optional[str] = Field(None, description="卡密字符串筛选")
     permissions: List[FeaturePermissionInfo] = Field(..., description="功能权限列表")
 
 

@@ -21,6 +21,7 @@ export interface User {
   username: string              // 用户名
   status: UserStatus            // 用户状态
   role: UserRole                // 用户角色
+  card_count?: number           // 有效卡密数量（管理员列表）
   created_at: string            // 创建时间（ISO 8601格式）
   last_login_at?: string        // 最后登录时间（可选）
 }
@@ -92,8 +93,25 @@ export interface Card {
   max_device_count: number      // 最大可绑定设备数
   permissions: string[]         // 权限列表
   bind_devices?: number         // 已绑定设备数（可选）
+  bind_user_count?: number      // 已绑定用户数（可选）
+  related_usernames?: string[]  // 关联用户名列表（管理员卡密列表）
   remark?: string               // 备注信息（可选）
   created_at: string            // 创建时间
+}
+
+export interface UserActiveCardDetail {
+  card_id: number               // 卡密ID
+  card_key: string              // 卡密字符串
+  app_id: number                // 应用ID
+  app_name: string              // 应用名称
+  status: CardStatus            // 卡密状态
+  is_expired?: boolean          // 是否已过期
+  expire_time: string           // 过期时间
+  max_device_count: number      // 最大设备数
+  bind_device_count: number     // 当前绑定设备数
+  permissions: string[] | Record<string, boolean> | string | null // 权限配置
+  remark?: string               // 备注
+  bind_time?: string            // 用户绑定时间
 }
 
 // ==================== 设备相关类型 ====================
@@ -108,6 +126,9 @@ export interface Device {
   card_key: string              // 关联的卡密字符串
   user_id?: number              // 关联的用户ID（可选）
   username?: string             // 关联的用户名（可选）
+  related_user_ids?: number[]   // 关联用户ID列表（管理员设备列表）
+  related_usernames?: string[]  // 关联用户名列表（管理员设备列表）
+  related_user_count?: number   // 关联用户数量（管理员设备列表）
   device_id: string             // 设备唯一标识
   device_name?: string          // 设备名称（可选）
   bind_time: string             // 绑定时间

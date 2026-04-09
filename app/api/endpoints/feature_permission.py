@@ -39,13 +39,15 @@ async def get_feature_permissions_list(
     category: Optional[str] = Query(None, description="分类筛选"),
     status: Optional[str] = Query(None, description="状态筛选"),
     keyword: Optional[str] = Query(None, description="关键词搜索（权限标识、权限名称）"),
+    card_id: Optional[int] = Query(None, description="卡密ID筛选"),
+    card_key: Optional[str] = Query(None, description="卡密字符串筛选"),
     current_admin: dict = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """
     查询功能权限列表
     
-    支持分页、分类筛选、状态筛选、关键词搜索
+    支持分页、分类筛选、状态筛选、关键词搜索，以及按卡密筛选当前卡密已配置的权限
     """
     feature_permission_service = FeaturePermissionService(db)
     
@@ -54,7 +56,9 @@ async def get_feature_permissions_list(
         size=size,
         category=category,
         status=status,
-        keyword=keyword
+        keyword=keyword,
+        card_id=card_id,
+        card_key=card_key
     )
     
     if error:
@@ -88,6 +92,8 @@ async def get_feature_permissions_list(
     
     return FeaturePermissionListResponse(
         total=total,
+        card_id=card_id,
+        card_key=card_key,
         permissions=permission_infos
     ).model_dump(mode='json', exclude_none=True)
 

@@ -20,6 +20,13 @@
 
     <!-- 筛选区域 -->
     <div class="filter-card">
+      <div v-if="cardFilter.cardId || cardFilter.cardKey" class="card-filter-banner">
+        <div class="banner-info">
+          <span class="banner-label">当前卡密筛选：</span>
+          <el-tag type="primary" effect="dark">{{ cardFilter.cardKey || `ID ${cardFilter.cardId}` }}</el-tag>
+        </div>
+        <el-button link type="primary" @click="clearCardFilter">清除筛选</el-button>
+      </div>
       <div class="filter-row">
         <el-input
           v-model="filters.keyword"
@@ -280,7 +287,7 @@
  * 功能权限管理页面
  * @description 管理系统中的功能权限，支持增删改查
  */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus,
@@ -296,6 +303,7 @@ import {
   Share,
   Setting
 } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   getFeaturePermissionList,
   getPermissionCategories,
@@ -325,6 +333,8 @@ const iconOptions = [
 const loading = ref(false)
 const permissions = ref<FeaturePermission[]>([])
 const categories = ref<string[]>([])
+const route = useRoute()
+const router = useRouter()
 
 /**
  * 分页参数
@@ -342,6 +352,11 @@ const filters = ref({
   keyword: '',
   category: '',
   status: ''
+})
+
+const cardFilter = ref({
+  cardId: undefined as number | undefined,
+  cardKey: ''
 })
 
 /**
@@ -408,7 +423,9 @@ const loadPermissions = async () => {
       size: pagination.value.size,
       category: filters.value.category || undefined,
       status: filters.value.status || undefined,
-      keyword: filters.value.keyword || undefined
+      keyword: filters.value.keyword || undefined,
+      card_id: cardFilter.value.cardId,
+      card_key: cardFilter.value.cardKey || undefined
     })
     const data = response.data || response
     permissions.value = data.permissions || []
@@ -418,6 +435,17 @@ const loadPermissions = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const syncCardFilterFromRoute = () => {
+  const rawCardId = route.query.card_id
+  const rawCardKey = route.query.card_key
+  const parsedCardId = typeof rawCardId === 'string' && rawCardId ? Number(rawCardId) : undefined
+
+  cardFilter.value.cardId = typeof parsedCardId === 'number' && Number.isFinite(parsedCardId)
+    ? parsedCardId
+    : undefined
+  cardFilter.value.cardKey = typeof rawCardKey === 'string' ? rawCardKey : ''
 }
 
 /**
@@ -454,6 +482,13 @@ const handleFilter = () => {
  */
 const handleRefresh = () => {
   loadPermissions()
+}
+
+const clearCardFilter = () => {
+  router.push({
+    name: 'CardPermissions',
+    query: {}
+  })
 }
 
 /**
@@ -588,9 +623,19 @@ const formatDate = (dateStr: string) => {
  * 组件挂载时加载数据
  */
 onMounted(() => {
+  syncCardFilterFromRoute()
   loadPermissions()
   loadCategories()
 })
+
+watch(
+  () => route.query,
+  () => {
+    syncCardFilterFromRoute()
+    pagination.value.page = 1
+    loadPermissions()
+  }
+)
 </script>
 
 <style scoped>
@@ -642,6 +687,19 @@ onMounted(() => {
   @apply bg-white rounded-2xl p-6;
   @apply shadow-sm border border-gray-100;
   @apply mb-6;
+}
+
+.card-filter-banner {
+  @apply flex items-center justify-between mb-4 p-4 rounded-xl;
+  @apply bg-blue-50 border border-blue-200;
+}
+
+.banner-info {
+  @apply flex items-center gap-2 text-blue-700;
+}
+
+.banner-label {
+  @apply text-sm font-medium;
 }
 
 .filter-row {

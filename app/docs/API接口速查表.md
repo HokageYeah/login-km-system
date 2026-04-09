@@ -61,7 +61,7 @@
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | POST | `/api/v1/admin/card/generate` | 批量生成卡密 | 🔑 管理员 |
-| GET | `/api/v1/admin/cards` | 查询所有卡密 | 🔑 管理员 |
+| GET | `/api/v1/admin/cards` | 查询所有卡密（支持 `username` 筛选，并返回关联用户名） | 🔑 管理员 |
 | PUT | `/api/v1/admin/card/{card_id}/status` | 修改卡密状态 | 🔑 管理员 |
 | PUT | `/api/v1/admin/card/{card_id}/permissions` | 修改卡密权限 | 🔑 管理员 |
 
@@ -69,12 +69,18 @@
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | GET | `/api/v1/admin/users` | 查询所有用户 | 🔑 管理员 |
+| GET | `/api/v1/admin/user/{user_id}/active-cards` | 查询用户当前有效卡密详情 | 🔑 管理员 |
 | PUT | `/api/v1/admin/user/{user_id}/status` | 封禁/解封用户 | 🔑 管理员 |
+
+### 功能权限管理
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/admin/feature-permissions/list` | 查询功能权限列表（支持 `card_id`、`card_key` 筛选当前卡密权限） | 🔑 管理员 |
 
 ### 设备管理
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| GET | `/api/v1/admin/devices` | 查询设备列表 | 🔑 管理员 |
+| GET | `/api/v1/admin/devices` | 查询设备列表（支持 `card_key`、`username`，兼容 `card_id`、`user_id`） | 🔑 管理员 |
 | PUT | `/api/v1/admin/device/{device_id}/status` | 禁用/启用设备 | 🔑 管理员 |
 
 ---

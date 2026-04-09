@@ -23,6 +23,8 @@ from app.schemas.admin import (
     UpdateDeviceStatusResponse,
     AdminUserListResponse,
     AdminUserInfo,
+    AdminUserActiveCardInfo,
+    AdminUserActiveCardListResponse,
     StatisticsResponse
 )
 from app.schemas.user import UserInfo
@@ -112,6 +114,34 @@ async def get_users_list(
     ).model_dump(mode='json', exclude_none=True)
 
 
+@router.get("/user/{user_id}/active-cards", response_model=ApiResponseData)
+async def get_user_active_cards(
+    user_id: int,
+    admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    查询用户当前有效卡密详情（管理员）
+
+    返回指定用户当前处于有效状态的卡密明细，便于管理端查看和跳转权限配置。
+    """
+    admin_service = AdminService(db)
+
+    result, error = admin_service.get_user_active_cards(user_id)
+
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
+    cards = [AdminUserActiveCardInfo(**card) for card in result["cards"]]
+
+    return AdminUserActiveCardListResponse(
+        user_id=result["user_id"],
+        username=result["username"],
+        total=result["total"],
+        cards=cards
+    ).model_dump(mode='json', exclude_none=True)
+
+
 @router.post("/user/{user_id}/status", response_model=ApiResponseData)
 async def update_user_status(
     user_id: int,
@@ -144,13 +174,14 @@ async def get_cards_list(
     app_id: Optional[int] = Query(None, description="应用ID筛选"),
     status: Optional[str] = Query(None, description="状态筛选: unused-未使用, used-已使用, disabled-禁用, expired-已过期(按时间判断)"),
     keyword: Optional[str] = Query(None, description="关键词搜索（卡密、备注）"),
+    username: Optional[str] = Query(None, description="用户名筛选"),
     admin: dict = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """
     查询卡密列表（管理员）
     
-    支持分页、应用筛选、状态筛选、关键词搜索。
+    支持分页、应用筛选、状态筛选、关键词搜索、用户名筛选。
     其中 expired 为管理端专用筛选条件，只根据过期时间筛选，不改变卡密原始状态。
     """
     admin_service = AdminService(db)
@@ -160,7 +191,8 @@ async def get_cards_list(
         size=size,
         app_id=app_id,
         status=status,
-        keyword=keyword
+        keyword=keyword,
+        username=username
     )
     
     if error:
@@ -233,6 +265,8 @@ async def get_devices_list(
     size: int = Query(20, ge=1, le=100, description="每页数量"),
     card_id: Optional[int] = Query(None, description="卡密ID筛选"),
     user_id: Optional[int] = Query(None, description="用户ID筛选"),
+    card_key: Optional[str] = Query(None, description="卡密字符串筛选"),
+    username: Optional[str] = Query(None, description="用户名筛选"),
     status: Optional[str] = Query(None, description="状态筛选: active-激活, disabled-禁用"),
     admin: dict = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -249,6 +283,8 @@ async def get_devices_list(
         size=size,
         card_id=card_id,
         user_id=user_id,
+        card_key=card_key,
+        username=username,
         status=status
     )
     

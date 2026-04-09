@@ -10,6 +10,8 @@ import type { FeaturePermission, SuccessResponse } from '@/types'
  * @param params.category 分类筛选（可选）
  * @param params.status 状态筛选（可选）
  * @param params.keyword 关键词搜索（可选，搜索权限标识、权限名称）
+ * @param params.card_id 卡密ID筛选（可选）
+ * @param params.card_key 卡密字符串筛选（可选）
  * @returns Promise 返回功能权限列表
  */
 export const getFeaturePermissionList = (params: {
@@ -18,9 +20,13 @@ export const getFeaturePermissionList = (params: {
   category?: string
   status?: string
   keyword?: string
+  card_id?: number
+  card_key?: string
 }) => {
   return request.get<{
     total: number
+    card_id?: number
+    card_key?: string
     permissions: FeaturePermission[]
   }>('/admin/feature-permissions/list', { params })
 }

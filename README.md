@@ -496,9 +496,15 @@ GET /api/v1/admin/users?page=1&size=20
 Authorization: Bearer <admin_token>
 ```
 
+#### 查询用户有效卡密详情
+```http
+GET /api/v1/admin/user/3/active-cards
+Authorization: Bearer <admin_token>
+```
+
 #### 查询卡密列表
 ```http
-GET /api/v1/admin/cards?status=unused&page=1&size=20
+GET /api/v1/admin/cards?status=unused&username=testuser&page=1&size=20
 Authorization: Bearer <admin_token>
 ```
 
@@ -515,7 +521,7 @@ Content-Type: application/json
 
 #### 查询设备列表
 ```http
-GET /api/v1/admin/devices?card_id=1&page=1&size=20
+GET /api/v1/admin/devices?card_key=AP4H-JJFQ-8UCB-BRD4&username=testuser&page=1&size=20
 Authorization: Bearer <admin_token>
 ```
 
