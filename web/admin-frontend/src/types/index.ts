@@ -87,6 +87,7 @@ export interface Card {
   card_key: string              // 卡密字符串（格式：XXXX-XXXX-XXXX-XXXX）
   app_name?: string             // 所属应用名称（可选）
   status: CardStatus            // 卡密状态
+  is_expired?: boolean          // 是否已过期（后端根据时间动态计算）
   expire_time: string           // 过期时间（ISO 8601格式）
   max_device_count: number      // 最大可绑定设备数
   permissions: string[]         // 权限列表

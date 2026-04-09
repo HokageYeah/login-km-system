@@ -47,6 +47,7 @@
             <el-option label="未使用" value="unused" />
             <el-option label="已使用" value="used" />
             <el-option label="已禁用" value="disabled" />
+            <el-option label="已过期" value="expired" />
           </el-select>
         </el-form-item>
         
@@ -122,15 +123,25 @@
         
         <el-table-column prop="app_name" label="所属应用" width="120" />
         
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="160">
           <template #default="{ row }">
-            <el-tag
-              :type="getStatusType(row.status)"
-              effect="dark"
-              class="status-tag"
-            >
-              {{ getStatusText(row.status) }}
-            </el-tag>
+            <div class="status-tags">
+              <el-tag
+                :type="getStatusType(row.status)"
+                effect="dark"
+                class="status-tag"
+              >
+                {{ getStatusText(row.status) }}
+              </el-tag>
+              <el-tag
+                v-if="row.is_expired"
+                type="danger"
+                effect="plain"
+                class="status-tag expired-tag"
+              >
+                已过期
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
         
@@ -342,6 +353,16 @@ const getStatusText = (status: string) => {
 }
 
 /**
+ * 获取卡密展示状态文本
+ * @description 状态展示保留原始业务状态，同时在已过期时附加提示，
+ * 避免把“过期”错误地混入数据库状态枚举。
+ */
+const getDisplayStatusText = (card: Card) => {
+  const baseStatusText = getStatusText(card.status)
+  return card.is_expired ? `${baseStatusText}（已过期）` : baseStatusText
+}
+
+/**
  * 格式化日期时间
  * @param dateStr ISO 8601 格式的日期字符串
  * @returns 格式化后的日期时间字符串
@@ -419,7 +440,7 @@ const handleDelete = async (card: Card) => {
           <div>
             <p>卡密：<strong>${card.card_key}</strong></p>
             <p>应用：<strong>${card.app_name}</strong></p>
-            <p>状态：<strong>${getStatusText(card.status)}</strong></p>
+            <p>状态：<strong>${getDisplayStatusText(card)}</strong></p>
             <p style="color: #f56c6c; margin-top: 10px;">
               <strong>警告：</strong>删除操作不可恢复！
             </p>
@@ -746,8 +767,16 @@ onMounted(() => {
 }
 
 /* 状态标签 */
+.status-tags {
+  @apply flex flex-wrap gap-2;
+}
+
 .status-tag {
   @apply font-medium;
+}
+
+.expired-tag {
+  @apply border-orange-300 text-orange-600 bg-orange-50;
 }
 
 /* 过期时间单元格 */

@@ -201,6 +201,7 @@ class AdminService:
             (卡密列表, 总数, 错误信息)
         """
         try:
+            now = datetime.now()
             query = self.db.query(Card).join(App, Card.app_id == App.id)
             
             # 应用筛选
@@ -208,8 +209,13 @@ class AdminService:
                 query = query.filter(Card.app_id == app_id)
             
             # 状态筛选
+            # expired 是管理端专用的时间维度筛选，不写入数据库状态枚举。
+            # 选择 expired 时，不关心 unused/used/disabled，只筛选所有已过期卡密。
             if status:
-                query = query.filter(Card.status == status)
+                if status == "expired":
+                    query = query.filter(Card.expire_time < now)
+                else:
+                    query = query.filter(Card.status == status)
             
             # 关键词搜索
             if keyword:
@@ -248,6 +254,7 @@ class AdminService:
                     "app_name": app.app_name if app else "未知应用",
                     "card_key": card.card_key,
                     "status": card.status.value,
+                    "is_expired": bool(card.expire_time and card.expire_time < now),
                     "expire_time": card.expire_time,
                     "max_device_count": card.max_device_count,
                     "permissions": card.permissions,

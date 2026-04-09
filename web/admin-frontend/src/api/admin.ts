@@ -73,7 +73,7 @@ export const updateUserStatus = (userId: number, status: string) => {
  * @param params.page 页码（从1开始）
  * @param params.size 每页数量
  * @param params.app_id 应用ID筛选（可选）
- * @param params.status 卡密状态筛选（可选：unused-未使用，used-已使用，disabled-已禁用）
+ * @param params.status 卡密状态筛选（可选：unused-未使用，used-已使用，disabled-已禁用，expired-已过期）
  * @param params.keyword 关键词搜索（可选，搜索卡密或备注）
  * @returns Promise 返回卡密列表
  */

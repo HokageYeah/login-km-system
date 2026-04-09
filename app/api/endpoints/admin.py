@@ -142,7 +142,7 @@ async def get_cards_list(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
     app_id: Optional[int] = Query(None, description="应用ID筛选"),
-    status: Optional[str] = Query(None, description="状态筛选: unused-未使用, used-已使用, disabled-禁用"),
+    status: Optional[str] = Query(None, description="状态筛选: unused-未使用, used-已使用, disabled-禁用, expired-已过期(按时间判断)"),
     keyword: Optional[str] = Query(None, description="关键词搜索（卡密、备注）"),
     admin: dict = Depends(get_current_admin),
     db: Session = Depends(get_db)
@@ -150,7 +150,8 @@ async def get_cards_list(
     """
     查询卡密列表（管理员）
     
-    支持分页、应用筛选、状态筛选、关键词搜索
+    支持分页、应用筛选、状态筛选、关键词搜索。
+    其中 expired 为管理端专用筛选条件，只根据过期时间筛选，不改变卡密原始状态。
     """
     admin_service = AdminService(db)
     

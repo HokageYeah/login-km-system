@@ -31,7 +31,7 @@ class CardGenerateResponse(BaseModel):
 class AdminCardListRequest(BaseModel):
     """管理员查询卡密列表请求"""
     app_id: Optional[int] = Field(None, description="应用ID筛选")
-    status: Optional[str] = Field(None, description="状态筛选")
+    status: Optional[str] = Field(None, description="状态筛选：unused/used/disabled/expired，其中 expired 为按时间判断的已过期筛选")
     page: int = Field(1, ge=1, description="页码")
     size: int = Field(20, ge=1, le=100, description="每页数量")
 
@@ -43,6 +43,7 @@ class AdminCardInfo(BaseModel):
     app_name: str = Field(..., description="应用名称")
     card_key: str = Field(..., description="卡密字符串")
     status: str = Field(..., description="卡密状态")
+    is_expired: bool = Field(False, description="是否已过期（根据 expire_time 动态计算，不属于数据库状态枚举）")
     expire_time: Optional[datetime] = Field(None, description="过期时间")
     max_device_count: int = Field(..., description="最大设备数")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
