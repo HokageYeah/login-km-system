@@ -192,6 +192,97 @@ class TestPermissionService:
         assert permissions == ["ximalaya", "wechat"]
         assert expire_time is None
 
+    def test_current_card_permission_scope(self, db_session, test_user, test_app):
+        """测试当前卡密权限不会串用同设备其他卡密权限"""
+        from app.services.permission_service import PermissionService
+        from app.models.card import Card, CardStatus
+        from app.models.user_card import UserCard, UserCardStatus
+        from app.models.card_device import CardDevice, CardDeviceStatus
+
+        card_wechat = Card(
+            app_id=test_app.id,
+            card_key="TEST-WECHAT-CARD-123",
+            status=CardStatus.USED,
+            expire_time=datetime.now() + timedelta(days=30),
+            max_device_count=2,
+            permissions=["wechatpublic"]
+        )
+        card_ximalaya = Card(
+            app_id=test_app.id,
+            card_key="TEST-XIMALAYA-CARD",
+            status=CardStatus.USED,
+            expire_time=datetime.now() + timedelta(days=30),
+            max_device_count=2,
+            permissions=["ximalaya"]
+        )
+        db_session.add_all([card_wechat, card_ximalaya])
+        db_session.commit()
+        db_session.refresh(card_wechat)
+        db_session.refresh(card_ximalaya)
+
+        now = datetime.now()
+        db_session.add_all([
+            UserCard(
+                user_id=test_user.id,
+                card_id=card_wechat.id,
+                bind_time=now,
+                status=UserCardStatus.ACTIVE
+            ),
+            UserCard(
+                user_id=test_user.id,
+                card_id=card_ximalaya.id,
+                bind_time=now,
+                status=UserCardStatus.ACTIVE
+            ),
+            CardDevice(
+                card_id=card_wechat.id,
+                device_id="test_device_001",
+                bind_time=now,
+                status=CardDeviceStatus.ACTIVE
+            ),
+            CardDevice(
+                card_id=card_ximalaya.id,
+                device_id="test_device_001",
+                bind_time=now,
+                status=CardDeviceStatus.ACTIVE
+            )
+        ])
+        db_session.commit()
+
+        permission_service = PermissionService(db_session)
+
+        allowed, message, expire_time = permission_service.check_permission(
+            user_id=test_user.id,
+            device_id="test_device_001",
+            permission="ximalaya",
+            card_id=card_wechat.id
+        )
+        assert allowed is False
+        assert message == "当前卡密没有该系统权限，请切换卡密或联系管理员开通权限"
+        assert expire_time is None
+
+        has_permission, permissions, expire_time = permission_service.get_user_permissions(
+            user_id=test_user.id,
+            device_id="test_device_001",
+            card_id=card_wechat.id
+        )
+        assert has_permission is True
+        assert permissions == ["wechatpublic"]
+
+        allowed, message, expire_time = permission_service.check_permission(
+            user_id=test_user.id,
+            device_id="test_device_001",
+            permission="ximalaya"
+        )
+        assert allowed is True
+
+        has_permission, permissions, expire_time = permission_service.get_user_permissions(
+            user_id=test_user.id,
+            device_id="test_device_001"
+        )
+        assert has_permission is True
+        assert permissions == ["wechatpublic", "ximalaya"]
+
 
 class TestPermissionAPI:
     """权限API测试"""

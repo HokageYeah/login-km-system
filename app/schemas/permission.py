@@ -7,6 +7,7 @@ class PermissionCheckRequest(BaseModel):
     """权限校验请求"""
     permission: str = Field(..., description="权限标识，如：wechat, ximalaya")
     device_id: Optional[str] = Field(None, description="设备唯一标识（可选，默认使用登录时的设备）")
+    card_id: Optional[int] = Field(None, description="当前使用的卡密ID（可选，不提供则按用户和设备兜底查询）")
 
 
 class PermissionCheckResponse(BaseModel):
@@ -20,6 +21,7 @@ class BatchPermissionCheckRequest(BaseModel):
     """批量权限校验请求"""
     permissions: List[str] = Field(..., description="权限列表")
     device_id: Optional[str] = Field(None, description="设备唯一标识（可选）")
+    card_id: Optional[int] = Field(None, description="当前使用的卡密ID（可选，不提供则按用户和设备兜底查询）")
 
 
 class BatchPermissionCheckResponse(BaseModel):

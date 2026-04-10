@@ -11,7 +11,7 @@ from loguru import logger
 from app.models.user import User, UserStatus, UserRole
 from app.models.card import Card, CardStatus
 from app.models.card_device import CardDevice, CardDeviceStatus
-from app.models.user_card import UserCard
+from app.models.user_card import UserCard, UserCardStatus
 from app.models.app import App
 from app.utils.card_generator import generate_batch_cards
 
@@ -21,6 +21,43 @@ class AdminService:
     
     def __init__(self, db: Session):
         self.db = db
+
+    def _sync_card_usage_statuses(self, card_ids: Optional[List[int]] = None) -> bool:
+        """
+        根据有效用户绑定关系同步卡密 used/unused 状态。
+
+        disabled 是管理员显式禁用状态，不参与自动同步；其他状态以 user_cards
+        的 active 绑定事实为准，避免过期时间调整、禁用后启用等入口造成状态漂移。
+        """
+        if card_ids is not None:
+            card_ids = list(set(card_ids))
+            if not card_ids:
+                return False
+
+        active_binding_query = self.db.query(UserCard.card_id).filter(
+            UserCard.status == UserCardStatus.ACTIVE
+        )
+        card_query = self.db.query(Card).filter(Card.status != CardStatus.DISABLED)
+
+        if card_ids is not None:
+            active_binding_query = active_binding_query.filter(UserCard.card_id.in_(card_ids))
+            card_query = card_query.filter(Card.id.in_(card_ids))
+
+        active_card_ids = {
+            row.card_id for row in active_binding_query.distinct().all()
+        }
+
+        changed = False
+        for card in card_query.all():
+            expected_status = CardStatus.USED if card.id in active_card_ids else CardStatus.UNUSED
+            if card.status != expected_status:
+                card.status = expected_status
+                changed = True
+
+        if changed:
+            self.db.flush()
+
+        return changed
     
     def generate_cards(
         self,
@@ -183,6 +220,8 @@ class AdminService:
                 }, None
 
             card_ids = [card.id for _, card, _ in user_cards]
+            if self._sync_card_usage_statuses(card_ids):
+                self.db.commit()
             active_device_rows = self.db.query(
                 CardDevice.card_id,
                 func.count(CardDevice.id)
@@ -280,6 +319,9 @@ class AdminService:
         """
         try:
             now = datetime.now()
+            if self._sync_card_usage_statuses():
+                self.db.commit()
+
             query = self.db.query(Card).join(App, Card.app_id == App.id)
             
             # 应用筛选
@@ -399,9 +441,13 @@ class AdminService:
                 return False, "无效的状态值"
             
             card.status = CardStatus(status)
+            self._sync_card_usage_statuses([card.id])
             self.db.commit()
             
-            logger.info(f"更新卡密状态成功: card_id={card_id}, status={status}")
+            logger.info(
+                f"更新卡密状态成功: card_id={card_id}, "
+                f"request_status={status}, final_status={card.status.value}"
+            )
             return True, None
             
         except Exception as e:
@@ -431,6 +477,7 @@ class AdminService:
 
             old_expire_time = card.expire_time
             card.expire_time = expire_time
+            self._sync_card_usage_statuses([card.id])
             self.db.commit()
 
             logger.info(
@@ -642,6 +689,9 @@ class AdminService:
             (统计数据字典, 错误信息)
         """
         try:
+            if self._sync_card_usage_statuses():
+                self.db.commit()
+
             # 用户统计
             total_users = self.db.query(User).count()
             normal_users = self.db.query(User).filter(User.status == UserStatus.NORMAL).count()

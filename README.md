@@ -453,9 +453,12 @@ Content-Type: application/json
 
 {
   "permission": "wechat",
-  "device_id": "device-001"
+  "device_id": "device-001",
+  "card_id": 1
 }
 ```
+
+说明：`card_id` 表示客户端当前切换到的卡密。提供后只校验该卡密在当前用户、当前设备上的权限；不提供时，服务端按用户和设备查询可用卡密作为兼容兜底。
 
 #### 批量权限校验
 ```http
@@ -464,13 +467,14 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "permissions": ["wechat", "ximalaya", "douyin"]
+  "permissions": ["wechat", "ximalaya", "douyin"],
+  "card_id": 1
 }
 ```
 
 #### 查询我的权限
 ```http
-GET /api/v1/permission/my-permissions
+GET /api/v1/permission/my-permissions?device_id=device-001&card_id=1
 Authorization: Bearer <token>
 ```
 

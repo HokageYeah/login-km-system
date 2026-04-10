@@ -31,6 +31,46 @@ platform_mapping = {
     "admin": PlatformEnum.LICENSE,
     "admin/feature-permissions": PlatformEnum.LICENSE,
 }
+
+
+def _get_platform(path: str) -> PlatformEnum:
+    """根据请求路径获取统一响应平台标识。"""
+    return next((v for k, v in platform_mapping.items() if k in path), PlatformEnum.UNKNOWN)
+
+
+def _build_error_content(request: Request, message: str, data: dict | None = None):
+    """
+    构建统一错误响应，避免业务异常被响应中间件二次包装成成功响应。
+    """
+    path = request.url.path
+    return {
+        "platform": _get_platform(path),
+        "ret": [f"ERROR::{message}"],
+        "data": data or {},
+        "v": settings.VERSION,
+        "api": path.strip("/")
+    }
+
+
+def _business_error_response(
+    request: Request,
+    exc: BaseException,
+    status_code: int,
+    default_message: str | None = None
+):
+    """统一业务异常响应格式。"""
+    message = getattr(exc, "message", None) or default_message or str(exc)
+    code = getattr(exc, "code", exc.__class__.__name__)
+    return JSONResponse(
+        status_code=status_code,
+        content=_build_error_content(
+            request=request,
+            message=message,
+            data={"code": code}
+        )
+    )
+
+
 # 自定义HTTP异常处理器
 async def http_exception_handler(request: Request, exc: HTTPException):
     """
@@ -51,20 +91,14 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     # # 根据路径判断平台
     # if "wx/public" in path:
     #     platform = "WX_PUBLIC"
-    platform = next((v for k, v in platform_mapping.items() if k in path), PlatformEnum.UNKNOWN)
-    
     # 构建标准响应格式
-    response_content = {
-        'platform': platform,
-        'ret': [f"ERROR::{exc.detail}"],
-        'data': {
-            "request_method": request.method,
-        },
-        'v': settings.VERSION,
-        'api': path.strip("/")
-    }
+    response_content = _build_error_content(
+        request=request,
+        message=str(exc.detail),
+        data={"request_method": request.method}
+    )
     # 通过：获取最后一个
-    error_msg = exc.detail.split(':')[-1].strip()
+    error_msg = str(exc.detail).split(':')[-1].strip()
     print('error_msg----', error_msg)
     # 如果error_msg包含invalid session 说明需要调用n8n登录工作流
     if 'invalid session' in error_msg:
@@ -155,7 +189,7 @@ async def request_validation_error_handler(request: Request, exc: RequestValidat
     # if "wx/public" in request_url:
     #     platform = "WX_PUBLIC"
 
-    platform = next((v for k, v in platform_mapping.items() if k in request_url), PlatformEnum.UNKNOWN)
+    platform = _get_platform(request_url)
     
     return JSONResponse(
         status_code=422,
@@ -188,7 +222,7 @@ async def response_validation_error_handler(request: Request, exc: ResponseValid
     
     # 根据路径判断平台
     # platform = PlatformEnum.WX_PUBLIC if "wx/public" in request_url else "unknown"
-    platform = next((v for k, v in platform_mapping.items() if k in request_url), PlatformEnum.UNKNOWN)
+    platform = _get_platform(request_url)
     
     # 初始化标准响应格式
     formatted_response = {
@@ -273,92 +307,43 @@ async def response_validation_error_handler(request: Request, exc: ResponseValid
 async def auth_exception_handler(request: Request, exc: AuthException):
     """认证异常处理器"""
     logger.warning(f"认证异常: {exc.message} - 路径: {request.url.path}")
-    return JSONResponse(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        content={
-            "success": False,
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
+    return _business_error_response(request, exc, status.HTTP_401_UNAUTHORIZED)
 
 
 async def card_exception_handler(request: Request, exc: CardException):
     """卡密异常处理器"""
     logger.warning(f"卡密异常: {exc.message} - 路径: {request.url.path}")
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "success": False,
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
+    return _business_error_response(request, exc, status.HTTP_400_BAD_REQUEST)
 
 
 async def permission_exception_handler(request: Request, exc: PermissionException):
     """权限异常处理器"""
     logger.warning(f"权限异常: {exc.message} - 路径: {request.url.path}")
-    return JSONResponse(
-        status_code=status.HTTP_403_FORBIDDEN,
-        content={
-            "success": False,
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
+    return _business_error_response(request, exc, status.HTTP_403_FORBIDDEN)
 
 
 async def user_exception_handler(request: Request, exc: UserException):
     """用户异常处理器"""
     logger.warning(f"用户异常: {exc.message} - 路径: {request.url.path}")
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "success": False,
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
+    return _business_error_response(request, exc, status.HTTP_400_BAD_REQUEST)
 
 
 async def device_exception_handler(request: Request, exc: DeviceException):
     """设备异常处理器"""
     logger.warning(f"设备异常: {exc.message} - 路径: {request.url.path}")
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "success": False,
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
+    return _business_error_response(request, exc, status.HTTP_400_BAD_REQUEST)
 
 
 async def app_exception_handler(request: Request, exc: AppException):
     """应用异常处理器"""
     logger.warning(f"应用异常: {exc.message} - 路径: {request.url.path}")
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "success": False,
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
+    return _business_error_response(request, exc, status.HTTP_400_BAD_REQUEST)
 
 
 async def validation_exception_handler(request: Request, exc: ValidationException):
     """数据验证异常处理器"""
     logger.warning(f"数据验证异常: {exc.message} - 路径: {request.url.path}")
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "success": False,
-            "message": exc.message,
-            "code": exc.code
-        }
-    )
+    return _business_error_response(request, exc, status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
 async def database_exception_handler(request: Request, exc: DatabaseException):
@@ -366,9 +351,9 @@ async def database_exception_handler(request: Request, exc: DatabaseException):
     logger.error(f"数据库异常: {exc.message} - 路径: {request.url.path}")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "success": False,
-            "message": "数据库操作失败，请稍后重试",
-            "code": exc.code
-        }
+        content=_build_error_content(
+            request=request,
+            message="数据库操作失败，请稍后重试",
+            data={"code": exc.code}
+        )
     )

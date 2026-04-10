@@ -8,7 +8,10 @@ from typing import Optional
 from datetime import datetime
 
 from app.utils.dependencies import get_db, get_current_user
-from app.services.permission_service import PermissionService
+from app.services.permission_service import (
+    CURRENT_CARD_PERMISSION_DENIED_MESSAGE,
+    PermissionService
+)
 from app.schemas.permission import (
     PermissionCheckRequest,
     PermissionCheckResponse,
@@ -50,6 +53,7 @@ async def check_permission(
     **请求参数**：
     - **permission**: 权限标识（如 "wechat", "ximalaya"）
     - **device_id**: 设备唯一标识（可选，不提供则使用登录时的设备）
+    - **card_id**: 当前使用的卡密ID（可选；提供后只按当前卡密校验，不合并同设备其他卡密权限）
     
     **响应**：
     - **allowed**: 是否允许（true/false）
@@ -76,13 +80,15 @@ async def check_permission(
     allowed, message, expire_time = permission_service.check_permission(
         user_id=current_user["user_id"],
         device_id=device_id,
-        permission=request.permission
+        permission=request.permission,
+        card_id=request.card_id
     )
     
     # 记录权限校验结果
     log_message = (
         f"权限校验: user={current_user['username']}, "
         f"device={device_id}, permission={request.permission}, "
+        f"card_id={request.card_id}, "
         f"result={'通过' if allowed else '拒绝'}"
     )
     
@@ -117,6 +123,7 @@ async def batch_check_permissions(
     **请求参数**：
     - **permissions**: 权限列表（如 ["wechat", "ximalaya", "douyin"]）
     - **device_id**: 设备唯一标识（可选）
+    - **card_id**: 当前使用的卡密ID（可选；提供后只按当前卡密校验）
     
     **响应**：
     - **results**: 权限检查结果字典 {"permission": bool}
@@ -140,12 +147,14 @@ async def batch_check_permissions(
     results = permission_service.batch_check_permissions(
         user_id=current_user["user_id"],
         device_id=device_id,
-        permissions=request.permissions
+        permissions=request.permissions,
+        card_id=request.card_id
     )
     
     logger.info(
         f"批量权限校验: user={current_user['username']}, "
         f"device={device_id}, permissions={request.permissions}, "
+        f"card_id={request.card_id}, "
         f"results={results}"
     )
     
@@ -162,6 +171,7 @@ async def batch_check_permissions(
 )
 async def get_my_permissions(
     device_id: Optional[str] = None,
+    card_id: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -172,6 +182,7 @@ async def get_my_permissions(
     
     **请求参数**：
     - **device_id**: 设备ID（可选，默认使用登录时的设备）
+    - **card_id**: 当前使用的卡密ID（可选；提供后只返回当前卡密权限，不合并同设备其他卡密权限）
     
     **响应**：
     - **has_permission**: 是否有任何权限
@@ -196,12 +207,24 @@ async def get_my_permissions(
     # 获取用户权限
     has_permission, permissions, expire_time = permission_service.get_user_permissions(
         user_id=current_user["user_id"],
-        device_id=device
+        device_id=device,
+        card_id=card_id
     )
+
+    if card_id is not None and not has_permission:
+        logger.warning(
+            f"查询当前卡密权限失败: 当前卡密没有可用系统权限 "
+            f"(user={current_user['username']}, device={device}, card_id={card_id})"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=CURRENT_CARD_PERMISSION_DENIED_MESSAGE
+        )
     
     logger.info(
         f"查询用户权限: user={current_user['username']}, "
         f"device={device}, has_permission={has_permission}, "
+        f"card_id={card_id}, "
         f"permissions={permissions}"
     )
     

@@ -49,9 +49,9 @@
 
 | 方法 | 路径 | 说明 | 请求体 | 权限 |
 |------|------|------|--------|------|
-| POST | `/api/v1/permission/check` | 权限校验 | `{permission, device_id?}` | 🔒 登录 |
-| POST | `/api/v1/permission/batch-check` | 批量权限校验 | `{permissions, device_id?}` | 🔒 登录 |
-| GET | `/api/v1/permission/my-permissions` | 查询我的权限 | - | 🔒 登录 |
+| POST | `/api/v1/permission/check` | 权限校验 | `{permission, device_id?, card_id?}` | 🔒 登录 |
+| POST | `/api/v1/permission/batch-check` | 批量权限校验 | `{permissions, device_id?, card_id?}` | 🔒 登录 |
+| GET | `/api/v1/permission/my-permissions` | 查询我的权限 | `device_id?`, `card_id?` | 🔒 登录 |
 
 ---
 

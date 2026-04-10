@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
+import json
 
 from app.models.user import User, UserStatus, UserRole
 from app.models.card import Card, CardStatus
@@ -13,6 +14,9 @@ from app.models.user_card import UserCard, UserCardStatus
 from app.models.card_device import CardDevice, CardDeviceStatus
 from app.models.feature_permission import FeaturePermission, FeaturePermissionStatus
 from app.core.logging_uru import logger
+
+
+CURRENT_CARD_PERMISSION_DENIED_MESSAGE = "当前卡密没有该系统权限，请切换卡密或联系管理员开通权限"
 
 
 class PermissionService:
@@ -45,12 +49,115 @@ class PermissionService:
         ).all()
 
         return [item.permission_key for item in permissions]
+
+    def _get_user_cards(self, user_id: int, card_id: Optional[int] = None):
+        """
+        查询用户绑定的有效关系，可选按当前卡密收窄。
+
+        当前卡密是权限裁决的业务边界：客户端切换到某张卡密后，
+        服务端只能使用这张卡密的权限，不能把同设备上的其他卡密权限合并进来。
+        """
+        filters = [
+            UserCard.user_id == user_id,
+            UserCard.status == UserCardStatus.ACTIVE
+        ]
+
+        if card_id is not None:
+            filters.append(UserCard.card_id == card_id)
+
+        return self.db.query(UserCard, Card).join(
+            Card, UserCard.card_id == Card.id
+        ).filter(and_(*filters)).all()
+
+    def _parse_permissions(self, card: Card) -> Optional[object]:
+        """
+        解析卡密权限配置，保持 list / dict / JSON 字符串的历史兼容。
+        """
+        card_permissions = card.permissions
+
+        if card_permissions is None:
+            return None
+
+        if isinstance(card_permissions, str):
+            try:
+                parsed_permissions = json.loads(card_permissions)
+                logger.debug(
+                    f"解析JSON字符串权限配置: card_id={card.id}, "
+                    f"permissions={parsed_permissions}"
+                )
+                return parsed_permissions
+            except json.JSONDecodeError:
+                logger.error(f"无法解析卡密权限配置: card_id={card.id}, permissions={card_permissions}")
+                return None
+
+        return card_permissions
+
+    def _card_has_permission(self, card: Card, permission: str) -> bool:
+        """
+        判断单张卡密是否包含指定权限。
+
+        该方法集中处理权限格式差异，避免单项校验、批量校验、权限列表查询各自维护一套规则。
+        """
+        card_permissions = self._parse_permissions(card)
+
+        if card_permissions is None:
+            logger.debug(f"卡密没有权限配置: card_id={card.id}")
+            return False
+
+        if isinstance(card_permissions, list):
+            return permission in card_permissions
+
+        if isinstance(card_permissions, dict):
+            if permission not in card_permissions:
+                return False
+
+            value = card_permissions[permission]
+            if isinstance(value, bool):
+                return value
+
+            if isinstance(value, str):
+                return value.lower() == "true"
+
+            return bool(value)
+
+        logger.warning(
+            f"卡密权限配置类型不支持: card_id={card.id}, "
+            f"type={type(card_permissions)}"
+        )
+        return False
+
+    def _extract_permission_keys(self, card: Card) -> list:
+        """
+        从单张卡密中提取可用权限列表，规则与单项权限校验保持一致。
+        """
+        card_permissions = self._parse_permissions(card)
+
+        if card_permissions is None:
+            logger.debug(f"卡密没有权限配置: card_id={card.id}")
+            return []
+
+        if isinstance(card_permissions, list):
+            return card_permissions
+
+        if isinstance(card_permissions, dict):
+            return [
+                permission
+                for permission, value in card_permissions.items()
+                if value is True or (isinstance(value, str) and value.lower() == "true")
+            ]
+
+        logger.warning(
+            f"卡密权限配置类型不支持: card_id={card.id}, "
+            f"type={type(card_permissions)}"
+        )
+        return []
     
     def check_permission(
         self,
         user_id: int,
         device_id: str,
-        permission: str
+        permission: str,
+        card_id: Optional[int] = None
     ) -> Tuple[bool, str, Optional[datetime]]:
         """
         检查用户在指定设备上是否有指定权限
@@ -70,6 +177,7 @@ class PermissionService:
             user_id: 用户ID
             device_id: 设备ID
             permission: 权限标识（如 "wechat", "ximalaya"）
+            card_id: 当前使用的卡密ID；不传时按用户和设备兜底查询
             
         Returns:
             (是否允许, 提示信息, 卡密过期时间)
@@ -99,17 +207,17 @@ class PermissionService:
             )
             return True, "管理员默认拥有全部权限", None
 
-        # 步骤 3: 查询用户绑定的卡密
-        user_cards = self.db.query(UserCard, Card).join(
-            Card, UserCard.card_id == Card.id
-        ).filter(
-            and_(
-                UserCard.user_id == user_id,
-                UserCard.status == UserCardStatus.ACTIVE
-            )
-        ).all()
+        # 步骤 3: 查询用户绑定的卡密。传入 card_id 时只校验当前卡密，避免同设备多卡权限串用。
+        user_cards = self._get_user_cards(user_id=user_id, card_id=card_id)
         
         if not user_cards:
+            if card_id is not None:
+                logger.warning(
+                    f"权限校验失败: 当前用户未绑定指定卡密 "
+                    f"(user_id={user_id}, username={user.username}, card_id={card_id})"
+                )
+                return False, "当前用户未绑定指定卡密", None
+
             logger.warning(f"权限校验失败: 用户未绑定卡密 (user_id={user_id}, username={user.username})")
             return False, "未绑定卡密", None
         
@@ -152,50 +260,19 @@ class PermissionService:
                 return False, "设备已被禁用", None
             
             # 步骤 8: 验证权限配置
-            # permissions 可能是 list 或 dict 或 None 或 str(JSON字符串)
-            card_permissions = card.permissions
-            
-            # 处理 None 的情况
-            if card_permissions is None:
-                logger.debug(f"卡密没有权限配置: card_id={card.id}")
+            if not self._card_has_permission(card, permission):
+                logger.debug(
+                    f"权限不在当前卡密权限配置中: "
+                    f"card_id={card.id}, permission={permission}"
+                )
+                if card_id is not None:
+                    logger.warning(
+                        f"权限校验失败: 当前卡密缺少系统权限 "
+                        f"(user_id={user_id}, card_id={card.id}, "
+                        f"device_id={device_id}, permission={permission})"
+                    )
+                    return False, CURRENT_CARD_PERMISSION_DENIED_MESSAGE, None
                 continue
-            
-            # 如果是字符串，尝试解析为 JSON
-            if isinstance(card_permissions, str):
-                import json
-                try:
-                    card_permissions = json.loads(card_permissions)
-                    logger.debug(f"解析JSON字符串: card_id={card.id}, permissions={card_permissions}")
-                except json.JSONDecodeError:
-                    logger.error(f"无法解析卡密权限配置: {card_permissions}")
-                    continue
-            
-            # 处理 list 的情况
-            if isinstance(card_permissions, list):
-                if permission not in card_permissions:
-                    logger.debug(
-                        f"权限不在卡密权限列表中: "
-                        f"permission={permission}, card_permissions={card_permissions}"
-                    )
-                    continue
-            
-            # 处理 dict 的情况（例如 {"wechat": true, "ximalaya": false}）
-            elif isinstance(card_permissions, dict):
-                if permission not in card_permissions:
-                    logger.debug(
-                        f"权限不在卡密权限配置中: "
-                        f"permission={permission}, card_permissions={card_permissions}"
-                    )
-                    continue
-                
-                # 检查权限值（如果是 bool 类型）
-                if isinstance(card_permissions[permission], bool):
-                    if not card_permissions[permission]:
-                        logger.debug(
-                            f"权限被设置为 false: "
-                            f"permission={permission}, value={card_permissions[permission]}"
-                        )
-                        continue
             
             # 如果执行到这里，说明所有验证都通过了
             
@@ -229,7 +306,8 @@ class PermissionService:
         self,
         user_id: int,
         device_id: str,
-        permissions: list
+        permissions: list,
+        card_id: Optional[int] = None
     ) -> dict:
         """
         批量检查多个权限
@@ -238,6 +316,7 @@ class PermissionService:
             user_id: 用户ID
             device_id: 设备ID
             permissions: 权限列表
+            card_id: 当前使用的卡密ID；不传时按用户和设备兜底查询
             
         Returns:
             权限检查结果字典
@@ -254,7 +333,7 @@ class PermissionService:
         
         for permission in permissions:
             allowed, message, expire_time = self.check_permission(
-                user_id, device_id, permission
+                user_id, device_id, permission, card_id=card_id
             )
             results[permission] = allowed
         
@@ -268,7 +347,8 @@ class PermissionService:
     def get_user_permissions(
         self,
         user_id: int,
-        device_id: str
+        device_id: str,
+        card_id: Optional[int] = None
     ) -> Tuple[bool, list, Optional[datetime]]:
         """
         获取用户在指定设备上的所有权限
@@ -276,6 +356,7 @@ class PermissionService:
         Args:
             user_id: 用户ID
             device_id: 设备ID
+            card_id: 当前使用的卡密ID；不传时按用户和设备兜底查询
             
         Returns:
             (是否有效, 权限列表, 过期时间)
@@ -298,15 +379,8 @@ class PermissionService:
             )
             return True, admin_permissions, None
 
-        # 查询用户绑定的卡密
-        user_cards = self.db.query(UserCard, Card).join(
-            Card, UserCard.card_id == Card.id
-        ).filter(
-            and_(
-                UserCard.user_id == user_id,
-                UserCard.status == UserCardStatus.ACTIVE
-            )
-        ).all()
+        # 查询用户绑定的卡密。传入 card_id 时只返回当前卡密权限；未传则保留旧兜底逻辑。
+        user_cards = self._get_user_cards(user_id=user_id, card_id=card_id)
         logger.info(f"用户绑定的卡密: {user_cards}")
         all_permissions = set()
         expire_time = None
@@ -339,35 +413,7 @@ class PermissionService:
                 continue
             
             # 收集权限
-            if card.permissions:
-                logger.debug(
-                    f"卡密权限配置: card_id={card.id}, "
-                    f"permissions={card.permissions}, "
-                    f"type={type(card.permissions)}"
-                )
-                
-                if isinstance(card.permissions, list):
-                    all_permissions.update(card.permissions)
-                elif isinstance(card.permissions, dict):
-                    # 只添加值为 True 的权限
-                    for perm, value in card.permissions.items():
-                        if value is True or value == "true":
-                            all_permissions.add(perm)
-                elif isinstance(card.permissions, str):
-                    # 如果是字符串，尝试解析为 JSON
-                    import json
-                    try:
-                        parsed = json.loads(card.permissions)
-                        if isinstance(parsed, list):
-                            all_permissions.update(parsed)
-                        elif isinstance(parsed, dict):
-                            for perm, value in parsed.items():
-                                if value is True or value == "true":
-                                    all_permissions.add(perm)
-                    except json.JSONDecodeError:
-                        logger.error(f"无法解析卡密权限配置: {card.permissions}")
-            else:
-                logger.debug(f"卡密没有权限配置: card_id={card.id}")
+            all_permissions.update(self._extract_permission_keys(card))
             
             # 记录最晚的过期时间
             if expire_time is None or card.expire_time > expire_time:
@@ -377,7 +423,7 @@ class PermissionService:
         
         logger.info(
             f"获取用户权限: user_id={user_id}, device_id={device_id}, "
-            f"permissions={permissions_list}, expire_time={expire_time}"
+            f"card_id={card_id}, permissions={permissions_list}, expire_time={expire_time}"
         )
         
         return len(permissions_list) > 0, permissions_list, expire_time
