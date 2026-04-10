@@ -203,7 +203,7 @@
               type="primary"
               link
               class="card-link-btn"
-              @click="goToCardPermission(row)"
+              @click="goToCardManagement(row)"
             >
               {{ row.card_key }}
             </el-button>
@@ -212,9 +212,19 @@
         <el-table-column prop="app_name" label="所属应用" width="140" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'disabled' ? 'danger' : 'success'" size="small">
-              {{ row.status === 'disabled' ? '禁用' : row.status === 'used' ? '已使用' : '未使用' }}
-            </el-tag>
+            <div class="card-status-cell">
+              <el-tag :type="row.status === 'disabled' ? 'danger' : 'success'" size="small">
+                {{ row.status === 'disabled' ? '禁用' : row.status === 'used' ? '已使用' : '未使用' }}
+              </el-tag>
+              <el-tag
+                v-if="isCardExpired(row)"
+                type="danger"
+                size="small"
+                effect="plain"
+              >
+                已过期
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="expire_time" label="过期时间" width="180">
@@ -344,6 +354,12 @@ const getPermissions = (permissions: unknown): string[] => {
       .map(([key]) => key)
   }
   return []
+}
+
+const isCardExpired = (card: UserActiveCardDetail) => {
+  if (card.is_expired) return true
+  if (!card.expire_time) return false
+  return new Date(card.expire_time).getTime() < Date.now()
 }
 
 /**
@@ -523,12 +539,11 @@ const showActiveCardsDialog = async (user: UserType) => {
   }
 }
 
-const goToCardPermission = (card: UserActiveCardDetail) => {
+const goToCardManagement = (card: UserActiveCardDetail) => {
   activeCardsDialogVisible.value = false
   router.push({
-    name: 'CardPermissions',
+    name: 'Cards',
     query: {
-      card_id: String(card.card_id),
       card_key: card.card_key
     }
   })
@@ -675,6 +690,10 @@ onMounted(() => {
 /* 状态标签 */
 .status-tag {
   @apply font-medium;
+}
+
+.card-status-cell {
+  @apply flex flex-col items-center gap-1;
 }
 
 .card-count-btn,

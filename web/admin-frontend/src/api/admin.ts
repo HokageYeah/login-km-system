@@ -121,6 +121,17 @@ export const updateCardStatus = (cardId: number, status: string) => {
 }
 
 /**
+ * 更新卡密过期时间
+ * @description 管理员修改卡密过期时间；是否过期由服务端按 expire_time 动态判断
+ * @param cardId 卡密ID
+ * @param expireTime 新的过期时间（ISO 8601格式）
+ * @returns Promise 更新结果
+ */
+export const updateCardExpireTime = (cardId: number, expireTime: string) => {
+  return request.post(`/admin/card/${cardId}/expire-time`, { expire_time: expireTime })
+}
+
+/**
  * 更新卡密权限
  * @description 实时修改卡密的权限配置（需要管理员权限）
  * @param cardId 卡密ID

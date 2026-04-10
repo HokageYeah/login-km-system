@@ -214,40 +214,17 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="350" fixed="right">
+        <el-table-column label="操作" width="110" fixed="right" align="center">
           <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button
-                size="small"
-                :icon="View"
-                @click="showDeviceDialog(row)"
-              >
-                查看设备
-              </el-button>
-              <el-button
-                size="small"
-                :icon="Edit"
-                @click="showPermissionDialog(row)"
-              >
-                修改权限
-              </el-button>
-              <el-button
-                size="small"
-                :type="row.status === 'disabled' ? 'success' : 'danger'"
-                :icon="row.status === 'disabled' ? CircleCheck : CircleClose"
-                @click="handleStatusChange(row)"
-              >
-                {{ row.status === 'disabled' ? '启用' : '禁用' }}
-              </el-button>
-              <el-button
-                size="small"
-                type="danger"
-                :icon="Delete"
-                @click="handleDelete(row)"
-              >
-                删除
-              </el-button>
-            </div>
+            <el-button
+              size="small"
+              type="primary"
+              plain
+              :icon="View"
+              @click="showCardDetailDrawer(row)"
+            >
+              详情
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -265,6 +242,223 @@
         />
       </div>
     </div>
+
+    <!-- 卡密详情抽屉 -->
+    <el-drawer
+      v-model="cardDetailDrawerVisible"
+      direction="rtl"
+      size="520px"
+      class="card-detail-drawer"
+      :with-header="false"
+      destroy-on-close
+    >
+      <div v-if="currentCard" class="drawer-page">
+        <div class="drawer-hero">
+          <div class="drawer-hero-top">
+            <div>
+              <p class="drawer-eyebrow">卡密详情</p>
+              <h2 class="drawer-title">{{ currentCard.card_key }}</h2>
+            </div>
+            <div class="drawer-hero-actions">
+              <el-button
+                :icon="CopyDocument"
+                circle
+                class="drawer-icon-btn"
+                @click="copyCardKey(currentCard.card_key)"
+              />
+              <el-button
+                :icon="Close"
+                circle
+                class="drawer-icon-btn"
+                @click="cardDetailDrawerVisible = false"
+              />
+            </div>
+          </div>
+          <div class="drawer-status-row">
+            <el-tag :type="getStatusType(currentCard.status)" effect="dark">
+              {{ getStatusText(currentCard.status) }}
+            </el-tag>
+            <el-tag v-if="currentCard.is_expired" type="danger" effect="plain">
+              已过期
+            </el-tag>
+            <span class="drawer-app-name">{{ currentCard.app_name || '未关联应用' }}</span>
+          </div>
+        </div>
+
+        <div class="drawer-stats-grid">
+          <div class="drawer-stat-card">
+            <span class="drawer-stat-label">关联用户</span>
+            <strong>{{ getRelatedUserTotal(currentCard) }}</strong>
+          </div>
+          <div class="drawer-stat-card">
+            <span class="drawer-stat-label">设备占用</span>
+            <strong>{{ getDeviceUsageText(currentCard) }}</strong>
+          </div>
+          <div class="drawer-stat-card">
+            <span class="drawer-stat-label">权限项</span>
+            <strong>{{ getPermissions(currentCard.permissions).length }}</strong>
+          </div>
+          <div class="drawer-stat-card">
+            <span class="drawer-stat-label">过期状态</span>
+            <strong :class="{ 'danger-text': currentCard.is_expired }">
+              {{ currentCard.is_expired ? '已过期' : '有效中' }}
+            </strong>
+          </div>
+        </div>
+
+        <section class="drawer-section">
+          <div class="section-title">基础信息</div>
+          <div class="info-list">
+            <div class="info-row">
+              <span>卡密</span>
+              <strong class="mono-text">{{ currentCard.card_key }}</strong>
+            </div>
+            <div class="info-row">
+              <span>所属应用</span>
+              <strong>{{ currentCard.app_name || '-' }}</strong>
+            </div>
+            <div class="info-row">
+              <span>状态</span>
+              <strong>{{ getDisplayStatusText(currentCard) }}</strong>
+            </div>
+            <div class="info-row">
+              <span>过期时间</span>
+              <strong>{{ formatDateTime(currentCard.expire_time) }}</strong>
+            </div>
+            <div class="info-row">
+              <span>创建时间</span>
+              <strong>{{ formatDateTime(currentCard.created_at) }}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <div class="section-title">关联信息</div>
+          <div class="drawer-related-block">
+            <div class="drawer-block-head">
+              <span>关联用户</span>
+              <small>{{ getRelatedUserTotal(currentCard) }} 个</small>
+            </div>
+            <div v-if="getAllRelatedUsers(currentCard).length" class="drawer-tag-list">
+              <el-tag
+                v-for="username in getAllRelatedUsers(currentCard)"
+                :key="username"
+                effect="plain"
+                class="related-user-tag"
+              >
+                {{ username }}
+              </el-tag>
+            </div>
+            <el-empty v-else description="暂无关联用户" :image-size="72" />
+          </div>
+
+          <div class="drawer-related-block">
+            <div class="drawer-block-head">
+              <span>权限</span>
+              <small>{{ getPermissions(currentCard.permissions).length }} 项</small>
+            </div>
+            <div v-if="getPermissions(currentCard.permissions).length" class="drawer-tag-list">
+              <el-tag
+                v-for="permission in getPermissions(currentCard.permissions)"
+                :key="permission"
+                class="permission-tag"
+              >
+                {{ permission }}
+              </el-tag>
+            </div>
+            <el-empty v-else description="暂无权限配置" :image-size="72" />
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <div class="section-title">备注</div>
+          <div class="remark-card">
+            {{ currentCard.remark || '暂无备注' }}
+          </div>
+        </section>
+
+        <section class="drawer-section action-panel">
+          <div class="section-title">操作</div>
+          <div class="drawer-actions">
+            <el-button :icon="View" @click="showDeviceDialog(currentCard)">
+              查看设备
+            </el-button>
+            <el-button :icon="Edit" @click="showPermissionDialog(currentCard)">
+              修改权限
+            </el-button>
+            <el-button
+              v-if="userStore.isAdmin"
+              type="primary"
+              plain
+              :icon="Clock"
+              @click="showExpireTimeDialog(currentCard)"
+            >
+              修改过期时间
+            </el-button>
+            <el-button
+              :type="currentCard.status === 'disabled' ? 'success' : 'warning'"
+              :icon="currentCard.status === 'disabled' ? CircleCheck : CircleClose"
+              @click="handleStatusChange(currentCard)"
+            >
+              {{ currentCard.status === 'disabled' ? '启用卡密' : '禁用卡密' }}
+            </el-button>
+            <el-button type="danger" :icon="Delete" @click="handleDelete(currentCard)">
+              删除卡密
+            </el-button>
+          </div>
+        </section>
+      </div>
+    </el-drawer>
+
+    <!-- 修改过期时间弹窗 -->
+    <el-dialog
+      v-model="expireTimeDialogVisible"
+      title="修改过期时间"
+      width="460px"
+      :close-on-click-modal="false"
+      @close="resetExpireTimeDialog"
+    >
+      <div v-if="currentCard" class="expire-dialog-content">
+        <div class="expire-card-preview">
+          <span>当前卡密</span>
+          <strong>{{ currentCard.card_key }}</strong>
+          <div class="expire-preview-time">
+            <small>当前过期时间</small>
+            <b>{{ formatDateTime(currentCard.expire_time) }}</b>
+          </div>
+        </div>
+        <el-form label-width="96px">
+          <el-form-item label="过期时间">
+            <span class="form-readonly-text">{{ formatDateTime(currentCard.expire_time) }}</span>
+          </el-form-item>
+          <el-form-item label="新的时间" required>
+            <el-date-picker
+              v-model="expireTimeForm.expire_time"
+              type="datetime"
+              placeholder="请选择新的过期时间"
+              format="YYYY-MM-DD HH:mm:ss"
+              value-format="YYYY-MM-DDTHH:mm:ss"
+              class="w-full"
+            />
+            <div class="form-tip">
+              可选择未来时间延长有效期，也可选择过去时间让卡密立即进入已过期状态。
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="expireTimeDialogVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="expireTimeSubmitting"
+          @click="handleExpireTimeSubmit"
+        >
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- 生成卡密弹窗 -->
     <GenerateDialog
@@ -294,7 +488,7 @@
  * 卡密管理页面
  * @description 管理员管理系统中的所有卡密
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus,
@@ -307,12 +501,15 @@ import {
   CircleCheck,
   CircleClose,
   Delete,
-  InfoFilled
+  InfoFilled,
+  Close
 } from '@element-plus/icons-vue'
 import type { ElTable } from 'element-plus'
-import { getCardList, updateCardStatus } from '@/api/admin'
+import { useRoute, useRouter } from 'vue-router'
+import { getCardList, updateCardStatus, updateCardExpireTime } from '@/api/admin'
 import { batchDeleteCards } from '@/api/card'
 import { getAppList } from '@/api/app'
+import { useUserStore } from '@/stores/user'
 import type { Card, App } from '@/types'
 import GenerateDialog from './components/GenerateDialog.vue'
 import PermissionDialog from './components/PermissionDialog.vue'
@@ -327,6 +524,9 @@ const appList = ref<App[]>([])                          // 应用列表
 const currentCard = ref<Card | null>(null)              // 当前操作的卡密
 const selectedCards = ref<Card[]>([])                   // 选中的卡密
 const tableRef = ref<InstanceType<typeof ElTable>>()    // 表格引用
+const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 
 /**
  * 弹窗显示状态
@@ -334,6 +534,9 @@ const tableRef = ref<InstanceType<typeof ElTable>>()    // 表格引用
 const generateDialogVisible = ref(false)                // 生成卡密弹窗
 const permissionDialogVisible = ref(false)              // 修改权限弹窗
 const deviceDialogVisible = ref(false)                  // 查看设备弹窗
+const cardDetailDrawerVisible = ref(false)              // 卡密详情抽屉
+const expireTimeDialogVisible = ref(false)              // 修改过期时间弹窗
+const expireTimeSubmitting = ref(false)                 // 修改过期时间提交状态
 
 /**
  * 筛选表单
@@ -344,6 +547,18 @@ const filterForm = reactive({
   keyword: '',
   username: ''
 })
+
+const expireTimeForm = reactive({
+  expire_time: ''
+})
+
+const syncFilterFromRoute = () => {
+  const cardKey = route.query.card_key
+  if (typeof cardKey === 'string' && cardKey) {
+    filterForm.keyword = cardKey
+    filterForm.username = ''
+  }
+}
 
 /**
  * 分页参数
@@ -432,6 +647,40 @@ const getRelatedUsers = (card: Card) => {
   return []
 }
 
+const getAllRelatedUsers = (card: Card) => {
+  return Array.isArray(card.related_usernames) ? card.related_usernames : []
+}
+
+const getRelatedUserTotal = (card: Card) => {
+  return card.bind_user_count || getAllRelatedUsers(card).length
+}
+
+const getBoundDeviceCount = (card: Card) => {
+  return card.bind_device_count ?? card.bind_devices ?? 0
+}
+
+const getDeviceUsageText = (card: Card) => {
+  return `${getBoundDeviceCount(card)} / ${card.max_device_count}`
+}
+
+const isExpiredByTime = (expireTime: string) => {
+  if (!expireTime) return false
+  return new Date(expireTime).getTime() < Date.now()
+}
+
+const padDatePart = (value: number) => String(value).padStart(2, '0')
+
+const formatDateTimeValue = (date: Date) => {
+  const year = date.getFullYear()
+  const month = padDatePart(date.getMonth() + 1)
+  const day = padDatePart(date.getDate())
+  const hours = padDatePart(date.getHours())
+  const minutes = padDatePart(date.getMinutes())
+  const seconds = padDatePart(date.getSeconds())
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+}
+
 /**
  * 复制卡密
  * @param cardKey 卡密字符串
@@ -494,6 +743,10 @@ const handleDelete = async (card: Card) => {
     
     if (result.deleted_count > 0) {
       ElMessage.success('删除成功')
+      if (currentCard.value?.id === card.id) {
+        cardDetailDrawerVisible.value = false
+        currentCard.value = null
+      }
       loadCardList()
     } else {
       ElMessage.warning('删除失败')
@@ -583,6 +836,79 @@ const showDeviceDialog = (card: Card) => {
 }
 
 /**
+ * 显示卡密详情抽屉
+ * @param card 卡密信息
+ */
+const showCardDetailDrawer = (card: Card) => {
+  currentCard.value = card
+  cardDetailDrawerVisible.value = true
+}
+
+/**
+ * 显示修改过期时间弹窗
+ * @param card 卡密信息
+ */
+const showExpireTimeDialog = (card: Card) => {
+  if (!userStore.isAdmin) {
+    ElMessage.warning('只有管理员可以修改卡密过期时间')
+    return
+  }
+
+  currentCard.value = card
+  expireTimeForm.expire_time = formatDateTimeValue(new Date())
+  expireTimeDialogVisible.value = true
+}
+
+/**
+ * 重置修改过期时间弹窗
+ */
+const resetExpireTimeDialog = () => {
+  expireTimeForm.expire_time = ''
+  expireTimeSubmitting.value = false
+}
+
+/**
+ * 提交修改过期时间
+ */
+const handleExpireTimeSubmit = async () => {
+  if (!currentCard.value) {
+    ElMessage.warning('请选择要修改的卡密')
+    return
+  }
+
+  if (!expireTimeForm.expire_time) {
+    ElMessage.warning('请选择新的过期时间')
+    return
+  }
+
+  expireTimeSubmitting.value = true
+  try {
+    await updateCardExpireTime(currentCard.value.id, expireTimeForm.expire_time)
+
+    const updatedCard = {
+      ...currentCard.value,
+      expire_time: expireTimeForm.expire_time,
+      is_expired: isExpiredByTime(expireTimeForm.expire_time)
+    }
+
+    currentCard.value = updatedCard
+    const listIndex = cardList.value.findIndex(card => card.id === updatedCard.id)
+    if (listIndex !== -1) {
+      cardList.value[listIndex] = updatedCard
+    }
+
+    ElMessage.success('卡密过期时间更新成功')
+    expireTimeDialogVisible.value = false
+    loadCardList()
+  } catch (error) {
+    ElMessage.error('卡密过期时间更新失败')
+    console.error('卡密过期时间更新失败:', error)
+  } finally {
+    expireTimeSubmitting.value = false
+  }
+}
+
+/**
  * 处理状态变更
  * @param card 卡密信息
  */
@@ -603,6 +929,10 @@ const handleStatusChange = async (card: Card) => {
     
     await updateCardStatus(card.id, newStatus)
     ElMessage.success(`${action}成功`)
+    card.status = newStatus
+    if (currentCard.value?.id === card.id) {
+      currentCard.value = { ...card }
+    }
     loadCardList()
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -628,6 +958,13 @@ const handleReset = () => {
   filterForm.keyword = ''
   filterForm.username = ''
   pagination.page = 1
+  if (route.query.card_key) {
+    router.replace({
+      name: 'Cards',
+      query: {}
+    })
+    return
+  }
   loadCardList()
 }
 
@@ -721,9 +1058,19 @@ const loadAppList = async () => {
  * 组件挂载时加载数据
  */
 onMounted(() => {
+  syncFilterFromRoute()
   loadCardList()
   loadAppList()
 })
+
+watch(
+  () => route.query.card_key,
+  () => {
+    syncFilterFromRoute()
+    pagination.page = 1
+    loadCardList()
+  }
+)
 </script>
 
 <style scoped>
@@ -870,6 +1217,182 @@ onMounted(() => {
   @apply flex gap-2;
 }
 
+/* 详情抽屉 */
+:deep(.card-detail-drawer .el-drawer__body) {
+  @apply p-0 bg-gray-50;
+}
+
+.drawer-page {
+  @apply min-h-full p-6 space-y-5;
+}
+
+.drawer-hero {
+  @apply rounded-3xl p-6 text-white overflow-hidden relative;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(255, 255, 255, 0.32), transparent 28%),
+    linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  box-shadow: 0 24px 60px rgba(59, 130, 246, 0.24);
+}
+
+.drawer-hero::after {
+  content: '';
+  @apply absolute rounded-full;
+  width: 180px;
+  height: 180px;
+  right: -72px;
+  bottom: -96px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.drawer-hero-top {
+  @apply flex items-start justify-between gap-4 relative z-10;
+}
+
+.drawer-eyebrow {
+  @apply text-xs font-semibold tracking-widest text-blue-100 mb-2;
+}
+
+.drawer-title {
+  @apply text-xl font-bold font-mono break-all leading-snug;
+}
+
+.drawer-hero-actions {
+  @apply flex items-center gap-2 shrink-0;
+}
+
+.drawer-icon-btn {
+  @apply shrink-0 border-white/30 text-white bg-white/10;
+}
+
+.drawer-icon-btn:hover {
+  @apply bg-white/20 text-white border-white/50;
+}
+
+.drawer-status-row {
+  @apply flex flex-wrap items-center gap-2 mt-5 relative z-10;
+}
+
+.drawer-app-name {
+  @apply text-sm text-blue-50;
+}
+
+.drawer-stats-grid {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.drawer-stat-card {
+  @apply bg-white rounded-2xl border border-gray-100 p-4 shadow-sm;
+}
+
+.drawer-stat-label {
+  @apply block text-xs text-gray-500 mb-2;
+}
+
+.drawer-stat-card strong {
+  @apply text-lg font-bold text-gray-900;
+}
+
+.danger-text {
+  @apply text-red-600;
+}
+
+.drawer-section {
+  @apply bg-white rounded-2xl border border-gray-100 p-5 shadow-sm;
+}
+
+.section-title {
+  @apply text-sm font-bold text-gray-900 mb-4;
+}
+
+.info-list {
+  @apply space-y-3;
+}
+
+.info-row {
+  @apply flex items-start justify-between gap-4 text-sm;
+}
+
+.info-row span {
+  @apply text-gray-500 shrink-0;
+}
+
+.info-row strong {
+  @apply text-gray-900 text-right font-medium break-all;
+}
+
+.mono-text {
+  @apply font-mono;
+}
+
+.drawer-related-block {
+  @apply rounded-2xl bg-gray-50 border border-gray-100 p-4 mb-4 last:mb-0;
+}
+
+.drawer-block-head {
+  @apply flex items-center justify-between mb-3 text-sm font-medium text-gray-900;
+}
+
+.drawer-block-head small {
+  @apply text-xs text-gray-500 font-normal;
+}
+
+.drawer-tag-list {
+  @apply flex flex-wrap gap-2;
+}
+
+.remark-card {
+  @apply min-h-20 rounded-2xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700 whitespace-pre-wrap;
+}
+
+.action-panel {
+  @apply mb-4;
+}
+
+.drawer-actions {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.drawer-actions .el-button {
+  @apply m-0 w-full justify-center;
+}
+
+/* 修改过期时间弹窗 */
+.expire-dialog-content {
+  @apply space-y-5;
+}
+
+.expire-card-preview {
+  @apply rounded-2xl border border-blue-100 bg-blue-50 p-4;
+}
+
+.expire-card-preview span {
+  @apply block text-xs text-blue-600 mb-2;
+}
+
+.expire-card-preview strong {
+  @apply block font-mono text-sm text-gray-900 break-all;
+}
+
+.expire-preview-time {
+  @apply mt-4 rounded-xl bg-white/80 border border-blue-100 p-3;
+}
+
+.expire-preview-time small {
+  @apply block text-xs text-gray-500 mb-1;
+}
+
+.expire-preview-time b {
+  @apply text-sm text-gray-900 font-semibold;
+}
+
+.form-readonly-text {
+  @apply text-sm text-gray-700;
+}
+
+.form-tip {
+  @apply mt-2 text-xs text-gray-500 leading-relaxed;
+}
+
 /* 分页 */
 .pagination-section {
   @apply flex justify-end mt-6;
@@ -904,6 +1427,14 @@ onMounted(() => {
 
   .action-buttons {
     @apply flex-col;
+  }
+
+  :deep(.card-detail-drawer) {
+    width: 100% !important;
+  }
+
+  .drawer-actions {
+    @apply grid-cols-1;
   }
 }
 </style>

@@ -380,6 +380,8 @@ GET /api/v1/card/my
 Authorization: Bearer <token>
 ```
 
+响应中的每个卡密对象会额外返回 `is_expired` 字段，表示是否已按 `expire_time` 动态判定为过期；原有 `status` 字段保持不变，不会把“已过期”混入数据库状态枚举。
+
 #### 绑定卡密
 ```http
 POST /api/v1/card/bind
@@ -510,12 +512,23 @@ Authorization: Bearer <admin_token>
 
 #### 更新卡密权限（实时生效）
 ```http
-PUT /api/v1/admin/card/{card_id}/permissions
+POST /api/v1/admin/card/{card_id}/permissions
 Authorization: Bearer <admin_token>
 Content-Type: application/json
 
 {
   "permissions": ["wechat", "ximalaya", "douyin"]
+}
+```
+
+#### 更新卡密过期时间（实时生效）
+```http
+POST /api/v1/admin/card/{card_id}/expire-time
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "expire_time": "2027-12-31T23:59:59"
 }
 ```
 

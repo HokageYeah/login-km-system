@@ -15,6 +15,7 @@ from app.schemas.admin import (
     AdminCardListResponse,
     AdminCardInfo,
     UpdateCardStatusRequest,
+    UpdateCardExpireTimeRequest,
     UpdateCardPermissionsRequest,
     UpdateCardResponse,
     AdminDeviceListResponse,
@@ -231,6 +232,31 @@ async def update_card_status(
     return UpdateCardResponse(
         success=True,
         message=f"卡密状态更新成功: {request.status}"
+    ).model_dump(mode='json', exclude_none=True)
+
+
+@router.post("/card/{card_id}/expire-time", response_model=ApiResponseData)
+async def update_card_expire_time(
+    card_id: int,
+    request: UpdateCardExpireTimeRequest,
+    admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    更新卡密过期时间（管理员）
+
+    只修改卡密的过期时间，不改变卡密原始状态；是否过期仍由服务端按 expire_time 动态判断。
+    """
+    admin_service = AdminService(db)
+
+    success, error = admin_service.update_card_expire_time(card_id, request.expire_time)
+
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
+    return UpdateCardResponse(
+        success=True,
+        message="卡密过期时间更新成功"
     ).model_dump(mode='json', exclude_none=True)
 
 

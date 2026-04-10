@@ -163,15 +163,15 @@ class AdminService:
             if not user:
                 return None, "用户不存在"
 
+            # 用户列表中的“有效卡密”当前表示有效绑定关系，这里必须保持同一口径，
+            # 避免列表有数量但详情弹窗为空；卡密是否过期/禁用通过明细字段展示。
             user_cards = self.db.query(UserCard, Card, App).join(
                 Card, UserCard.card_id == Card.id
             ).join(
                 App, Card.app_id == App.id
             ).filter(
                 UserCard.user_id == user_id,
-                UserCard.status == "active",
-                Card.status != CardStatus.DISABLED,
-                Card.expire_time > now
+                UserCard.status == "active"
             ).order_by(UserCard.bind_time.desc()).all()
 
             if not user_cards:
@@ -408,6 +408,41 @@ class AdminService:
             self.db.rollback()
             logger.error(f"更新卡密状态失败: {e}")
             return False, f"更新卡密状态失败: {str(e)}"
+
+    def update_card_expire_time(
+        self,
+        card_id: int,
+        expire_time: datetime
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        更新卡密过期时间
+
+        Args:
+            card_id: 卡密ID
+            expire_time: 新的过期时间
+
+        Returns:
+            (是否成功, 错误信息)
+        """
+        try:
+            card = self.db.query(Card).filter(Card.id == card_id).first()
+            if not card:
+                return False, "卡密不存在"
+
+            old_expire_time = card.expire_time
+            card.expire_time = expire_time
+            self.db.commit()
+
+            logger.info(
+                f"更新卡密过期时间成功: card_id={card_id}, "
+                f"old_expire_time={old_expire_time}, new_expire_time={expire_time}"
+            )
+            return True, None
+
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"更新卡密过期时间失败: card_id={card_id}, error={e}")
+            return False, f"更新卡密过期时间失败: {str(e)}"
     
     def update_card_permissions(
         self,

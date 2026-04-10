@@ -113,6 +113,9 @@ class PermissionService:
             logger.warning(f"权限校验失败: 用户未绑定卡密 (user_id={user_id}, username={user.username})")
             return False, "未绑定卡密", None
         
+        has_available_card_after_expire_check = False
+        has_expired_card = False
+
         # 遍历用户的所有卡密，寻找有效的卡密
         for user_card, card in user_cards:
             # 步骤 4: 验证卡密状态
@@ -122,8 +125,11 @@ class PermissionService:
             
             # 步骤 5: 验证卡密是否过期
             if card.expire_time < datetime.now():
+                has_expired_card = True
                 logger.debug(f"跳过已过期的卡密: card_id={card.id}, expire_time={card.expire_time}")
                 continue
+
+            has_available_card_after_expire_check = True
             
             # 步骤 6: 验证设备绑定
             device_binding = self.db.query(CardDevice).filter(
@@ -205,6 +211,13 @@ class PermissionService:
             
             return True, "权限验证通过", card.expire_time
         
+        if has_expired_card and not has_available_card_after_expire_check:
+            logger.warning(
+                f"权限校验失败: 用户绑定的卡密已过期 "
+                f"(user_id={user_id}, device_id={device_id}, permission={permission})"
+            )
+            return False, "卡密已过期，请重新绑定卡密", None
+
         # 如果所有卡密都不满足条件
         logger.warning(
             f"权限校验失败: 没有有效的卡密满足条件 "

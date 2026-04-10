@@ -120,3 +120,37 @@ class TestCardService:
         # 验证绑定成功
         assert error is None
         assert result is not None
+
+    def test_get_user_cards_returns_is_expired_flag(self, db_session, test_user, test_app):
+        """测试查询我的卡密时返回动态过期标记且不改原状态"""
+        from app.services.card_service import CardService
+        from app.models.card import Card, CardStatus
+        from app.models.user_card import UserCard, UserCardStatus
+
+        expired_card = Card(
+            app_id=test_app.id,
+            card_key="EXPD-CARD-KEY1-2345",
+            status=CardStatus.USED,
+            expire_time=datetime.now() - timedelta(days=1),
+            max_device_count=1,
+            permissions=["test_permission"]
+        )
+        db_session.add(expired_card)
+        db_session.commit()
+        db_session.refresh(expired_card)
+
+        user_card = UserCard(
+            user_id=test_user.id,
+            card_id=expired_card.id,
+            bind_time=datetime.now() - timedelta(days=2),
+            status=UserCardStatus.ACTIVE
+        )
+        db_session.add(user_card)
+        db_session.commit()
+
+        card_service = CardService(db_session)
+        cards = card_service.get_user_cards(test_user.id)
+
+        assert len(cards) == 1
+        assert cards[0]["status"] == CardStatus.USED.value
+        assert cards[0]["is_expired"] is True

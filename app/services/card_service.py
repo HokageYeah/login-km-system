@@ -19,6 +19,11 @@ class CardService:
     
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _is_card_expired(card: Card) -> bool:
+        """按过期时间动态判断卡密是否已过期，不写回数据库状态。"""
+        return bool(card.expire_time and card.expire_time < datetime.now())
     
     def get_user_cards(self, user_id: int) -> List[dict]:
         """
@@ -61,6 +66,7 @@ class CardService:
                 "app_status": app.status,
                 "app_created_at": app.created_at,
                 "expire_time": card.expire_time,
+                "is_expired": self._is_card_expired(card),
                 "permissions": card.permissions,
                 "bind_devices": device_count,
                 "max_device_count": card.max_device_count,
@@ -105,7 +111,7 @@ class CardService:
             return None, "卡密已被禁用"
         
         # 4. 验证卡密是否过期
-        if card.expire_time < datetime.now():
+        if self._is_card_expired(card):
             return None, "卡密已过期"
         
         # 5. 检查用户是否已绑定该卡密
@@ -339,7 +345,7 @@ class CardService:
                 continue
             
             # 检查是否过期
-            if card.expire_time < datetime.now():
+            if self._is_card_expired(card):
                 continue
             
             # 检查设备是否绑定

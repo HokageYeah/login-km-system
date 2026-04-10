@@ -3,7 +3,6 @@
 提供功能权限的增删改查以及卡密权限关联管理
 """
 from typing import List, Tuple, Optional, Dict
-import json
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from loguru import logger
@@ -201,9 +200,7 @@ class FeaturePermissionService:
         size: int = 20,
         category: Optional[str] = None,
         status: Optional[str] = None,
-        keyword: Optional[str] = None,
-        card_id: Optional[int] = None,
-        card_key: Optional[str] = None
+        keyword: Optional[str] = None
     ) -> Tuple[List[FeaturePermission], int, Optional[str]]:
         """
         查询功能权限列表
@@ -214,23 +211,12 @@ class FeaturePermissionService:
             category: 分类筛选
             status: 状态筛选
             keyword: 关键词搜索（权限标识、权限名称）
-            card_id: 卡密ID筛选
-            card_key: 卡密字符串筛选
             
         Returns:
             (功能权限列表, 总数, 错误信息)
         """
         try:
             query = self.db.query(FeaturePermission)
-
-            target_card: Optional[Card] = None
-            if card_id is not None:
-                target_card = self.db.query(Card).filter(Card.id == card_id).first()
-            elif card_key:
-                target_card = self.db.query(Card).filter(Card.card_key == card_key).first()
-
-            if (card_id is not None or card_key) and not target_card:
-                return [], 0, "卡密不存在"
             
             # 分类筛选
             if category:
@@ -246,25 +232,6 @@ class FeaturePermissionService:
                     FeaturePermission.permission_key.like(f"%{keyword}%"),
                     FeaturePermission.permission_name.like(f"%{keyword}%")
                 ))
-
-            if target_card:
-                permission_keys = target_card.permissions or []
-                if isinstance(permission_keys, dict):
-                    permission_keys = [key for key, enabled in permission_keys.items() if enabled]
-                if isinstance(permission_keys, str):
-                    try:
-                        parsed_permissions = json.loads(permission_keys)
-                        if isinstance(parsed_permissions, dict):
-                            permission_keys = [key for key, enabled in parsed_permissions.items() if enabled]
-                        elif isinstance(parsed_permissions, list):
-                            permission_keys = parsed_permissions
-                        else:
-                            permission_keys = []
-                    except Exception:
-                        permission_keys = []
-                if not permission_keys:
-                    return [], 0, None
-                query = query.filter(FeaturePermission.permission_key.in_(permission_keys))
             
             # 获取总数
             total = query.count()

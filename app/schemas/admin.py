@@ -68,6 +68,11 @@ class UpdateCardStatusRequest(BaseModel):
     status: str = Field(..., description="卡密状态: unused-未使用, used-已使用, disabled-禁用")
 
 
+class UpdateCardExpireTimeRequest(BaseModel):
+    """更新卡密过期时间请求"""
+    expire_time: datetime = Field(..., description="新的过期时间")
+
+
 class UpdateCardPermissionsRequest(BaseModel):
     """更新卡密权限请求"""
     permissions: Union[List[str], Dict] = Field(..., description="权限配置")

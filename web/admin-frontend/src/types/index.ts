@@ -93,6 +93,7 @@ export interface Card {
   max_device_count: number      // 最大可绑定设备数
   permissions: string[]         // 权限列表
   bind_devices?: number         // 已绑定设备数（可选）
+  bind_device_count?: number    // 当前绑定设备数（管理员列表）
   bind_user_count?: number      // 已绑定用户数（可选）
   related_usernames?: string[]  // 关联用户名列表（管理员卡密列表）
   remark?: string               // 备注信息（可选）
