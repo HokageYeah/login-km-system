@@ -69,16 +69,20 @@ class Database:
 # 创建全局数据库实例
 database = Database()
 
-# 获取数据库会话的依赖函数
-def get_sqlalchemy_db() -> Generator[Session, None, None]:
-    """获取数据库会话"""
-    db = next(database.get_session())
+# 获取数据库会话的工具函数
+def get_sqlalchemy_db() -> Session:
+    """
+    获取数据库会话。
+
+    注意：该函数主要给脚本或手动调用场景使用，调用方必须自行 close。
+    FastAPI 接口依赖应使用 app.utils.dependencies.get_db 的 yield 版本，
+    由框架在请求结束后统一释放连接。
+    """
+    if not database._session_factory:
+        raise RuntimeError("sqlalchemy数据库未初始化，请先调用 connect()")
+
     try:
-        return db
+        return database._session_factory()
     except Exception as e:
-        db.close()
         logging.error(f"获取数据库会话失败: {e}")
         raise
-    finally:
-        print('数据库会话关闭')
-        db.close()
