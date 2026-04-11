@@ -283,6 +283,41 @@ class TestPermissionService:
         assert has_permission is True
         assert permissions == ["wechatpublic", "ximalaya"]
 
+    def test_get_user_permissions_returns_check_permission_message_for_unbound_card(
+        self,
+        db_session,
+        test_user,
+        test_app
+    ):
+        """测试查询当前卡密权限时，失败原因直接复用 check_permission 的统一文案"""
+        from app.services.permission_service import PermissionService
+        from app.models.card import Card, CardStatus
+
+        card = Card(
+            app_id=test_app.id,
+            card_key="TEST-UNBOUND-CARD-1234",
+            status=CardStatus.USED,
+            expire_time=datetime.now() + timedelta(days=30),
+            max_device_count=2,
+            permissions=["wechat"]
+        )
+        db_session.add(card)
+        db_session.commit()
+        db_session.refresh(card)
+
+        permission_service = PermissionService(db_session)
+
+        has_permission, permissions, expire_time, message = permission_service.get_user_permissions_with_message(
+            user_id=test_user.id,
+            device_id="test_device_001",
+            card_id=card.id
+        )
+
+        assert has_permission is False
+        assert permissions == []
+        assert expire_time is None
+        assert message == "当前用户未绑定指定卡密"
+
 
 class TestPermissionAPI:
     """权限API测试"""

@@ -5,13 +5,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
 
 from app.utils.dependencies import get_db, get_current_user
-from app.services.permission_service import (
-    CURRENT_CARD_PERMISSION_DENIED_MESSAGE,
-    PermissionService
-)
+from app.services.permission_service import PermissionService
 from app.schemas.permission import (
     PermissionCheckRequest,
     PermissionCheckResponse,
@@ -205,7 +201,7 @@ async def get_my_permissions(
         )
     
     # 获取用户权限
-    has_permission, permissions, expire_time = permission_service.get_user_permissions(
+    has_permission, permissions, expire_time, message = permission_service.get_user_permissions_with_message(
         user_id=current_user["user_id"],
         device_id=device,
         card_id=card_id
@@ -213,12 +209,12 @@ async def get_my_permissions(
 
     if card_id is not None and not has_permission:
         logger.warning(
-            f"查询当前卡密权限失败: 当前卡密没有可用系统权限 "
-            f"(user={current_user['username']}, device={device}, card_id={card_id})"
+            f"查询当前卡密权限失败: "
+            f"(user={current_user['username']}, device={device}, card_id={card_id}, reason={message})"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=CURRENT_CARD_PERMISSION_DENIED_MESSAGE
+            detail=message
         )
     
     logger.info(

@@ -34,12 +34,12 @@ class PermissionService:
         """
         return user.role == UserRole.ADMIN
 
-    def _get_admin_permissions(self) -> list:
+    def _get_normal_permission_keys(self) -> list:
         """
-        获取管理员可见的全部权限标识
+        获取系统内已启用的权限标识列表。
 
-        管理员天然拥有全部权限，因此这里优先返回权限元数据表中的正常权限，
-        让“查询我的权限”与实际的权限校验结果保持一致。
+        权限查询、管理员默认权限、无候选权限时的兜底探测，都应基于同一份权限元数据，
+        避免不同入口各自拼接权限集合导致裁决口径不一致。
         """
         permissions = self.db.query(FeaturePermission).filter(
             FeaturePermission.status == FeaturePermissionStatus.NORMAL.value
@@ -49,6 +49,15 @@ class PermissionService:
         ).all()
 
         return [item.permission_key for item in permissions]
+
+    def _get_admin_permissions(self) -> list:
+        """
+        获取管理员可见的全部权限标识
+
+        管理员天然拥有全部权限，因此这里优先返回权限元数据表中的正常权限，
+        让“查询我的权限”与实际的权限校验结果保持一致。
+        """
+        return self._get_normal_permission_keys()
 
     def _get_user_cards(self, user_id: int, card_id: Optional[int] = None):
         """
@@ -151,13 +160,32 @@ class PermissionService:
             f"type={type(card_permissions)}"
         )
         return []
+
+    def _get_configured_permission_keys(
+        self,
+        user_id: int,
+        card_id: Optional[int] = None
+    ) -> list:
+        """
+        获取当前裁决范围内配置过的权限候选集。
+
+        “查询我的权限”不应自己重复实现卡密、设备、过期等判断，
+        这里只负责提取候选 permission_key，实际准入仍统一交给 check_permission。
+        """
+        permission_keys = set()
+
+        for _, card in self._get_user_cards(user_id=user_id, card_id=card_id):
+            permission_keys.update(self._extract_permission_keys(card))
+
+        return sorted(permission_keys)
     
     def check_permission(
         self,
         user_id: int,
         device_id: str,
         permission: str,
-        card_id: Optional[int] = None
+        card_id: Optional[int] = None,
+        touch_last_active: bool = True
     ) -> Tuple[bool, str, Optional[datetime]]:
         """
         检查用户在指定设备上是否有指定权限
@@ -178,6 +206,7 @@ class PermissionService:
             device_id: 设备ID
             permission: 权限标识（如 "wechat", "ximalaya"）
             card_id: 当前使用的卡密ID；不传时按用户和设备兜底查询
+            touch_last_active: 是否更新设备最后活跃时间
             
         Returns:
             (是否允许, 提示信息, 卡密过期时间)
@@ -230,6 +259,10 @@ class PermissionService:
             if card.status == CardStatus.DISABLED:
                 logger.debug(f"跳过禁用的卡密: card_id={card.id}")
                 continue
+
+            print(f'卡密过期时间：{card.expire_time}')
+            print(f'当前时间：{datetime.now()}')
+            print(f'是否过期：{card.expire_time < datetime.now()}')
             
             # 步骤 5: 验证卡密是否过期
             if card.expire_time < datetime.now():
@@ -277,8 +310,9 @@ class PermissionService:
             # 如果执行到这里，说明所有验证都通过了
             
             # 步骤 9: 更新设备最后活跃时间
-            device_binding.last_active_at = datetime.now()
-            self.db.commit()
+            if touch_last_active:
+                device_binding.last_active_at = datetime.now()
+                self.db.commit()
             
             logger.info(
                 f"权限校验通过: user_id={user_id}, username={user.username}, "
@@ -293,7 +327,7 @@ class PermissionService:
                 f"权限校验失败: 用户绑定的卡密已过期 "
                 f"(user_id={user_id}, device_id={device_id}, permission={permission})"
             )
-            return False, "卡密已过期，请重新绑定卡密", None
+            return False, "卡密已过期，请绑定新卡密", None
 
         # 如果所有卡密都不满足条件
         logger.warning(
@@ -344,32 +378,39 @@ class PermissionService:
         
         return results
     
-    def get_user_permissions(
+    def get_user_permissions_with_message(
         self,
         user_id: int,
         device_id: str,
         card_id: Optional[int] = None
-    ) -> Tuple[bool, list, Optional[datetime]]:
+    ) -> Tuple[bool, list, Optional[datetime], str]:
         """
-        获取用户在指定设备上的所有权限
-        
+        获取用户在指定设备上的所有权限，并返回统一校验链上的提示信息。
+
         Args:
             user_id: 用户ID
             device_id: 设备ID
             card_id: 当前使用的卡密ID；不传时按用户和设备兜底查询
             
         Returns:
-            (是否有效, 权限列表, 过期时间)
+            (是否有效, 权限列表, 过期时间, 提示信息)
             
         Example:
             >>> valid, permissions, expire_time = permission_service.get_user_permissions(1, "device-001")
             >>> if valid:
             >>>     print(f"用户拥有的权限: {permissions}")
         """
-        # 查询用户状态
         user = self.db.query(User).filter(User.id == user_id).first()
-        if not user or user.status == UserStatus.BANNED:
-            return False, [], None
+        if not user:
+            logger.warning(f"获取用户权限失败: 用户不存在 (user_id={user_id})")
+            return False, [], None, "用户不存在"
+
+        if user.status == UserStatus.BANNED:
+            logger.warning(
+                f"获取用户权限失败: 用户已被封禁 "
+                f"(user_id={user_id}, username={user.username})"
+            )
+            return False, [], None, "用户已被封禁"
 
         if self._is_admin_user(user):
             admin_permissions = self._get_admin_permissions()
@@ -377,56 +418,70 @@ class PermissionService:
                 f"获取管理员权限: user_id={user_id}, username={user.username}, "
                 f"permissions={admin_permissions}"
             )
-            return True, admin_permissions, None
+            return True, admin_permissions, None, "管理员默认拥有全部权限"
 
-        # 查询用户绑定的卡密。传入 card_id 时只返回当前卡密权限；未传则保留旧兜底逻辑。
-        user_cards = self._get_user_cards(user_id=user_id, card_id=card_id)
-        logger.info(f"用户绑定的卡密: {user_cards}")
-        all_permissions = set()
+        permission_candidates = self._get_configured_permission_keys(
+            user_id=user_id,
+            card_id=card_id
+        )
+        all_permissions = []
         expire_time = None
-        
-        for user_card, card in user_cards:
-            logger.info(f"处理卡密: card_id={card.id}, status={card.status}, expire_time={card.expire_time}")
-            
-            # 验证卡密有效性
-            if card.status == CardStatus.DISABLED:
-                logger.info(f"卡密已禁用: card_id={card.id}")
+        failure_message = "没有有效的卡密或权限配置不匹配"
+
+        if not permission_candidates:
+            permission_candidates = self._get_normal_permission_keys()[:1] or ["__permission_probe__"]
+
+        for permission in permission_candidates:
+            allowed, message, current_expire_time = self.check_permission(
+                user_id=user_id,
+                device_id=device_id,
+                permission=permission,
+                card_id=card_id,
+                touch_last_active=False
+            )
+
+            if allowed:
+                all_permissions.append(permission)
+                if expire_time is None or (
+                    current_expire_time is not None and current_expire_time > expire_time
+                ):
+                    expire_time = current_expire_time
                 continue
-            
-            if card.expire_time < datetime.now():
-                logger.info(f"卡密已过期: card_id={card.id}, expire_time={card.expire_time}")
-                continue
-            
-            # 验证设备绑定
-            device_binding = self.db.query(CardDevice).filter(
-                and_(
-                    CardDevice.card_id == card.id,
-                    CardDevice.device_id == device_id,
-                    CardDevice.status == CardDeviceStatus.ACTIVE
-                )
-            ).first()
-            
-            logger.info(f"设备绑定: device_binding={device_binding}")
-            
-            if not device_binding:
-                logger.info(f"未找到设备绑定: card_id={card.id}, device_id={device_id}")
-                continue
-            
-            # 收集权限
-            all_permissions.update(self._extract_permission_keys(card))
-            
-            # 记录最晚的过期时间
-            if expire_time is None or card.expire_time > expire_time:
-                expire_time = card.expire_time
-        
-        permissions_list = sorted(list(all_permissions))
+
+            if failure_message == "没有有效的卡密或权限配置不匹配":
+                failure_message = message
+
+        permissions_list = sorted(all_permissions)
         
         logger.info(
             f"获取用户权限: user_id={user_id}, device_id={device_id}, "
-            f"card_id={card_id}, permissions={permissions_list}, expire_time={expire_time}"
+            f"card_id={card_id}, permissions={permissions_list}, "
+            f"expire_time={expire_time}, message={failure_message}"
         )
-        
-        return len(permissions_list) > 0, permissions_list, expire_time
+
+        if permissions_list:
+            return True, permissions_list, expire_time, "权限验证通过"
+
+        return False, [], None, failure_message
+
+    def get_user_permissions(
+        self,
+        user_id: int,
+        device_id: str,
+        card_id: Optional[int] = None
+    ) -> Tuple[bool, list, Optional[datetime]]:
+        """
+        获取用户在指定设备上的所有权限。
+
+        对外继续保持原有返回结构，避免影响现有调用方；
+        需要统一错误信息时，应使用 get_user_permissions_with_message。
+        """
+        has_permission, permissions, expire_time, _ = self.get_user_permissions_with_message(
+            user_id=user_id,
+            device_id=device_id,
+            card_id=card_id
+        )
+        return has_permission, permissions, expire_time
 
 
 def get_permission_service(db: Session) -> PermissionService:
