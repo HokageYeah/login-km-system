@@ -91,6 +91,14 @@
         </div>
         <div class="action-buttons">
           <el-button
+            type="primary"
+            plain
+            :icon="CopyDocument"
+            @click="handleBatchCopy"
+          >
+            批量复制
+          </el-button>
+          <el-button
             type="danger"
             :icon="Delete"
             @click="handleBatchDelete"
@@ -682,16 +690,43 @@ const formatDateTimeValue = (date: Date) => {
 }
 
 /**
- * 复制卡密
- * @param cardKey 卡密字符串
+ * 复制文本到剪贴板
+ * @description 统一收敛复制行为，避免单个复制、批量复制各自维护提示逻辑。
+ * @param text 待复制文本
+ * @param successMessage 复制成功提示语
  */
-const copyCardKey = async (cardKey: string) => {
+const copyTextToClipboard = async (text: string, successMessage: string) => {
   try {
-    await navigator.clipboard.writeText(cardKey)
-    ElMessage.success('卡密已复制到剪贴板')
+    await navigator.clipboard.writeText(text)
+    ElMessage.success(successMessage)
   } catch (error) {
     ElMessage.error('复制失败，请手动复制')
   }
+}
+
+/**
+ * 复制单个卡密
+ * @param cardKey 卡密字符串
+ */
+const copyCardKey = async (cardKey: string) => {
+  await copyTextToClipboard(cardKey, '卡密已复制到剪贴板')
+}
+
+/**
+ * 处理批量复制
+ * @description 选中的卡密按换行拼接，便于直接粘贴到文本框、表格或消息中。
+ */
+const handleBatchCopy = async () => {
+  const cardKeys = selectedCards.value
+    .map(card => card.card_key)
+    .filter((cardKey): cardKey is string => Boolean(cardKey))
+
+  if (cardKeys.length === 0) {
+    ElMessage.warning('请先选择要复制的卡密')
+    return
+  }
+
+  await copyTextToClipboard(cardKeys.join('\n'), `已复制 ${cardKeys.length} 个卡密`)
 }
 
 /**
