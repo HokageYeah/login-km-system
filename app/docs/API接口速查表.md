@@ -79,6 +79,17 @@
 | GET | `/api/v1/admin/devices` | 查询设备列表（支持 `card_key`、`username`，兼容 `card_id`、`user_id`） | 🔑 管理员 |
 | PUT | `/api/v1/admin/device/{device_id}/status` | 禁用/启用设备 | 🔑 管理员 |
 
+### 功能权限管理
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/admin/feature-permissions/list` | 查询功能权限列表 | 🔑 管理员 |
+| GET | `/api/v1/admin/feature-permissions/categories` | 查询功能权限分类 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/export` | 导出当前勾选权限的快照文件 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/import` | 导入权限快照文件并按 `permission_key` 写入数据库 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/create` | 创建功能权限 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/update/{permission_id}` | 更新功能权限 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/delete/{permission_id}` | 删除功能权限 | 🔑 管理员 |
+
 ---
 
 ## 📖 图例说明

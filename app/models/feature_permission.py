@@ -19,7 +19,8 @@ class FeaturePermission(Base):
     """
     __tablename__ = "feature_permissions"
 
-    id = Column(Integer, primary_key=True, index=True, comment="功能权限ID")
+    # 明确声明自增，避免迁移或不同数据库方言推断不一致时把主键建成非自增列。
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True, comment="功能权限ID")
     permission_key = Column(String(100), unique=True, nullable=False, index=True, comment="权限标识（如：wechat, ximalaya）")
     permission_name = Column(String(100), nullable=False, comment="权限名称（如：微信抓取、喜马拉雅播放）")
     description = Column(String(500), nullable=True, comment="权限描述")

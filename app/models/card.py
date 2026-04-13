@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 
 from app.db.sqlalchemy_db import Base
+from app.models.enum_helper import build_value_enum
 
 
 class CardStatus(str, enum.Enum):
@@ -21,7 +22,7 @@ class Card(Base):
     app_id = Column(Integer, ForeignKey("apps.id"), nullable=False, index=True, comment="所属应用ID")
     card_key = Column(String(100), unique=True, index=True, nullable=False, comment="卡密字符串")
     status = Column(
-        SQLEnum(CardStatus),
+        build_value_enum(CardStatus, "cardstatus"),
         default=CardStatus.UNUSED,
         nullable=False,
         comment="卡密状态: unused-未使用, used-已使用, disabled-禁用"

@@ -8,6 +8,23 @@
       </div>
       <div class="header-actions">
         <el-button
+          :icon="Download"
+          :loading="exportLoading"
+          :disabled="selectedPermissionKeys.length === 0"
+          @click="handleExport"
+          class="export-btn"
+        >
+          导出选中权限
+        </el-button>
+        <el-button
+          :icon="Upload"
+          :loading="importLoading"
+          @click="triggerImport"
+          class="import-btn"
+        >
+          导入权限文件
+        </el-button>
+        <el-button
           type="primary"
           :icon="Plus"
           @click="handleCreate"
@@ -68,9 +85,17 @@
       <el-table
         v-loading="loading"
         :data="permissions"
+        row-key="permission_key"
         stripe
         class="permission-table"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column
+          type="selection"
+          width="56"
+          align="center"
+          reserve-selection
+        />
         <el-table-column prop="permission_key" label="权限标识" min-width="150">
           <template #default="{ row }">
             <el-tag type="primary" size="small" class="permission-tag">
@@ -272,6 +297,7 @@
         </el-button>
       </template>
     </el-dialog>
+
   </div>
 </template>
 
@@ -281,12 +307,18 @@
  * @description 管理系统中的功能权限，支持增删改查
  */
 import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules
+} from 'element-plus'
 import {
   Plus,
   Search,
   Refresh,
   QuestionFilled,
+  Upload,
   ChatDotRound,
   Document,
   VideoPlay,
@@ -301,7 +333,9 @@ import {
   getPermissionCategories,
   createFeaturePermission,
   updateFeaturePermission,
-  deleteFeaturePermission
+  deleteFeaturePermission,
+  exportFeaturePermissions,
+  importFeaturePermissions
 } from '@/api/feature-permission'
 import type { FeaturePermission } from '@/types'
 
@@ -323,8 +357,11 @@ const iconOptions = [
  * 状态定义
  */
 const loading = ref(false)
+const exportLoading = ref(false)
+const importLoading = ref(false)
 const permissions = ref<FeaturePermission[]>([])
 const categories = ref<string[]>([])
+const selectedPermissionKeys = ref<string[]>([])
 
 /**
  * 分页参数
@@ -352,6 +389,7 @@ const dialogTitle = ref('创建功能权限')
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
+const currentEditPermissionId = ref<number | null>(null)
 
 /**
  * 表单数据
@@ -403,16 +441,18 @@ const formRules: FormRules = {
 const loadPermissions = async () => {
   loading.value = true
   try {
-    const response = await getFeaturePermissionList({
+    const data = await getFeaturePermissionList({
       page: pagination.value.page,
       size: pagination.value.size,
       category: filters.value.category || undefined,
       status: filters.value.status || undefined,
       keyword: filters.value.keyword || undefined
     })
-    const data = response.data || response
     permissions.value = data.permissions || []
     pagination.value.total = data.total
+    selectedPermissionKeys.value = selectedPermissionKeys.value.filter((permissionKey) =>
+      permissions.value.some((permission) => permission.permission_key === permissionKey)
+    )
   } catch (error: any) {
     ElMessage.error(error.response?.data?.detail || '加载权限列表失败')
   } finally {
@@ -425,8 +465,7 @@ const loadPermissions = async () => {
  */
 const loadCategories = async () => {
   try {
-    const response = await getPermissionCategories()
-    const data = response.data || response
+    const data = await getPermissionCategories()
     categories.value = data.categories || []
   } catch (error: any) {
     console.error('加载分类失败:', error)
@@ -457,6 +496,14 @@ const handleRefresh = () => {
 }
 
 /**
+ * 处理表格勾选变化
+ * @description 导出能力以勾选项为准，因此统一维护当前页面已选权限标识。
+ */
+const handleSelectionChange = (selectedRows: FeaturePermission[]) => {
+  selectedPermissionKeys.value = selectedRows.map((row) => row.permission_key)
+}
+
+/**
  * 分页大小改变
  */
 const handleSizeChange = (size: number) => {
@@ -478,6 +525,7 @@ const handlePageChange = (page: number) => {
 const handleCreate = () => {
   dialogTitle.value = '创建功能权限'
   isEdit.value = false
+  currentEditPermissionId.value = null
   formData.value = {
     permission_key: '',
     permission_name: '',
@@ -496,6 +544,7 @@ const handleCreate = () => {
 const handleEdit = (permission: FeaturePermission) => {
   dialogTitle.value = '编辑功能权限'
   isEdit.value = true
+  currentEditPermissionId.value = permission.id
   formData.value = {
     permission_key: permission.permission_key,
     permission_name: permission.permission_name,
@@ -545,14 +594,13 @@ const handleSubmit = async () => {
     submitLoading.value = true
     try {
       if (isEdit.value) {
-        // 编辑：需要找到当前编辑的权限ID
-        const currentPermission = permissions.value.find(
-          p => p.permission_key === formData.value.permission_key
-        )
-        if (currentPermission) {
-          await updateFeaturePermission(currentPermission.id, formData.value)
-          ElMessage.success('更新成功')
+        if (!currentEditPermissionId.value) {
+          ElMessage.error('未找到当前编辑的权限记录')
+          return
         }
+
+        await updateFeaturePermission(currentEditPermissionId.value, formData.value)
+        ElMessage.success('更新成功')
       } else {
         // 创建
         await createFeaturePermission(formData.value)
@@ -567,6 +615,103 @@ const handleSubmit = async () => {
       submitLoading.value = false
     }
   })
+}
+
+/**
+ * 构建导出文件名
+ * @description 浏览器侧兜底生成文件名，避免部分浏览器拿不到响应头时无法命名文件。
+ */
+const buildExportFilename = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `feature_permissions_${year}${month}${day}_${hours}${minutes}${seconds}.json`
+}
+
+/**
+ * 下载导出文件
+ */
+const downloadBlobFile = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * 导出勾选权限
+ * @description 仅导出用户明确勾选的权限，避免分页或筛选造成误导出。
+ */
+const handleExport = async () => {
+  if (selectedPermissionKeys.value.length === 0) {
+    ElMessage.warning('请先勾选要导出的权限')
+    return
+  }
+
+  exportLoading.value = true
+  try {
+    const blob = await exportFeaturePermissions(selectedPermissionKeys.value)
+
+    downloadBlobFile(blob, buildExportFilename())
+    ElMessage.success(`导出成功，共导出 ${selectedPermissionKeys.value.length} 条权限`)
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '导出权限失败')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+/**
+ * 触发导入文件选择
+ * @description 直接在用户点击事件里动态创建 input，兼容性比隐藏 input 和组件代理更稳定。
+ */
+const triggerImport = () => {
+  if (importLoading.value) {
+    return
+  }
+
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = '.json,application/json'
+
+  fileInput.onchange = async () => {
+    const selectedFile = fileInput.files?.[0]
+    if (!selectedFile) {
+      return
+    }
+
+    await importPermissionFile(selectedFile)
+  }
+
+  fileInput.click()
+}
+
+/**
+ * 导入权限文件
+ */
+const importPermissionFile = async (selectedFile: File) => {
+  importLoading.value = true
+  try {
+    const result = await importFeaturePermissions(selectedFile)
+    ElMessage.success(
+      `导入成功，共处理 ${result.total_count} 条，新增 ${result.created_count} 条，更新 ${result.updated_count} 条`
+    )
+    pagination.value.page = 1
+    await loadPermissions()
+    await loadCategories()
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '导入权限失败')
+  } finally {
+    importLoading.value = false
+  }
 }
 
 /**
@@ -622,6 +767,16 @@ onMounted(() => {
 
 .header-actions {
   @apply flex gap-4;
+}
+
+.export-btn {
+  @apply px-5 py-2.5 rounded-xl border border-blue-100;
+  @apply bg-white text-blue-600 font-medium;
+}
+
+.import-btn {
+  @apply px-5 py-2.5 rounded-xl border border-emerald-100;
+  @apply bg-emerald-50 text-emerald-700 font-medium;
 }
 
 .create-btn {

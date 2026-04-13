@@ -404,8 +404,7 @@ const loadUserInfo = async () => {
 const loadCards = async () => {
   cardsLoading.value = true
   try {
-    const response = await getMyCards()
-    const data = response.data || response
+    const data = await getMyCards()
     cards.value = data.cards || []
     // 假设不存在 setHasCard 方法,直接访问 hasCard 状态
     // userStore.setHasCard(data.has_card)
@@ -454,8 +453,7 @@ const loadDevices = async () => {
   if (!currentCard.value) return
   deviceDialogLoading.value = true
   try {
-    const response = await getCardDetail(currentCard.value.card_id)
-    const data = response.data || response
+    const data = await getCardDetail(currentCard.value.card_id)
     devices.value = data.devices || []
   } catch (error) {
     ElMessage.error('加载设备列表失败')

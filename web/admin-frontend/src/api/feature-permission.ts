@@ -26,6 +26,20 @@ export const getFeaturePermissionList = (params: {
 }
 
 /**
+ * 导出功能权限
+ * @description 按当前勾选的权限标识导出权限快照文件
+ * @param permissionKeys 要导出的权限标识列表
+ * @returns Promise 返回导出的二进制文件
+ */
+export const exportFeaturePermissions = (permissionKeys: string[]) => {
+  return request.post<Blob>('/admin/feature-permissions/export', {
+    permission_keys: permissionKeys
+  }, {
+    responseType: 'blob'
+  })
+}
+
+/**
  * 查询权限分类列表
  * @description 查询所有权限分类（需要管理员权限）
  * @returns Promise 返回分类列表
@@ -98,6 +112,29 @@ export const updateFeaturePermission = (
  */
 export const deleteFeaturePermission = (permissionId: number) => {
   return request.post<SuccessResponse>(`/admin/feature-permissions/delete/${permissionId}`)
+}
+
+/**
+ * 导入功能权限
+ * @description 导入此前导出的权限快照文件，并写入数据库
+ * @param file 需要导入的 JSON 文件
+ * @returns Promise 返回导入统计结果
+ */
+export const importFeaturePermissions = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return request.post<{
+    success: boolean
+    message: string
+    total_count: number
+    created_count: number
+    updated_count: number
+  }>('/admin/feature-permissions/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
 }
 
 /**

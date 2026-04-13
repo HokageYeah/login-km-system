@@ -2,8 +2,12 @@
 功能权限管理相关API接口
 提供功能权限的增删改查以及卡密权限关联管理（需要管理员权限）
 """
+import json
+from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status as http_status, Query, UploadFile, File
+from fastapi.responses import Response
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.utils.dependencies import get_db, get_current_admin
@@ -19,12 +23,20 @@ from app.schemas.feature_permission import (
     UpdateFeaturePermissionsRequest,
     UpdateCardFeaturePermissionsResponse,
     GetCardFeaturePermissionsResponse,
-    PermissionCategoryResponse
+    PermissionCategoryResponse,
+    FeaturePermissionExportPayload,
+    FeaturePermissionImportResponse,
+    FeaturePermissionExportRequest,
 )
 from app.core.logging_uru import logger
 from app.schemas.common_data import ApiResponseData
 
 router = APIRouter()
+
+
+def _build_feature_permission_export_filename() -> str:
+    """构造功能权限导出文件名"""
+    return f"feature_permissions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
 
 @router.get(
@@ -62,7 +74,7 @@ async def get_feature_permissions_list(
             f"管理员 {current_admin['username']} 查询功能权限列表失败: {error}"
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=error
         )
     
@@ -92,6 +104,57 @@ async def get_feature_permissions_list(
     ).model_dump(mode='json', exclude_none=True)
 
 
+@router.post(
+    "/export",
+    summary="导出功能权限",
+    description="按当前勾选的权限标识导出功能权限快照文件（需要管理员权限）"
+)
+async def export_feature_permissions(
+    request: FeaturePermissionExportRequest,
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    导出功能权限快照
+
+    说明：
+    - 导出内容由前端明确传入的勾选权限决定，避免导出范围受分页影响；
+    - 返回浏览器可直接下载的 JSON 文件，便于跨服务器迁移；
+    - 文件中保留 selected_permissions 标记，后续排查导入结果时能快速知道这是勾选导出。
+    """
+    feature_permission_service = FeaturePermissionService(db)
+    payload, error = feature_permission_service.build_permissions_export_payload(
+        permission_keys=request.permission_keys
+    )
+
+    if error:
+        logger.warning(
+            f"管理员 {current_admin['username']} 导出功能权限失败: "
+            f"permission_keys={request.permission_keys}, 原因: {error}"
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+
+    file_name = _build_feature_permission_export_filename()
+    file_content = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+
+    logger.info(
+        f"管理员 {current_admin['username']} 导出功能权限成功: "
+        f"file_name={file_name}, export_count={len(payload['permissions'])}, "
+        f"permission_keys={request.permission_keys}"
+    )
+
+    return Response(
+        content=file_content,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_name}"'
+        }
+    )
+
+
 @router.get(
     "/categories",
     response_model=ApiResponseData,
@@ -118,6 +181,106 @@ async def get_permission_categories(
     return PermissionCategoryResponse(
         total=len(categories),
         categories=categories
+    ).model_dump(mode='json', exclude_none=True)
+
+
+@router.post(
+    "/import",
+    response_model=ApiResponseData,
+    summary="导入功能权限",
+    description="导入此前导出的功能权限快照文件，并按 permission_key 写入数据库（需要管理员权限）"
+)
+async def import_feature_permissions(
+    file: UploadFile = File(..., description="导出的功能权限快照 JSON 文件"),
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    导入功能权限快照
+
+    处理流程：
+    1. 校验是否上传文件以及文件内容是否为空；
+    2. 解析 JSON 并校验导出文件结构；
+    3. 按 permission_key 执行幂等导入；
+    4. 返回新增/更新统计，前端据此刷新页面。
+    """
+    if not file.filename:
+        logger.warning(f"管理员 {current_admin['username']} 导入功能权限失败: 未提供文件名")
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="请选择要导入的权限文件"
+        )
+
+    feature_permission_service = FeaturePermissionService(db)
+
+    try:
+        file_bytes = await file.read()
+        if not file_bytes:
+            logger.warning(
+                f"管理员 {current_admin['username']} 导入功能权限失败: 文件为空, file_name={file.filename}"
+            )
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="导入文件不能为空"
+            )
+
+        logger.info(
+            f"管理员 {current_admin['username']} 开始导入功能权限: "
+            f"file_name={file.filename}, file_size={len(file_bytes)}"
+        )
+
+        raw_payload = json.loads(file_bytes.decode("utf-8"))
+        payload = FeaturePermissionExportPayload.model_validate(raw_payload)
+    except UnicodeDecodeError:
+        logger.warning(
+            f"管理员 {current_admin['username']} 导入功能权限失败: 文件编码不是 UTF-8, file_name={file.filename}"
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="导入文件编码无效，请使用 UTF-8 编码的 JSON 文件"
+        )
+    except json.JSONDecodeError as exc:
+        logger.warning(
+            f"管理员 {current_admin['username']} 导入功能权限失败: JSON 解析失败, "
+            f"file_name={file.filename}, error={exc}"
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="导入文件不是有效的 JSON 格式"
+        )
+    except ValidationError as exc:
+        logger.warning(
+            f"管理员 {current_admin['username']} 导入功能权限失败: 文件结构校验失败, "
+            f"file_name={file.filename}, error={exc}"
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="导入文件结构无效，请使用系统导出的权限文件"
+        )
+
+    summary, error = feature_permission_service.import_permissions_from_payload(payload)
+    if error:
+        logger.warning(
+            f"管理员 {current_admin['username']} 导入功能权限失败: "
+            f"file_name={file.filename}, 原因: {error}"
+        )
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+
+    logger.info(
+        f"管理员 {current_admin['username']} 导入功能权限成功: "
+        f"file_name={file.filename}, total={summary['total_count']}, "
+        f"created={summary['created_count']}, updated={summary['updated_count']}"
+    )
+
+    return FeaturePermissionImportResponse(
+        success=True,
+        message="功能权限导入成功",
+        total_count=summary["total_count"],
+        created_count=summary["created_count"],
+        updated_count=summary["updated_count"]
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -159,7 +322,7 @@ async def create_feature_permission(
             f"{request.permission_key}, 原因: {error}"
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=error
         )
     
@@ -222,7 +385,7 @@ async def update_feature_permission(
             f"ID {permission_id}, 原因: {error}"
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=error
         )
     
@@ -275,7 +438,7 @@ async def delete_feature_permission(
             f"ID {permission_id}, 原因: {error}"
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=error
         )
     
@@ -316,7 +479,7 @@ async def get_card_feature_permissions(
             f"卡密ID {card_id}, 原因: {error}"
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=error
         )
     
@@ -383,7 +546,7 @@ async def update_card_feature_permissions(
             f"卡密ID {card_id}, 原因: {error}"
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=error
         )
     

@@ -12,7 +12,7 @@ def get_database_config():
     print(f"database_config.py---- ENV: {env}") # 系统环境变量
     print(f"database_config.py---- DB_NAME: {os.getenv('DB_NAME')}") 
     print(f"database_config.py---- settings.DB_NAME: {settings.DB_NAME}") 
-    print(f"database_config.py---- settings.DB_CHARSET: {settings.Config.env_file}") 
+    print(f"database_config.py---- settings.DB_CHARSET: {settings.DB_CHARSET}") 
     print("----------------------------------------")
     return {
         "driver": settings.DB_DRIVER,

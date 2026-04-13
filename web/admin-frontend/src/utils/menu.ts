@@ -21,7 +21,7 @@ export interface MenuItem {
  * @returns 符合当前用户权限的菜单列表
  */
 function generateMenusRecursive(
-  routes: RouteRecordRaw[],
+  routes: readonly RouteRecordRaw[],
   parentPath: string = ''
 ): MenuItem[] {
   const userStore = useUserStore()
@@ -89,7 +89,7 @@ function generateMenusRecursive(
  * @param routes 完整的路由配置数组
  * @returns 符合当前用户权限的菜单列表
  */
-export function generateMenus(routes: RouteRecordRaw[]): MenuItem[] {
+export function generateMenus(routes: readonly RouteRecordRaw[]): MenuItem[] {
   // 查找主应用布局（path 为 '/' 的路由）
   const mainAppRoute = routes.find(route => route.path === '/')
 
@@ -103,4 +103,3 @@ export function generateMenus(routes: RouteRecordRaw[]): MenuItem[] {
   // 从主应用布局的 children 中生成菜单
   return generateMenusRecursive(mainAppRoute.children, '')
 }
-

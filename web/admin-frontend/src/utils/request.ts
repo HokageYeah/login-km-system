@@ -1,4 +1,9 @@
-import axios, { type AxiosResponse, type AxiosError } from 'axios'
+import axios, {
+  type AxiosResponse,
+  type AxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig
+} from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import router from '@/router'
@@ -44,10 +49,21 @@ export class ApiError extends Error {
  * 创建 Axios 实例
  * @description 配置基础 URL 和超时时间
  */
+interface RequestInstance extends Omit<AxiosInstance, 'request' | 'get' | 'delete' | 'head' | 'options' | 'post' | 'put' | 'patch'> {
+  request<T = any>(config: AxiosRequestConfig): Promise<T>
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  head<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  options<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
+}
+
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,    // API 基础地址
   timeout: 10000                                  // 请求超时时间（10 秒）
-})
+}) as RequestInstance
 
 /**
  * 请求拦截器

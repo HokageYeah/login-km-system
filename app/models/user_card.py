@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, DateTime, Enum as SQLEnum, ForeignKey, Index
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 
 from app.db.sqlalchemy_db import Base
+from app.models.enum_helper import build_value_enum
 
 
 class UserCardStatus(str, enum.Enum):
@@ -21,7 +22,7 @@ class UserCard(Base):
     card_id = Column(Integer, ForeignKey("cards.id"), nullable=False, index=True, comment="卡密ID")
     bind_time = Column(DateTime, default=func.now(), nullable=False, comment="绑定时间")
     status = Column(
-        SQLEnum(UserCardStatus),
+        build_value_enum(UserCardStatus, "usercardstatus"),
         default=UserCardStatus.ACTIVE,
         nullable=False,
         comment="绑定状态: active-激活, unbind-解绑"

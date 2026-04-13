@@ -2,13 +2,19 @@
 功能权限服务层
 提供功能权限的增删改查以及卡密权限关联管理
 """
-from typing import List, Tuple, Optional, Dict
+from datetime import datetime
+from typing import List, Tuple, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from loguru import logger
 
 from app.models.feature_permission import FeaturePermission, FeaturePermissionStatus
 from app.models.card import Card
+from app.schemas.feature_permission import (
+    FeaturePermissionExportPayload,
+    FeaturePermissionExportFilter,
+    FeaturePermissionSnapshotItem,
+)
 
 
 class FeaturePermissionService:
@@ -275,6 +281,142 @@ class FeaturePermissionService:
         ).distinct().all()
         
         return [category[0] for category in categories if category[0]]
+
+    def build_permissions_export_payload(
+        self,
+        permission_keys: List[str]
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+        """
+        构建功能权限导出快照
+
+        设计说明：
+        - 导出统一基于前端勾选的 permission_key 列表，保证导出范围明确可控；
+        - 文件结构使用稳定的 schema_version，后续如果要扩展字段，可以做到向后兼容；
+        - 导出内容不包含数据库主键，避免不同服务器之间因自增 ID 不同导致导入污染。
+        """
+        if not permission_keys:
+            logger.warning("构建功能权限导出快照失败: 未提供任何权限标识")
+            return None, "请选择要导出的权限"
+
+        unique_permission_keys = list(dict.fromkeys(permission_keys))
+        permissions = self.db.query(FeaturePermission).filter(
+            FeaturePermission.permission_key.in_(unique_permission_keys)
+        ).order_by(
+            FeaturePermission.sort_order.asc(),
+            FeaturePermission.id.asc()
+        ).all()
+
+        found_keys = {permission.permission_key for permission in permissions}
+        missing_keys = [permission_key for permission_key in unique_permission_keys if permission_key not in found_keys]
+        if missing_keys:
+            missing_text = "、".join(missing_keys)
+            logger.warning(f"构建功能权限导出快照失败，存在无效权限标识: {missing_text}")
+            return None, f"以下权限不存在，无法导出: {missing_text}"
+
+        snapshot_items = [
+            FeaturePermissionSnapshotItem(
+                permission_key=permission.permission_key,
+                permission_name=permission.permission_name,
+                description=permission.description,
+                category=permission.category,
+                icon=permission.icon,
+                sort_order=permission.sort_order,
+                status=permission.status
+            )
+            for permission in permissions
+        ]
+
+        payload = FeaturePermissionExportPayload(
+            schema_version="feature_permissions.v1",
+            exported_at=datetime.now(),
+            total=len(snapshot_items),
+            filters=FeaturePermissionExportFilter(
+                page=1,
+                size=len(snapshot_items),
+                keyword="selected_permissions"
+            ),
+            permissions=snapshot_items
+        )
+
+        logger.info(
+            "构建功能权限导出快照成功: "
+            f"selected_count={len(unique_permission_keys)}, "
+            f"export_count={len(snapshot_items)}, permission_keys={unique_permission_keys}"
+        )
+        return payload.model_dump(mode="json", exclude_none=True), None
+
+    def import_permissions_from_payload(
+        self,
+        payload: FeaturePermissionExportPayload
+    ) -> Tuple[Optional[Dict[str, int]], Optional[str]]:
+        """
+        从导出快照导入功能权限
+
+        设计说明：
+        - 导入统一按 permission_key 做幂等同步，适合同步到其他服务器；
+        - 已存在的权限做更新，不存在的权限做创建，避免把“迁移权限列表”做成一次性脚本；
+        - 不主动删除目标库多余权限，避免导入一个筛选后的文件时误删线上配置。
+        """
+        try:
+            permission_items = payload.permissions
+            duplicate_keys = self._find_duplicate_permission_keys(permission_items)
+            if duplicate_keys:
+                duplicate_text = "、".join(sorted(duplicate_keys))
+                logger.warning(f"导入功能权限失败，文件内存在重复权限标识: {duplicate_text}")
+                return None, f"导入文件中存在重复的权限标识: {duplicate_text}"
+
+            created_count = 0
+            updated_count = 0
+
+            logger.info(
+                "开始导入功能权限快照: "
+                f"schema_version={payload.schema_version}, total_count={len(permission_items)}"
+            )
+
+            for item in permission_items:
+                existing_permission = self.db.query(FeaturePermission).filter(
+                    FeaturePermission.permission_key == item.permission_key
+                ).first()
+
+                if existing_permission:
+                    logger.info(f"导入命中已有权限，准备更新: permission_key={item.permission_key}")
+                    existing_permission.permission_name = item.permission_name
+                    existing_permission.description = item.description
+                    existing_permission.category = item.category
+                    existing_permission.icon = item.icon
+                    existing_permission.sort_order = item.sort_order
+                    existing_permission.status = item.status
+                    updated_count += 1
+                    continue
+
+                logger.info(f"导入命中新权限，准备创建: permission_key={item.permission_key}")
+                self.db.add(
+                    FeaturePermission(
+                        permission_key=item.permission_key,
+                        permission_name=item.permission_name,
+                        description=item.description,
+                        category=item.category,
+                        icon=item.icon,
+                        sort_order=item.sort_order,
+                        status=item.status
+                    )
+                )
+                created_count += 1
+
+            self.db.commit()
+
+            summary = {
+                "total_count": len(permission_items),
+                "created_count": created_count,
+                "updated_count": updated_count,
+            }
+            logger.info(f"导入功能权限快照成功: {summary}")
+            return summary, None
+
+        except Exception as e:
+            self.db.rollback()
+            logger.exception(f"导入功能权限快照失败，事务已回滚: {e}")
+            return None, f"导入功能权限失败: {str(e)}"
     
     def update_card_permissions(
         self,
@@ -319,6 +461,28 @@ class FeaturePermissionService:
             self.db.rollback()
             logger.error(f"更新卡密功能权限失败: {e}")
             return False, f"更新卡密功能权限失败: {str(e)}"
+
+    @staticmethod
+    def _find_duplicate_permission_keys(
+        permission_items: List[FeaturePermissionSnapshotItem]
+    ) -> List[str]:
+        """
+        检查导入文件中是否有重复 permission_key
+
+        为什么单独抽成公共方法：
+        - 重复标识不是接口层问题，而是导入业务的通用数据约束；
+        - 后续如果 CLI、脚本、后台批量任务复用同一导入逻辑，也能共享这层校验。
+        """
+        seen_keys = set()
+        duplicate_keys = set()
+
+        for item in permission_items:
+            if item.permission_key in seen_keys:
+                duplicate_keys.add(item.permission_key)
+                continue
+            seen_keys.add(item.permission_key)
+
+        return list(duplicate_keys)
     
     def get_card_permissions(
         self,
