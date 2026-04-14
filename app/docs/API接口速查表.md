@@ -40,8 +40,13 @@
 |------|------|------|--------|------|
 | GET | `/api/v1/app/list` | 查询应用列表 | - | 🔑 管理员 |
 | POST | `/api/v1/app/create` | 创建应用 | `{app_name, app_key?}` | 🔑 管理员 |
-| PUT | `/api/v1/app/{app_id}/status` | 更新应用状态 | `{status}` | 🔑 管理员 |
+| POST | `/api/v1/app/{app_id}/status` | 更新应用状态 | `{status}` | 🔑 管理员 |
 | GET | `/api/v1/app/{app_id}` | 查询应用详情 | - | 🔑 管理员 |
+
+补充说明：
+
+- `GET /api/v1/app/list` 现在除了应用基础字段，还会返回 `card_count`、`permission_count`
+- 管理后台可以直接用这两个统计值做应用维度导航，无需逐行追加统计请求
 
 ---
 
@@ -89,6 +94,13 @@
 | POST | `/api/v1/admin/feature-permissions/create` | 创建功能权限 | 🔑 管理员 |
 | POST | `/api/v1/admin/feature-permissions/update/{permission_id}` | 更新功能权限 | 🔑 管理员 |
 | POST | `/api/v1/admin/feature-permissions/delete/{permission_id}` | 删除功能权限 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/batch-delete` | 批量删除功能权限，请求体为 `number[]` | 🔑 管理员 |
+
+补充说明：
+
+- 功能权限的“分类”在后台主视图中统一按“所属应用”理解；
+- 导出会按应用分组携带权限，导入会按应用解析，不存在的应用会自动创建；
+- 批量删除只删除权限元数据，不自动清理历史卡密中的旧 `permission_key`。
 
 ---
 
@@ -155,4 +167,4 @@ http://localhost:8003/docs
 
 ---
 
-**最后更新**: 2026-01-27
+**最后更新**: 2026-04-14

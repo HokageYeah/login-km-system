@@ -86,6 +86,22 @@
             </el-tag>
           </template>
         </el-table-column>
+
+        <el-table-column prop="card_count" label="卡密数" width="110" align="center">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="goToCardList(row)">
+              {{ row.card_count ?? 0 }}
+            </el-button>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="permission_count" label="权限数" width="110" align="center">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="goToPermissionList(row)">
+              {{ row.permission_count ?? 0 }}
+            </el-button>
+          </template>
+        </el-table-column>
         
         <el-table-column prop="created_at" label="创建时间" width="180">
           <template #default="{ row }">
@@ -187,6 +203,7 @@
  * @description 管理员管理系统中的所有应用
  */
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus,
@@ -202,6 +219,8 @@ import {
 import type { ElTable } from 'element-plus'
 import { getAppList, createApp, updateAppStatus, batchDeleteApps } from '@/api/app'
 import type { App } from '@/types'
+
+const router = useRouter()
 
 /**
  * 状态定义
@@ -394,6 +413,26 @@ const copyAppKey = async (appKey: string) => {
   } catch (error) {
     ElMessage.error('复制失败，请手动复制')
   }
+}
+
+/**
+ * 跳转到卡密管理页，并按应用筛选
+ */
+const goToCardList = (app: App) => {
+  router.push({
+    path: '/cards',
+    query: { app_id: String(app.id) }
+  })
+}
+
+/**
+ * 跳转到功能权限管理页，并按应用筛选
+ */
+const goToPermissionList = (app: App) => {
+  router.push({
+    path: '/card-permissions',
+    query: { app_id: String(app.id) }
+  })
 }
 
 /**

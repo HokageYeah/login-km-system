@@ -66,6 +66,8 @@ export interface App {
   app_key: string               // 应用唯一标识
   app_name: string              // 应用名称
   status: AppStatus             // 应用状态
+  card_count?: number           // 当前应用下的卡密数量
+  permission_count?: number     // 当前应用下的权限数量
   created_at: string            // 创建时间
 }
 
@@ -86,6 +88,8 @@ export interface Card {
   id: number                    // 数据库ID
   card_id: number               // 卡密ID
   card_key: string              // 卡密字符串（格式：XXXX-XXXX-XXXX-XXXX）
+  app_id?: number               // 所属应用ID（可选）
+  app_key?: string              // 所属应用唯一标识（可选）
   app_name?: string             // 所属应用名称（可选）
   status: CardStatus            // 卡密状态
   is_expired?: boolean          // 是否已过期（后端根据时间动态计算）
@@ -246,6 +250,9 @@ export interface FeaturePermission {
   id: number                    // 功能权限ID
   permission_key: string         // 权限标识（如：wechat, ximalaya）
   permission_name: string         // 权限名称（如：微信抓取、喜马拉雅播放）
+  app_id?: number               // 所属应用ID（可选，兼容历史未归属应用数据）
+  app_key?: string              // 所属应用唯一标识（可选）
+  app_name?: string             // 所属应用名称（可选）
   description?: string            // 权限描述（可选）
   category?: string               // 权限分类（可选，如：数据抓取、媒体播放）
   icon?: string                  // 图标（可选）

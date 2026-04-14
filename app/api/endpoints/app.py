@@ -83,17 +83,19 @@ async def get_app_list(
     """
     app_service = AppService(db)
     
-    apps = app_service.get_app_list()
+    app_records = app_service.get_app_list_with_stats()
     
     app_list = [
         AppInfo(
-            id=app.id,
-            app_key=app.app_key,
-            app_name=app.app_name,
-            status=app.status,
-            created_at=app.created_at
+            id=record["app"].id,
+            app_key=record["app"].app_key,
+            app_name=record["app"].app_name,
+            status=record["app"].status,
+            card_count=record["card_count"],
+            permission_count=record["permission_count"],
+            created_at=record["app"].created_at
         )
-        for app in apps
+        for record in app_records
     ]
     
     logger.info(f"管理员 {current_admin['username']} 查询应用列表，共 {len(app_list)} 个")
@@ -149,6 +151,8 @@ async def create_app(
             app_key=app.app_key,
             app_name=app.app_name,
             status=app.status.value,
+            card_count=0,
+            permission_count=0,
             created_at=app.created_at
         )
     ).model_dump(mode='json', exclude_none=True)
@@ -203,6 +207,8 @@ async def update_app_status(
             app_key=app.app_key,
             app_name=app.app_name,
             status=app.status.value,
+            card_count=0,
+            permission_count=0,
             created_at=app.created_at
         )
     ).model_dump(mode='json', exclude_none=True)
@@ -241,6 +247,8 @@ async def get_app_detail(
         app_key=app.app_key,
         app_name=app.app_name,
         status=app.status.value,
+        card_count=int(app.cards.count()) if app.cards is not None else 0,
+        permission_count=int(app.feature_permissions.count()) if app.feature_permissions is not None else 0,
         created_at=app.created_at
     ).model_dump(mode='json', exclude_none=True)
 
@@ -286,4 +294,3 @@ async def batch_delete_apps(
         admin_permission="管理员",
         service_class_name="应用服务"
     )
-

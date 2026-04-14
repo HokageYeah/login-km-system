@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.models.card import Card
 from app.utils.dependencies import get_db, get_current_admin
 from app.services.feature_permission_service import FeaturePermissionService
 from app.schemas.feature_permission import (
@@ -39,6 +40,25 @@ def _build_feature_permission_export_filename() -> str:
     return f"feature_permissions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
 
+def _build_feature_permission_info(permission) -> FeaturePermissionInfo:
+    """统一构造功能权限响应对象，避免接口层重复拼装字段。"""
+    return FeaturePermissionInfo(
+        id=permission.id,
+        permission_key=permission.permission_key,
+        permission_name=permission.permission_name,
+        app_id=permission.app.id if permission.app else permission.app_id,
+        app_key=permission.app.app_key if permission.app else None,
+        app_name=permission.app.app_name if permission.app else None,
+        description=permission.description,
+        category=permission.category,
+        icon=permission.icon,
+        sort_order=permission.sort_order,
+        status=permission.status,
+        created_at=permission.created_at,
+        updated_at=permission.updated_at
+    )
+
+
 @router.get(
     "/list",
     response_model=ApiResponseData,
@@ -48,6 +68,7 @@ def _build_feature_permission_export_filename() -> str:
 async def get_feature_permissions_list(
     page: int = Query(1, ge=1, description="页码"),
     size: int = Query(20, ge=1, le=100, description="每页数量"),
+    app_id: Optional[int] = Query(None, ge=1, description="所属应用筛选"),
     category: Optional[str] = Query(None, description="分类筛选"),
     status: Optional[str] = Query(None, description="状态筛选"),
     keyword: Optional[str] = Query(None, description="关键词搜索（权限标识、权限名称）"),
@@ -64,6 +85,7 @@ async def get_feature_permissions_list(
     permissions, total, error = feature_permission_service.get_permissions_list(
         page=page,
         size=size,
+        app_id=app_id,
         category=category,
         status=status,
         keyword=keyword
@@ -78,24 +100,11 @@ async def get_feature_permissions_list(
             detail=error
         )
     
-    permission_infos = [
-        FeaturePermissionInfo(
-            id=p.id,
-            permission_key=p.permission_key,
-            permission_name=p.permission_name,
-            description=p.description,
-            category=p.category,
-            icon=p.icon,
-            sort_order=p.sort_order,
-            status=p.status,
-            created_at=p.created_at,
-            updated_at=p.updated_at
-        )
-        for p in permissions
-    ]
+    permission_infos = [_build_feature_permission_info(p) for p in permissions]
     
     logger.info(
-        f"管理员 {current_admin['username']} 查询功能权限列表，共 {total} 个"
+        f"管理员 {current_admin['username']} 查询功能权限列表成功: "
+        f"page={page}, size={size}, app_id={app_id}, total={total}"
     )
     
     return FeaturePermissionListResponse(
@@ -143,6 +152,7 @@ async def export_feature_permissions(
     logger.info(
         f"管理员 {current_admin['username']} 导出功能权限成功: "
         f"file_name={file_name}, export_count={len(payload['permissions'])}, "
+        f"app_group_count={len(payload.get('app_groups', []))}, "
         f"permission_keys={request.permission_keys}"
     )
 
@@ -272,7 +282,8 @@ async def import_feature_permissions(
     logger.info(
         f"管理员 {current_admin['username']} 导入功能权限成功: "
         f"file_name={file.filename}, total={summary['total_count']}, "
-        f"created={summary['created_count']}, updated={summary['updated_count']}"
+        f"created={summary['created_count']}, updated={summary['updated_count']}, "
+        f"created_apps={summary['created_app_count']}"
     )
 
     return FeaturePermissionImportResponse(
@@ -280,7 +291,8 @@ async def import_feature_permissions(
         message="功能权限导入成功",
         total_count=summary["total_count"],
         created_count=summary["created_count"],
-        updated_count=summary["updated_count"]
+        updated_count=summary["updated_count"],
+        created_app_count=summary["created_app_count"]
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -310,6 +322,7 @@ async def create_feature_permission(
     permission, error = feature_permission_service.create_permission(
         permission_key=request.permission_key,
         permission_name=request.permission_name,
+        app_id=request.app_id,
         description=request.description,
         category=request.category,
         icon=request.icon,
@@ -334,18 +347,7 @@ async def create_feature_permission(
     return FeaturePermissionCreateResponse(
         success=True,
         message="功能权限创建成功",
-        permission=FeaturePermissionInfo(
-            id=permission.id,
-            permission_key=permission.permission_key,
-            permission_name=permission.permission_name,
-            description=permission.description,
-            category=permission.category,
-            icon=permission.icon,
-            sort_order=permission.sort_order,
-            status=permission.status,
-            created_at=permission.created_at,
-            updated_at=permission.updated_at
-        )
+        permission=_build_feature_permission_info(permission)
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -372,6 +374,7 @@ async def update_feature_permission(
         permission_id=permission_id,
         permission_key=request.permission_key,
         permission_name=request.permission_name,
+        app_id=request.app_id,
         description=request.description,
         category=request.category,
         icon=request.icon,
@@ -397,18 +400,7 @@ async def update_feature_permission(
     return FeaturePermissionUpdateResponse(
         success=True,
         message="功能权限更新成功",
-        permission=FeaturePermissionInfo(
-            id=permission.id,
-            permission_key=permission.permission_key,
-            permission_name=permission.permission_name,
-            description=permission.description,
-            category=permission.category,
-            icon=permission.icon,
-            sort_order=permission.sort_order,
-            status=permission.status,
-            created_at=permission.created_at,
-            updated_at=permission.updated_at
-        )
+        permission=_build_feature_permission_info(permission)
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -452,6 +444,39 @@ async def delete_feature_permission(
     ).model_dump(mode='json', exclude_none=True)
 
 
+@router.post(
+    "/batch-delete",
+    response_model=ApiResponseData,
+    summary="批量删除功能权限",
+    description="批量删除指定的功能权限（需要管理员权限）"
+)
+async def batch_delete_feature_permissions(
+    permission_ids: list[int],
+    current_admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    批量删除功能权限。
+
+    注意：
+    1. 删除的是权限元数据，不会自动清理历史卡密 JSON 中的旧 permission_key；
+    2. 这种设计是为了避免因为删元数据而误改历史授权记录，后续是否清理卡密权限应由管理员单独决策。
+    """
+    from app.api.endpoints.common.common_api import handle_batch_delete
+
+    feature_permission_service = FeaturePermissionService(db)
+
+    return handle_batch_delete(
+        items=permission_ids,
+        service_name="功能权限",
+        batch_delete_method=feature_permission_service.batch_delete_permissions,
+        current_admin=current_admin,
+        item_name="功能权限",
+        admin_permission="管理员",
+        service_class_name="功能权限服务"
+    )
+
+
 @router.get(
     "/card/{card_id}/permissions",
     response_model=ApiResponseData,
@@ -482,25 +507,25 @@ async def get_card_feature_permissions(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=error
         )
-    
-    # 获取所有可用的权限
-    all_permissions = feature_permission_service.get_all_normal_permissions()
-    
-    available_permissions = [
-        FeaturePermissionInfo(
-            id=p.id,
-            permission_key=p.permission_key,
-            permission_name=p.permission_name,
-            description=p.description,
-            category=p.category,
-            icon=p.icon,
-            sort_order=p.sort_order,
-            status=p.status,
-            created_at=p.created_at,
-            updated_at=p.updated_at
+
+    card = db.query(Card).filter(Card.id == card_id).first()
+    if not card:
+        logger.warning(
+            f"管理员 {current_admin['username']} 查询卡密功能权限失败: 卡密不存在, 卡密ID {card_id}"
         )
-        for p in all_permissions
-    ]
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="卡密不存在"
+        )
+
+    # 权限已按应用收口，这里只给当前卡密所属应用的权限；
+    # 同时兼容历史未归属应用的权限，避免老数据升级后直接不可编辑。
+    all_permissions = feature_permission_service.get_all_normal_permissions(
+        app_id=card.app_id,
+        include_legacy_unassigned=True
+    )
+
+    available_permissions = [_build_feature_permission_info(p) for p in all_permissions]
     
     logger.info(
         f"管理员 {current_admin['username']} 查询卡密功能权限: "

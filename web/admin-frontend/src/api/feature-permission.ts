@@ -15,6 +15,7 @@ import type { FeaturePermission, SuccessResponse } from '@/types'
 export const getFeaturePermissionList = (params: {
   page: number
   size: number
+  app_id?: number
   category?: string
   status?: string
   keyword?: string
@@ -66,6 +67,7 @@ export const getPermissionCategories = () => {
 export const createFeaturePermission = (data: {
   permission_key: string
   permission_name: string
+  app_id: number
   description?: string
   category?: string
   icon?: string
@@ -90,6 +92,7 @@ export const updateFeaturePermission = (
   data: {
     permission_key?: string
     permission_name?: string
+    app_id?: number
     description?: string
     category?: string
     icon?: string
@@ -115,6 +118,21 @@ export const deleteFeaturePermission = (permissionId: number) => {
 }
 
 /**
+ * 批量删除功能权限
+ * @description 批量删除指定的功能权限（需要管理员权限）
+ * @param permissionIds 要删除的功能权限ID列表
+ * @returns Promise 删除结果
+ */
+export const batchDeleteFeaturePermissions = (permissionIds: number[]) => {
+  return request.post<{
+    success: boolean
+    message: string
+    deleted_count: number
+    failed_ids: number[]
+  }>('/admin/feature-permissions/batch-delete', permissionIds)
+}
+
+/**
  * 导入功能权限
  * @description 导入此前导出的权限快照文件，并写入数据库
  * @param file 需要导入的 JSON 文件
@@ -130,6 +148,7 @@ export const importFeaturePermissions = (file: File) => {
     total_count: number
     created_count: number
     updated_count: number
+    created_app_count: number
   }>('/admin/feature-permissions/import', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'

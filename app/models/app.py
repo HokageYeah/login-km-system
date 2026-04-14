@@ -32,6 +32,7 @@ class App(Base):
     # 关系映射
     cards = relationship("Card", back_populates="app", lazy="dynamic")
     user_tokens = relationship("UserToken", back_populates="app", lazy="dynamic")
+    feature_permissions = relationship("FeaturePermission", back_populates="app", lazy="dynamic")
 
     def __repr__(self):
         return f"<App(id={self.id}, app_key='{self.app_key}', app_name='{self.app_name}')>"

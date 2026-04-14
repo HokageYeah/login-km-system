@@ -3,12 +3,20 @@ from typing import Optional, List
 from datetime import datetime
 
 
+class FeaturePermissionAppInfo(BaseModel):
+    """功能权限所属应用信息"""
+    app_id: Optional[int] = Field(None, description="所属应用ID")
+    app_key: Optional[str] = Field(None, description="所属应用唯一标识")
+    app_name: Optional[str] = Field(None, description="所属应用名称")
+
+
 class FeaturePermissionCreateRequest(BaseModel):
     """创建功能权限请求"""
     permission_key: str = Field(..., min_length=1, max_length=100, description="权限标识（如：wechat, ximalaya）")
     permission_name: str = Field(..., min_length=1, max_length=100, description="权限名称（如：微信抓取、喜马拉雅播放）")
+    app_id: int = Field(..., ge=1, description="所属应用ID")
     description: Optional[str] = Field(None, max_length=500, description="权限描述")
-    category: Optional[str] = Field(None, max_length=50, description="权限分类（如：数据抓取、媒体播放）")
+    category: Optional[str] = Field(None, max_length=50, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, max_length=100, description="图标")
     sort_order: int = Field(0, description="排序，数字越小越靠前")
 
@@ -26,8 +34,9 @@ class FeaturePermissionUpdateRequest(BaseModel):
     """更新功能权限请求"""
     permission_key: Optional[str] = Field(None, min_length=1, max_length=100, description="权限标识")
     permission_name: Optional[str] = Field(None, min_length=1, max_length=100, description="权限名称")
+    app_id: Optional[int] = Field(None, ge=1, description="所属应用ID")
     description: Optional[str] = Field(None, max_length=500, description="权限描述")
-    category: Optional[str] = Field(None, max_length=50, description="权限分类")
+    category: Optional[str] = Field(None, max_length=50, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, max_length=100, description="图标")
     sort_order: Optional[int] = Field(None, description="排序")
     status: Optional[str] = Field(None, description="状态：normal-正常，disabled-禁用")
@@ -47,8 +56,11 @@ class FeaturePermissionInfo(BaseModel):
     id: int = Field(..., description="功能权限ID")
     permission_key: str = Field(..., description="权限标识")
     permission_name: str = Field(..., description="权限名称")
+    app_id: Optional[int] = Field(None, description="所属应用ID")
+    app_key: Optional[str] = Field(None, description="所属应用唯一标识")
+    app_name: Optional[str] = Field(None, description="所属应用名称")
     description: Optional[str] = Field(None, description="权限描述")
-    category: Optional[str] = Field(None, description="权限分类")
+    category: Optional[str] = Field(None, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, description="图标")
     sort_order: int = Field(..., description="排序")
     status: str = Field(..., description="状态")
@@ -111,7 +123,8 @@ class FeaturePermissionExportFilter(BaseModel):
     """功能权限导出筛选信息"""
     page: int = Field(..., description="导出时的页码")
     size: int = Field(..., description="导出时的每页数量")
-    category: Optional[str] = Field(None, description="分类筛选")
+    app_id: Optional[int] = Field(None, description="应用筛选")
+    category: Optional[str] = Field(None, description="历史分类筛选")
     status: Optional[str] = Field(None, description="状态筛选")
     keyword: Optional[str] = Field(None, description="关键词筛选")
 
@@ -125,8 +138,9 @@ class FeaturePermissionSnapshotItem(BaseModel):
     """
     permission_key: str = Field(..., min_length=1, max_length=100, description="权限标识")
     permission_name: str = Field(..., min_length=1, max_length=100, description="权限名称")
+    app: Optional[FeaturePermissionAppInfo] = Field(None, description="所属应用信息")
     description: Optional[str] = Field(None, max_length=500, description="权限描述")
-    category: Optional[str] = Field(None, max_length=50, description="权限分类")
+    category: Optional[str] = Field(None, max_length=50, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, max_length=100, description="图标")
     sort_order: int = Field(0, description="排序")
     status: str = Field(..., description="状态：normal-正常，disabled-禁用")
@@ -149,13 +163,21 @@ class FeaturePermissionSnapshotItem(BaseModel):
         return v
 
 
+class FeaturePermissionExportAppGroup(BaseModel):
+    """功能权限导出分组"""
+    app: FeaturePermissionAppInfo = Field(..., description="当前分组对应的应用信息")
+    total: int = Field(..., ge=0, description="当前应用下导出的权限数量")
+    permissions: List[FeaturePermissionSnapshotItem] = Field(default_factory=list, description="当前应用下的权限列表")
+
+
 class FeaturePermissionExportPayload(BaseModel):
     """功能权限导出文件结构"""
     schema_version: str = Field(..., description="导出文件结构版本")
     exported_at: datetime = Field(..., description="导出时间")
     total: int = Field(..., ge=0, description="导出数量")
     filters: FeaturePermissionExportFilter = Field(..., description="导出时使用的筛选条件")
-    permissions: List[FeaturePermissionSnapshotItem] = Field(..., description="导出的功能权限列表")
+    permissions: List[FeaturePermissionSnapshotItem] = Field(default_factory=list, description="导出的功能权限列表")
+    app_groups: List[FeaturePermissionExportAppGroup] = Field(default_factory=list, description="按应用分组的导出结果")
 
 
 class FeaturePermissionImportResponse(BaseModel):
@@ -165,6 +187,7 @@ class FeaturePermissionImportResponse(BaseModel):
     total_count: int = Field(..., ge=0, description="导入文件中的权限总数")
     created_count: int = Field(..., ge=0, description="新建权限数量")
     updated_count: int = Field(..., ge=0, description="更新权限数量")
+    created_app_count: int = Field(0, ge=0, description="自动创建的应用数量")
 
 
 class FeaturePermissionExportRequest(BaseModel):

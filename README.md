@@ -7,7 +7,11 @@
 - 🔐 **用户认证系统**: 注册、登录、JWT Token 认证
 - 🎫 **卡密管理**: 生成、绑定、查询、解绑卡密
 - 🔑 **权限控制**: 基于卡密的权限校验，支持自定义权限配置
+- 🧩 **权限按应用归类**: 功能权限绑定所属应用，后台统一按应用管理权限
 - 🔄 **权限迁移**: 支持管理后台功能权限列表导出/导入，便于多服务器同步
+- 🗂️ **后台批量管理**: 功能权限支持批量删除，列表支持按应用筛选与跳转联动
+- 🎨 **应用可视化区分**: 管理后台的“所属应用”标签按应用稳定着色，便于快速识别
+- 📈 **应用统计联动**: 应用管理页可直接查看每个应用下的卡密数与权限数，并一键跳转到对应列表
 - 📱 **多设备支持**: 控制每个卡密的设备绑定数量
 - 🏢 **多应用支持**: 一套系统支持多个桌面应用或服务
 - 👤 **用户管理**: 用户封禁、角色管理（普通用户/管理员）
@@ -235,6 +239,59 @@ python -m app.scripts.set_env dev upgrade
 python -m app.scripts.set_env dev downgrade
 ```
 
+#### 4.2.1 老数据库升级注意事项
+
+如果数据库里已经存在 `apps`、`users`、`cards`、`feature_permissions` 等业务表，但从未正确维护 `alembic_version`，不要直接执行：
+
+```bash
+alembic upgrade head
+```
+
+否则 Alembic 会把数据库误判为空库，从 `001` 重新建表，进而报：
+
+```text
+Table 'apps' already exists
+```
+
+这种情况应先把数据库“标记”到真实起点，再继续升级。对于已经存在 `feature_permissions` 表、但还没有本次 `app_id` 字段的数据库，推荐执行：
+
+```bash
+ENV=development ./venv/bin/python -m alembic stamp 003_fix_fp_id_ai
+ENV=development ./venv/bin/python -m alembic upgrade head
+```
+
+随后再执行功能权限应用绑定升级脚本：
+
+```bash
+ENV=development ./venv/bin/python app/scripts/upgrade_feature_permissions_app_binding.py
+```
+
+这个脚本会：
+
+1. 自动补充 `feature_permissions.app_id`
+2. 尝试把历史 `app_id IS NULL` 的权限回填到正确应用
+3. 打印无法自动判断归属的权限，方便人工核对
+
+#### 4.2.2 权限按应用归类后的后台管理说明
+
+本次权限中心改造后，管理后台的关键行为统一如下：
+
+- 创建功能权限时必须选择“所属应用”，权限不再依赖自由输入分类做主分组；
+- 应用管理页会直接返回 `card_count`、`permission_count`，前端无需逐行二次请求统计；
+- 应用管理页点击卡密数会跳转到卡密管理页并自动带上 `app_id` 筛选；
+- 应用管理页点击权限数会跳转到功能权限管理页并自动带上 `app_id` 筛选；
+- 功能权限管理页支持批量删除，删除的是权限元数据，不会自动篡改历史卡密中的旧权限 JSON；
+- “所属应用”在应用页、卡密页、权限页使用统一的稳定颜色映射，避免管理员跨页切换时认知断裂。
+
+对应的核心实现位置：
+
+- 应用统计聚合：`app/services/app_service.py`
+- 功能权限批量删除：`app/api/endpoints/feature_permission.py`
+- 前端应用色签：`web/admin-frontend/src/utils/app-tag.ts`
+- 应用管理页：`web/admin-frontend/src/views/app/index.vue`
+- 卡密管理页：`web/admin-frontend/src/views/card/index.vue`
+- 功能权限管理页：`web/admin-frontend/src/views/card-permission/index.vue`
+
 #### 4.3 数据库字段更新
 
 > 当模型定义发生变化时（如添加、修改或删除字段），使用Alembic进行数据库迁移：
@@ -263,6 +320,30 @@ python -m app.scripts.set_env dev downgrade
 ```
 
 Alembic会自动检测模型变化并生成相应的迁移脚本，然后可以应用或回滚这些变化。
+
+#### 4.4 功能权限应用归属升级
+
+从 `004_bind_fp_to_apps` 开始，功能权限正式增加 `app_id` 字段，后台中的“权限分类”统一收口为“所属应用”。
+
+设计约束：
+
+1. 一条权限只属于一个应用
+2. 卡密只能配置当前卡密所属应用下的权限
+3. 导出权限时会带出所属应用，并按应用分组输出
+4. 导入权限时如果目标应用不存在，会自动创建应用
+
+标准升级命令：
+
+```bash
+ENV=development ./venv/bin/python -m alembic upgrade head
+ENV=development ./venv/bin/python app/scripts/upgrade_feature_permissions_app_binding.py
+```
+
+如果只是处理老数据，也可以直接先执行升级脚本：
+
+```bash
+ENV=development ./venv/bin/python app/scripts/upgrade_feature_permissions_app_binding.py
+```
 
 ### 5. 运行应用
 
@@ -551,6 +632,62 @@ Authorization: Bearer <admin_token>
 GET /api/v1/admin/statistics
 Authorization: Bearer <admin_token>
 ```
+
+### 功能权限管理接口（需要管理员权限）
+
+#### 查询功能权限列表
+
+```http
+GET /api/v1/admin/feature-permissions/list?page=1&size=20&app_id=1
+Authorization: Bearer <admin_token>
+```
+
+说明：`app_id` 是功能权限的新主筛选维度，用于按所属应用管理权限。
+
+#### 创建功能权限
+
+```http
+POST /api/v1/admin/feature-permissions/create
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "permission_key": "wechat",
+  "permission_name": "微信抓取",
+  "app_id": 1,
+  "description": "微信相关抓取能力",
+  "icon": "ChatDotRound",
+  "sort_order": 1
+}
+```
+
+#### 导出功能权限
+
+```http
+POST /api/v1/admin/feature-permissions/export
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "permission_keys": ["wechat", "ximalaya"]
+}
+```
+
+导出文件会带出每条权限的所属应用信息，并在 `app_groups` 中按应用分组。
+
+#### 导入功能权限
+
+```http
+POST /api/v1/admin/feature-permissions/import
+Authorization: Bearer <admin_token>
+Content-Type: multipart/form-data
+```
+
+导入规则：
+
+1. 按 `permission_key` 幂等更新
+2. 应用不存在时自动创建
+3. 不会删除目标库已有的额外权限
 
 ## 🚀 高级功能
 

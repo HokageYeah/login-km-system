@@ -138,7 +138,17 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="app_name" label="所属应用" width="120" />
+        <el-table-column prop="app_name" label="所属应用" width="140">
+          <template #default="{ row }">
+            <el-tag
+              size="small"
+              effect="plain"
+              :style="getAppBadgeStyle(row)"
+            >
+              {{ row.app_name || '未绑定应用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         
         <el-table-column prop="status" label="状态" width="160">
           <template #default="{ row }">
@@ -519,6 +529,7 @@ import { batchDeleteCards } from '@/api/card'
 import { getAppList } from '@/api/app'
 import { useUserStore } from '@/stores/user'
 import type { Card, App } from '@/types'
+import { getAppTagStyle } from '@/utils/app-tag'
 import GenerateDialog from './components/GenerateDialog.vue'
 import PermissionDialog from './components/PermissionDialog.vue'
 import DeviceDialog from './components/DeviceDialog.vue'
@@ -561,11 +572,22 @@ const expireTimeForm = reactive({
 })
 
 const syncFilterFromRoute = () => {
+  const routeAppId = route.query.app_id
+  if (typeof routeAppId === 'string' && routeAppId) {
+    const parsedAppId = Number(routeAppId)
+    filterForm.app_id = Number.isNaN(parsedAppId) ? undefined : parsedAppId
+  } else {
+    filterForm.app_id = undefined
+  }
+
   const cardKey = route.query.card_key
   if (typeof cardKey === 'string' && cardKey) {
     filterForm.keyword = cardKey
     filterForm.username = ''
+    return
   }
+
+  filterForm.keyword = ''
 }
 
 /**
@@ -604,6 +626,11 @@ const getStatusText = (status: string) => {
   }
   return textMap[status] || status
 }
+
+/**
+ * 获取所属应用标签样式
+ */
+const getAppBadgeStyle = (card: Card) => getAppTagStyle(card.app_key, card.app_name)
 
 /**
  * 获取卡密展示状态文本
@@ -1099,7 +1126,7 @@ onMounted(() => {
 })
 
 watch(
-  () => route.query.card_key,
+  () => [route.query.card_key, route.query.app_id],
   () => {
     syncFilterFromRoute()
     pagination.page = 1
