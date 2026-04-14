@@ -23,14 +23,21 @@ services:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
-      # 构建阶段为 build 容器额外挂载一个固定宿主机别名：
-      # host.docker.internal -> host-gateway
+      # 构建阶段直接使用宿主机网络。
       #
       # 设计说明：
-      # 1. Linux 下 docker build 默认不能像 Docker Desktop 那样直接识别 host.docker.internal；
-      # 2. 增加这条映射后，构建阶段的 pip install 就可以通过
-      #    http://host.docker.internal:8118 访问宿主机上的代理服务；
-      # 3. 这样可以避免把宿主机代理写成 127.0.0.1 后，在构建容器里变成“指向容器自己”的问题。
+      # 1. 你服务器上的代理服务实际运行在宿主机本机；
+      # 2. 在某些 Linux 云服务器环境中，仅仅增加 host.docker.internal 映射仍可能无法打通 build 阶段到宿主机代理的链路；
+      # 3. 使用 build.network: host 后，pip install 会直接复用宿主机网络，代理访问更稳定；
+      # 4. 这样既保留了 host.docker.internal 方案，也兼容你当前服务器的实际网络行为。
+      network: host
+      # 构建阶段再额外挂载一个固定宿主机别名：
+      # host.docker.internal -> host-gateway
+      #
+      # 这样做的目的是：
+      # - 让 Dockerfile 中的 pip install 可以继续使用
+      #   http://host.docker.internal:8118 这种更通用、更可读的代理地址；
+      # - 避免把 .env.docker 写死为宿主机某一块网卡 IP。
       extra_hosts:
         - "host.docker.internal:host-gateway"
       args:
@@ -106,6 +113,9 @@ services:
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
+      # 前端镜像构建阶段同样直接使用宿主机网络。
+      # 原因与 backend 一致：npm ci 在 build 时也需要稳定访问宿主机代理。
+      network: host
       # 前端镜像构建阶段同样需要访问宿主机代理。
       # 这里主要服务于 npm ci 拉取依赖时的联网能力，
       # 不涉及前端运行态的 Nginx 反向代理逻辑。

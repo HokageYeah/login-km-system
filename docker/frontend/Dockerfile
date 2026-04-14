@@ -6,7 +6,7 @@ FROM node:20-alpine AS builder
 # 如果未显式传值，这些参数全部为空，不会影响本地原有流程。
 # 如果代理跑在 Linux 宿主机上，建议在 .env.docker 中把代理地址写成：
 # http://host.docker.internal:端口
-# 并配合 docker-compose.yml 中的 build.extra_hosts 使用。
+# 并配合 docker-compose.yml 中的 build.extra_hosts + build.network: host 使用。
 ARG KM_DOCKER_HTTP_PROXY=""
 ARG KM_DOCKER_HTTPS_PROXY=""
 ARG KM_DOCKER_ALL_PROXY=""
@@ -31,6 +31,9 @@ COPY web/admin-frontend/package*.json ./
 # 如果 Linux 服务器代理部署在宿主机本机，推荐使用：
 # KM_DOCKER_HTTP_PROXY=http://host.docker.internal:8118
 # KM_DOCKER_HTTPS_PROXY=http://host.docker.internal:8118
+# 同时 docker-compose.yml 中建议为 frontend.build 配置：
+# - network: host
+# - extra_hosts: ["host.docker.internal:host-gateway"]
 RUN npm ci
 
 COPY web/admin-frontend/ ./
