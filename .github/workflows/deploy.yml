@@ -1,0 +1,58 @@
+name: Deploy To Linux Server
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy master to server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy by SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -eu
+
+            # 关闭 BuildKit，避免当前服务器环境下 docker compose build 导出镜像阶段异常。
+            export DOCKER_BUILDKIT=0
+            export COMPOSE_DOCKER_CLI_BUILD=0
+
+            PROJECT_DIR="/usr/HokageYeah/服务端系统/login-km-system"
+            TARGET_BRANCH="master"
+
+            echo "进入项目目录: ${PROJECT_DIR}"
+            cd "${PROJECT_DIR}"
+
+            echo "当前分支信息："
+            git branch --show-current || true
+
+            echo "拉取远程最新代码..."
+            git fetch --all --prune
+
+            # 保持服务器工作区与远程 master 一致。
+            # 这里使用 reset --hard 是部署场景下的显式设计：
+            # 服务器目录应视为可重建产物，不应保留人工临时改动。
+            git checkout "${TARGET_BRANCH}"
+            git reset --hard "origin/${TARGET_BRANCH}"
+
+            echo "开始构建镜像..."
+            docker compose --env-file .env.docker build --no-cache
+
+            echo "开始更新容器..."
+            docker compose --env-file .env.docker up -d
+
+            echo "清理无用镜像..."
+            docker image prune -f
+
+            echo "部署完成，当前容器状态："
+            docker compose --env-file .env.docker ps
