@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 
 from app.db.sqlalchemy_db import Base
+from app.models.enum_helper import build_value_enum
 
 
 class AppStatus(str, enum.Enum):
@@ -20,7 +21,7 @@ class App(Base):
     app_key = Column(String(100), unique=True, index=True, nullable=False, comment="应用唯一标识")
     app_name = Column(String(100), nullable=False, comment="应用名称")
     status = Column(
-        SQLEnum(AppStatus),
+        build_value_enum(AppStatus, "appstatus"),
         default=AppStatus.NORMAL,
         nullable=False,
         comment="应用状态: normal-正常, disabled-禁用"
@@ -31,6 +32,7 @@ class App(Base):
     # 关系映射
     cards = relationship("Card", back_populates="app", lazy="dynamic")
     user_tokens = relationship("UserToken", back_populates="app", lazy="dynamic")
+    feature_permissions = relationship("FeaturePermission", back_populates="app", lazy="dynamic")
 
     def __repr__(self):
         return f"<App(id={self.id}, app_key='{self.app_key}', app_name='{self.app_name}')>"

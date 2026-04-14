@@ -6,9 +6,11 @@ import secrets
 from datetime import datetime
 from typing import Optional, Tuple, List
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from app.models.app import App, AppStatus
+from app.models.card import Card
+from app.models.feature_permission import FeaturePermission
 from app.core.logging_uru import logger
 
 
@@ -65,6 +67,43 @@ class AppService:
             应用列表
         """
         return self.db.query(App).order_by(App.created_at.desc()).all()
+
+    def get_app_list_with_stats(self) -> List[dict]:
+        """
+        获取应用列表，并附带卡密数量与权限数量统计。
+
+        设计说明：
+        - 统计数据属于应用列表的通用管理视图，不应由前端逐行单独发请求拼接；
+        - 使用聚合子查询一次性返回，避免列表页 N+1 查询。
+        """
+        card_count_subquery = self.db.query(
+            Card.app_id.label("app_id"),
+            func.count(Card.id).label("card_count")
+        ).group_by(Card.app_id).subquery()
+
+        permission_count_subquery = self.db.query(
+            FeaturePermission.app_id.label("app_id"),
+            func.count(FeaturePermission.id).label("permission_count")
+        ).group_by(FeaturePermission.app_id).subquery()
+
+        results = self.db.query(
+            App,
+            func.coalesce(card_count_subquery.c.card_count, 0).label("card_count"),
+            func.coalesce(permission_count_subquery.c.permission_count, 0).label("permission_count")
+        ).outerjoin(
+            card_count_subquery, App.id == card_count_subquery.c.app_id
+        ).outerjoin(
+            permission_count_subquery, App.id == permission_count_subquery.c.app_id
+        ).order_by(App.created_at.desc()).all()
+
+        return [
+            {
+                "app": app,
+                "card_count": int(card_count or 0),
+                "permission_count": int(permission_count or 0),
+            }
+            for app, card_count, permission_count in results
+        ]
     
     def get_app_by_id(self, app_id: int) -> Optional[App]:
         """

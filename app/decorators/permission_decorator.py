@@ -2,14 +2,52 @@
 权限校验装饰器
 提供便捷的权限校验功能
 """
+import inspect
 from functools import wraps
-from typing import Callable
+from typing import Callable, Optional
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.utils.dependencies import get_db, get_current_user
 from app.services.permission_service import PermissionService
 from app.core.logging_uru import logger
+
+
+async def _get_request_card_id(request: Optional[Request]) -> Optional[int]:
+    """
+    从当前请求中提取 card_id。
+
+    业务接口使用权限依赖时，也必须遵守“当前卡密优先”的裁决边界；
+    因此这里统一支持 query、JSON body、form body 三种常见传参方式。
+    """
+    if request is None:
+        return None
+
+    raw_card_id = request.query_params.get("card_id")
+
+    if raw_card_id is None:
+        content_type = request.headers.get("content-type", "")
+        try:
+            if "application/json" in content_type:
+                body = await request.json()
+                if isinstance(body, dict):
+                    raw_card_id = body.get("card_id")
+            elif "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
+                form = await request.form()
+                raw_card_id = form.get("card_id")
+        except Exception as exc:
+            logger.debug(f"读取权限校验 card_id 失败，按未传 card_id 处理: {exc}")
+
+    if raw_card_id in (None, ""):
+        return None
+
+    try:
+        return int(raw_card_id)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="card_id 必须是整数"
+        )
 
 
 def require_permission(permission: str):
@@ -52,6 +90,14 @@ def require_permission(permission: str):
             # 从 kwargs 中获取依赖注入的参数
             current_user = kwargs.get("current_user")
             db = kwargs.get("db")
+            request = kwargs.get("request")
+
+            if request is None:
+                bound_arguments = inspect.signature(func).bind_partial(*args, **kwargs)
+                request = next(
+                    (value for value in bound_arguments.arguments.values() if isinstance(value, Request)),
+                    None
+                )
             
             if not current_user:
                 raise HTTPException(
@@ -77,16 +123,18 @@ def require_permission(permission: str):
             
             # 执行权限校验
             permission_service = PermissionService(db)
+            card_id = await _get_request_card_id(request)
             allowed, message, expire_time = permission_service.check_permission(
                 user_id=user_id,
                 device_id=device_id,
-                permission=permission
+                permission=permission,
+                card_id=card_id
             )
             
             if not allowed:
                 logger.warning(
                     f"权限校验失败: user_id={user_id}, "
-                    f"device_id={device_id}, permission={permission}, "
+                    f"device_id={device_id}, card_id={card_id}, permission={permission}, "
                     f"reason={message}"
                 )
                 raise HTTPException(
@@ -96,7 +144,7 @@ def require_permission(permission: str):
             
             logger.info(
                 f"权限校验通过: user_id={user_id}, "
-                f"device_id={device_id}, permission={permission}"
+                f"device_id={device_id}, card_id={card_id}, permission={permission}"
             )
             
             # 权限验证通过，执行原函数
@@ -139,6 +187,7 @@ def create_permission_dependency(permission: str):
         - 代码更清晰
     """
     async def permission_checker(
+        request: Request,
         current_user: dict = Depends(get_current_user),
         db: Session = Depends(get_db)
     ) -> None:
@@ -154,16 +203,18 @@ def create_permission_dependency(permission: str):
         
         # 执行权限校验
         permission_service = PermissionService(db)
+        card_id = await _get_request_card_id(request)
         allowed, message, expire_time = permission_service.check_permission(
             user_id=user_id,
             device_id=device_id,
-            permission=permission
+            permission=permission,
+            card_id=card_id
         )
         
         if not allowed:
             logger.warning(
                 f"权限校验失败: user_id={user_id}, "
-                f"device_id={device_id}, permission={permission}, "
+                f"device_id={device_id}, card_id={card_id}, permission={permission}, "
                 f"reason={message}"
             )
             raise HTTPException(
@@ -173,7 +224,7 @@ def create_permission_dependency(permission: str):
         
         logger.info(
             f"权限校验通过: user_id={user_id}, "
-            f"device_id={device_id}, permission={permission}"
+            f"device_id={device_id}, card_id={card_id}, permission={permission}"
         )
     
     return permission_checker

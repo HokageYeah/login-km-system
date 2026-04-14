@@ -21,6 +21,7 @@ export interface User {
   username: string              // 用户名
   status: UserStatus            // 用户状态
   role: UserRole                // 用户角色
+  card_count?: number           // 有效卡密数量（管理员列表）
   created_at: string            // 创建时间（ISO 8601格式）
   last_login_at?: string        // 最后登录时间（可选）
 }
@@ -65,6 +66,8 @@ export interface App {
   app_key: string               // 应用唯一标识
   app_name: string              // 应用名称
   status: AppStatus             // 应用状态
+  card_count?: number           // 当前应用下的卡密数量
+  permission_count?: number     // 当前应用下的权限数量
   created_at: string            // 创建时间
 }
 
@@ -85,14 +88,35 @@ export interface Card {
   id: number                    // 数据库ID
   card_id: number               // 卡密ID
   card_key: string              // 卡密字符串（格式：XXXX-XXXX-XXXX-XXXX）
+  app_id?: number               // 所属应用ID（可选）
+  app_key?: string              // 所属应用唯一标识（可选）
   app_name?: string             // 所属应用名称（可选）
   status: CardStatus            // 卡密状态
+  is_expired?: boolean          // 是否已过期（后端根据时间动态计算）
   expire_time: string           // 过期时间（ISO 8601格式）
   max_device_count: number      // 最大可绑定设备数
   permissions: string[]         // 权限列表
   bind_devices?: number         // 已绑定设备数（可选）
+  bind_device_count?: number    // 当前绑定设备数（管理员列表）
+  bind_user_count?: number      // 已绑定用户数（可选）
+  related_usernames?: string[]  // 关联用户名列表（管理员卡密列表）
   remark?: string               // 备注信息（可选）
   created_at: string            // 创建时间
+}
+
+export interface UserActiveCardDetail {
+  card_id: number               // 卡密ID
+  card_key: string              // 卡密字符串
+  app_id: number                // 应用ID
+  app_name: string              // 应用名称
+  status: CardStatus            // 卡密状态
+  is_expired?: boolean          // 是否已过期
+  expire_time: string           // 过期时间
+  max_device_count: number      // 最大设备数
+  bind_device_count: number     // 当前绑定设备数
+  permissions: string[] | Record<string, boolean> | string | null // 权限配置
+  remark?: string               // 备注
+  bind_time?: string            // 用户绑定时间
 }
 
 // ==================== 设备相关类型 ====================
@@ -107,6 +131,9 @@ export interface Device {
   card_key: string              // 关联的卡密字符串
   user_id?: number              // 关联的用户ID（可选）
   username?: string             // 关联的用户名（可选）
+  related_user_ids?: number[]   // 关联用户ID列表（管理员设备列表）
+  related_usernames?: string[]  // 关联用户名列表（管理员设备列表）
+  related_user_count?: number   // 关联用户数量（管理员设备列表）
   device_id: string             // 设备唯一标识
   device_name?: string          // 设备名称（可选）
   bind_time: string             // 绑定时间
@@ -223,6 +250,9 @@ export interface FeaturePermission {
   id: number                    // 功能权限ID
   permission_key: string         // 权限标识（如：wechat, ximalaya）
   permission_name: string         // 权限名称（如：微信抓取、喜马拉雅播放）
+  app_id?: number               // 所属应用ID（可选，兼容历史未归属应用数据）
+  app_key?: string              // 所属应用唯一标识（可选）
+  app_name?: string             // 所属应用名称（可选）
   description?: string            // 权限描述（可选）
   category?: string               // 权限分类（可选，如：数据抓取、媒体播放）
   icon?: string                  // 图标（可选）

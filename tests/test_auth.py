@@ -132,3 +132,21 @@ class TestAuthService:
         assert decoded is not None
         assert decoded["user_id"] == 1
         assert decoded["username"] == "testuser"
+
+    def test_admin_login_without_card_returns_has_card_true(self, db_session, test_admin, test_app):
+        """测试管理员登录时无需绑定卡密也返回可访问状态"""
+        from app.services.auth_service import AuthService
+
+        auth_service = AuthService(db_session)
+
+        token, user_info, error = auth_service.login(
+            username=test_admin.username,
+            password="adminpass123",
+            app_key=test_app.app_key,
+            device_id="admin_device_001"
+        )
+
+        assert error is None
+        assert token is not None
+        assert user_info["role"] == "admin"
+        assert user_info["has_card"] is True

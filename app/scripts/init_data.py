@@ -4,6 +4,7 @@
 """
 import sys
 import os
+import argparse
 
 # 添加项目根目录到路径
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,10 +15,41 @@ from app.db.sqlalchemy_db import database, Base
 from app.models.app import App, AppStatus
 from app.models.user import User, UserStatus, UserRole
 from app.utils.security import hash_password
-from datetime import datetime
 
 
-def init_default_data():
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_PASSWORD = "admin123456"
+DEFAULT_TEST_USERNAME = "testuser"
+DEFAULT_TEST_PASSWORD = "test123456"
+
+
+def parse_args():
+    """
+    解析命令行参数
+
+    用法说明：
+    - 不传参数：使用默认管理员账号 admin / admin123456
+    - 传入两个参数：第一个为管理员用户名，第二个为管理员密码
+    """
+    parser = argparse.ArgumentParser(
+        description="初始化系统默认数据，支持自定义管理员用户名和密码"
+    )
+    parser.add_argument(
+        "admin_username",
+        nargs="?",
+        default=DEFAULT_ADMIN_USERNAME,
+        help=f"管理员用户名，默认值：{DEFAULT_ADMIN_USERNAME}"
+    )
+    parser.add_argument(
+        "admin_password",
+        nargs="?",
+        default=DEFAULT_ADMIN_PASSWORD,
+        help=f"管理员密码，默认值：{DEFAULT_ADMIN_PASSWORD}"
+    )
+    return parser.parse_args()
+
+
+def init_default_data(admin_username: str = DEFAULT_ADMIN_USERNAME, admin_password: str = DEFAULT_ADMIN_PASSWORD):
     """初始化默认数据"""
     
     # 连接数据库
@@ -51,12 +83,11 @@ def init_default_data():
         
         # 2. 创建管理员账户
         print("\n2. 检查管理员账户...")
-        admin_user = db.query(User).filter(User.username == "admin").first()
+        admin_user = db.query(User).filter(User.username == admin_username).first()
         
         if not admin_user:
-            admin_password = "admin123456"  # 默认密码
             admin_user = User(
-                username="admin",
+                username=admin_username,
                 password_hash=hash_password(admin_password),
                 status=UserStatus.NORMAL,
                 role=UserRole.ADMIN
@@ -67,20 +98,19 @@ def init_default_data():
             print(f"   ✓ 创建管理员账户成功")
             print(f"     - 用户ID: {admin_user.id}")
             print(f"     - 用户名: {admin_user.username}")
-            print(f"     - 默认密码: {admin_password}")
+            print(f"     - 管理员密码: {admin_password}")
             print(f"     ⚠️  请在首次登录后立即修改密码！")
         else:
-            print(f"   ✓ 管理员账户已存在 (ID: {admin_user.id})")
+            print(f"   ✓ 管理员账户已存在 (ID: {admin_user.id}, 用户名: {admin_user.username})")
         
         # 3. 创建测试普通用户
         print("\n3. 检查测试用户...")
-        test_user = db.query(User).filter(User.username == "testuser").first()
+        test_user = db.query(User).filter(User.username == DEFAULT_TEST_USERNAME).first()
         
         if not test_user:
-            test_password = "test123456"  # 默认密码
             test_user = User(
-                username="testuser",
-                password_hash=hash_password(test_password),
+                username=DEFAULT_TEST_USERNAME,
+                password_hash=hash_password(DEFAULT_TEST_PASSWORD),
                 status=UserStatus.NORMAL,
                 role=UserRole.USER
             )
@@ -90,7 +120,7 @@ def init_default_data():
             print(f"   ✓ 创建测试用户成功")
             print(f"     - 用户ID: {test_user.id}")
             print(f"     - 用户名: {test_user.username}")
-            print(f"     - 默认密码: {test_password}")
+            print(f"     - 默认密码: {DEFAULT_TEST_PASSWORD}")
         else:
             print(f"   ✓ 测试用户已存在 (ID: {test_user.id})")
         
@@ -101,11 +131,11 @@ def init_default_data():
         print("\n📋 账户信息汇总：")
         print("-" * 60)
         print(f"管理员账户：")
-        print(f"  用户名: admin")
-        print(f"  密码: admin123456")
+        print(f"  用户名: {admin_username}")
+        print(f"  密码: {admin_password}")
         print(f"\n测试账户：")
-        print(f"  用户名: testuser")
-        print(f"  密码: test123456")
+        print(f"  用户名: {DEFAULT_TEST_USERNAME}")
+        print(f"  密码: {DEFAULT_TEST_PASSWORD}")
         print(f"\n应用标识：")
         print(f"  app_key: default_app")
         print("-" * 60)
@@ -125,4 +155,8 @@ def init_default_data():
 
 
 if __name__ == "__main__":
-    init_default_data()
+    args = parse_args()
+    init_default_data(
+        admin_username=args.admin_username,
+        admin_password=args.admin_password
+    )

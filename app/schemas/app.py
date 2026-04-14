@@ -9,6 +9,8 @@ class AppInfo(BaseModel):
     app_key: str = Field(..., description="应用唯一标识")
     app_name: str = Field(..., description="应用名称")
     status: str = Field(..., description="应用状态")
+    card_count: int = Field(0, description="当前应用下的卡密数量")
+    permission_count: int = Field(0, description="当前应用下的权限数量")
     created_at: datetime = Field(..., description="创建时间")
 
     class Config:

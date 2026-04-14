@@ -11,23 +11,21 @@
     <!-- 筛选区域 -->
     <div class="filter-section">
       <el-form :inline="true" :model="filterForm" class="filter-form">
-        <el-form-item label="卡密ID">
+        <el-form-item label="卡密">
           <el-input
-            v-model.number="filterForm.card_id"
-            placeholder="输入卡密ID"
+            v-model="filterForm.card_key"
+            placeholder="输入卡密"
             clearable
             class="filter-input"
-            type="number"
           />
         </el-form-item>
         
-        <el-form-item label="用户ID">
+        <el-form-item label="用户名">
           <el-input
-            v-model.number="filterForm.user_id"
-            placeholder="输入用户ID"
+            v-model="filterForm.username"
+            placeholder="输入用户名"
             clearable
             class="filter-input"
-            type="number"
           />
         </el-form-item>
         
@@ -94,9 +92,23 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="username" label="关联用户" width="120">
+        <el-table-column label="关联用户" min-width="220">
           <template #default="{ row }">
-            <span>{{ row.username || '-' }}</span>
+            <div v-if="getRelatedUsers(row).length" class="related-users-cell">
+              <el-tag
+                v-for="username in getRelatedUsers(row)"
+                :key="username"
+                size="small"
+                effect="plain"
+                class="related-user-tag"
+              >
+                {{ username }}
+              </el-tag>
+              <span v-if="row.related_user_count && row.related_user_count > getRelatedUsers(row).length" class="related-user-more">
+                +{{ row.related_user_count - getRelatedUsers(row).length }}
+              </span>
+            </div>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         
@@ -192,8 +204,8 @@ const deviceList = ref<Device[]>([])                    // 设备列表
  * 筛选表单
  */
 const filterForm = reactive({
-  card_id: undefined as number | undefined,
-  user_id: undefined as number | undefined,
+  card_key: '',
+  username: '',
   status: ''
 })
 
@@ -247,6 +259,24 @@ const getActiveClass = (lastActiveAt: string) => {
   else {
     return 'inactive-icon'
   }
+}
+
+/**
+ * 获取设备关联用户名列表
+ * @description 管理端设备列表已支持多用户关联，这里统一兼容新旧字段，避免页面继续假设只有单个 username。
+ * @param device 设备记录
+ * @returns 用户名列表
+ */
+const getRelatedUsers = (device: Device) => {
+  if (Array.isArray(device.related_usernames) && device.related_usernames.length > 0) {
+    return device.related_usernames.slice(0, 3)
+  }
+
+  if (device.username) {
+    return [device.username]
+  }
+
+  return []
 }
 
 /**
@@ -314,8 +344,8 @@ const handleSearch = () => {
  * 处理重置
  */
 const handleReset = () => {
-  filterForm.card_id = undefined
-  filterForm.user_id = undefined
+  filterForm.card_key = ''
+  filterForm.username = ''
   filterForm.status = ''
   pagination.page = 1
   loadDeviceList()
@@ -349,11 +379,14 @@ const loadDeviceList = async () => {
       size: pagination.size
     }
     
-    if (filterForm.card_id) {
-      params.card_id = filterForm.card_id
+    const cardKey = filterForm.card_key.trim()
+    const username = filterForm.username.trim()
+
+    if (cardKey) {
+      params.card_key = cardKey
     }
-    if (filterForm.user_id) {
-      params.user_id = filterForm.user_id
+    if (username) {
+      params.username = username
     }
     if (filterForm.status) {
       params.status = filterForm.status
@@ -455,6 +488,18 @@ onMounted(() => {
 
 .copy-btn {
   @apply text-blue-600;
+}
+
+.related-users-cell {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.related-user-tag {
+  @apply max-w-full;
+}
+
+.related-user-more {
+  @apply text-xs text-gray-500;
 }
 
 /* 状态标签 */

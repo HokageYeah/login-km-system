@@ -7,7 +7,7 @@ import type { LoginRequest, LoginResponse, User } from '@/types'
  * @returns Promise<LoginResponse> 返回token和用户信息
  */
 export const login = (data: LoginRequest) => {
-  return request.post<any, LoginResponse>('/auth/login', data)
+  return request.post<LoginResponse>('/auth/login', data)
 }
 
 /**
@@ -16,7 +16,7 @@ export const login = (data: LoginRequest) => {
  * @returns Promise<User> 返回新注册的用户信息
  */
 export const register = (data: { username: string; password: string }) => {
-  return request.post<any, User>('/auth/register', data)
+  return request.post<User>('/auth/register', data)
 }
 
 /**
@@ -24,7 +24,7 @@ export const register = (data: { username: string; password: string }) => {
  * @returns Promise<User> 返回当前用户详细信息
  */
 export const getCurrentUser = () => {
-  return request.get<any, User>('/auth/me')
+  return request.get<User>('/auth/me')
 }
 
 /**
@@ -32,7 +32,7 @@ export const getCurrentUser = () => {
  * @returns Promise<void> 登出成功后无返回值
  */
 export const logout = () => {
-  return request.post<any, void>('/auth/logout')
+  return request.post<void>('/auth/logout')
 }
 
 /**
@@ -50,5 +50,5 @@ export const batchDeleteUsers = (userIds: number[]) => {
  * @returns Promise<{ total: number, apps: Array<{ app_key: string, app_name: string }> }>
  */
 export const getPublicApps = () => {
-    return request.get<any, { total: number, apps: Array<{ app_key: string, app_name: string }> }>('/app/public/list')
+    return request.get<{ total: number, apps: Array<{ app_key: string, app_name: string }> }>('/app/public/list')
 }

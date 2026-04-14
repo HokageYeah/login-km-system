@@ -11,7 +11,9 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'add_feature_permissions'
-down_revision = None  # 这里需要设置为上一个迁移的ID
+# 该迁移是在核心授权表结构创建完成后追加的权限元数据扩展，
+# 必须挂在主迁移链 001 之后，避免形成多个 head 导致部署时 upgrade head 失败。
+down_revision = '001'
 branch_labels = None
 depends_on = None
 
@@ -20,7 +22,8 @@ def upgrade():
     # 创建 feature_permissions 表
     op.create_table(
         'feature_permissions',
-        sa.Column('id', sa.Integer(), autoincrement=False, nullable=False, comment='功能权限ID'),
+        # 功能权限主键必须是数据库自增列，否则新增权限与导入权限都会因为缺少默认值而失败。
+        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='功能权限ID'),
         sa.Column('permission_key', sa.String(length=100), nullable=False, comment='权限标识（如：wechat, ximalaya）'),
         sa.Column('permission_name', sa.String(length=100), nullable=False, comment='权限名称（如：微信抓取、喜马拉雅播放）'),
         sa.Column('description', sa.String(length=500), nullable=True, comment='权限描述'),

@@ -120,3 +120,134 @@ class TestCardService:
         # 验证绑定成功
         assert error is None
         assert result is not None
+        assert result["app_name"] == test_app.app_name
+        assert result["app_id"] == test_app.id
+        assert result["app_key"] == test_app.app_key
+
+    def test_get_user_cards_returns_is_expired_flag(self, db_session):
+        """测试查询我的卡密时返回动态过期标记且不改原状态"""
+        from app.services.card_service import CardService
+        from app.models.card import Card, CardStatus
+        from app.models.user_card import UserCard, UserCardStatus
+        from app.models.app import App, AppStatus
+        from app.models.user import User, UserStatus, UserRole
+        from app.utils.security import hash_password
+
+        app = App(
+            app_key="expired_flag_app",
+            app_name="过期状态测试应用",
+            status=AppStatus.NORMAL
+        )
+        user = User(
+            username="expired_flag_user",
+            password_hash=hash_password("testpass123"),
+            status=UserStatus.NORMAL,
+            role=UserRole.USER
+        )
+        db_session.add_all([app, user])
+        db_session.commit()
+        db_session.refresh(app)
+        db_session.refresh(user)
+
+        expired_card = Card(
+            app_id=app.id,
+            card_key="EXPD-CARD-KEY1-2345",
+            status=CardStatus.USED,
+            expire_time=datetime.now() - timedelta(days=1),
+            max_device_count=1,
+            permissions=["test_permission"]
+        )
+        db_session.add(expired_card)
+        db_session.commit()
+        db_session.refresh(expired_card)
+
+        user_card = UserCard(
+            user_id=user.id,
+            card_id=expired_card.id,
+            bind_time=datetime.now() - timedelta(days=2),
+            status=UserCardStatus.ACTIVE
+        )
+        db_session.add(user_card)
+        db_session.commit()
+
+        card_service = CardService(db_session)
+        cards = card_service.get_user_cards(user.id)
+
+        assert len(cards) == 1
+        assert cards[0]["status"] == CardStatus.USED.value
+        assert cards[0]["is_expired"] is True
+
+    def test_bind_card_reactivates_unbound_user_card(self, db_session):
+        """测试解绑后重绑复用历史用户卡密记录，避免唯一索引冲突"""
+        from app.services.card_service import CardService
+        from app.models.app import App, AppStatus
+        from app.models.user import User, UserStatus, UserRole
+        from app.models.card import Card, CardStatus
+        from app.models.user_card import UserCard, UserCardStatus
+        from app.models.card_device import CardDevice
+        from app.utils.security import hash_password
+
+        app = App(
+            app_key="rebind_app",
+            app_name="重绑测试应用",
+            status=AppStatus.NORMAL
+        )
+        user = User(
+            username="rebind_user",
+            password_hash=hash_password("testpass123"),
+            status=UserStatus.NORMAL,
+            role=UserRole.USER
+        )
+        db_session.add_all([app, user])
+        db_session.commit()
+        db_session.refresh(app)
+        db_session.refresh(user)
+
+        card = Card(
+            app_id=app.id,
+            card_key="RBND-CARD-KEY1-2345",
+            status=CardStatus.USED,
+            expire_time=datetime.now() + timedelta(days=30),
+            max_device_count=1,
+            permissions=["test_permission"]
+        )
+        db_session.add(card)
+        db_session.commit()
+        db_session.refresh(card)
+
+        user_card = UserCard(
+            user_id=user.id,
+            card_id=card.id,
+            bind_time=datetime.now() - timedelta(days=2),
+            status=UserCardStatus.UNBIND
+        )
+        db_session.add(user_card)
+        db_session.commit()
+
+        card_service = CardService(db_session)
+        result, error = card_service.bind_card(
+            user_id=user.id,
+            card_key=card.card_key,
+            app_id=app.id,
+            device_id="rebind_device_001",
+            device_name="重绑设备"
+        )
+
+        db_session.refresh(user_card)
+        user_card_count = db_session.query(UserCard).filter(
+            UserCard.user_id == user.id,
+            UserCard.card_id == card.id
+        ).count()
+        device_count = db_session.query(CardDevice).filter(
+            CardDevice.card_id == card.id,
+            CardDevice.device_id == "rebind_device_001"
+        ).count()
+
+        assert error is None
+        assert result is not None
+        assert result["app_name"] == app.app_name
+        assert result["app_id"] == app.id
+        assert result["app_key"] == app.app_key
+        assert user_card.status == UserCardStatus.ACTIVE
+        assert user_card_count == 1
+        assert device_count == 1

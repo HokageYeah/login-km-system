@@ -15,6 +15,7 @@ import type { FeaturePermission, SuccessResponse } from '@/types'
 export const getFeaturePermissionList = (params: {
   page: number
   size: number
+  app_id?: number
   category?: string
   status?: string
   keyword?: string
@@ -23,6 +24,20 @@ export const getFeaturePermissionList = (params: {
     total: number
     permissions: FeaturePermission[]
   }>('/admin/feature-permissions/list', { params })
+}
+
+/**
+ * 导出功能权限
+ * @description 按当前勾选的权限标识导出权限快照文件
+ * @param permissionKeys 要导出的权限标识列表
+ * @returns Promise 返回导出的二进制文件
+ */
+export const exportFeaturePermissions = (permissionKeys: string[]) => {
+  return request.post<Blob>('/admin/feature-permissions/export', {
+    permission_keys: permissionKeys
+  }, {
+    responseType: 'blob'
+  })
 }
 
 /**
@@ -52,6 +67,7 @@ export const getPermissionCategories = () => {
 export const createFeaturePermission = (data: {
   permission_key: string
   permission_name: string
+  app_id: number
   description?: string
   category?: string
   icon?: string
@@ -76,6 +92,7 @@ export const updateFeaturePermission = (
   data: {
     permission_key?: string
     permission_name?: string
+    app_id?: number
     description?: string
     category?: string
     icon?: string
@@ -98,6 +115,45 @@ export const updateFeaturePermission = (
  */
 export const deleteFeaturePermission = (permissionId: number) => {
   return request.post<SuccessResponse>(`/admin/feature-permissions/delete/${permissionId}`)
+}
+
+/**
+ * 批量删除功能权限
+ * @description 批量删除指定的功能权限（需要管理员权限）
+ * @param permissionIds 要删除的功能权限ID列表
+ * @returns Promise 删除结果
+ */
+export const batchDeleteFeaturePermissions = (permissionIds: number[]) => {
+  return request.post<{
+    success: boolean
+    message: string
+    deleted_count: number
+    failed_ids: number[]
+  }>('/admin/feature-permissions/batch-delete', permissionIds)
+}
+
+/**
+ * 导入功能权限
+ * @description 导入此前导出的权限快照文件，并写入数据库
+ * @param file 需要导入的 JSON 文件
+ * @returns Promise 返回导入统计结果
+ */
+export const importFeaturePermissions = (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return request.post<{
+    success: boolean
+    message: string
+    total_count: number
+    created_count: number
+    updated_count: number
+    created_app_count: number
+  }>('/admin/feature-permissions/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
 }
 
 /**

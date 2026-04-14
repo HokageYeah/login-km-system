@@ -5,21 +5,36 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 # 获取当前环境
-ENV = os.getenv("ENV", "development")
+ENV = os.getenv("ENV", "development").lower()
 print(f"当前环境: {ENV}")
+
+# 对常见环境别名做统一映射，避免 Docker / CI 使用 production、development
+# 这类更常见取值时退回到错误的默认配置文件。
+ENV_ALIAS_MAP = {
+    "prod": "prod",
+    "production": "prod",
+    "dev": "dev",
+    "development": "dev",
+    "test": "test",
+}
+normalized_env = ENV_ALIAS_MAP.get(ENV, ENV)
+
 # 根据环境选择配置文件（老方法，根据文件名去拿文件配置，未使用dotenv库）以下使用dotenv库
 # env_file = f".env.{ENV}" if os.path.exists(f".env.{ENV}") else ".env"
 # 优先加载 .env 文件
 env_file = ".env"
-if ENV == "prod":
+if normalized_env == "prod":
     env_file = ".env.production"
-elif ENV == "test":
+elif normalized_env == "test":
     env_file = ".env"
-elif ENV == "dev":
+elif normalized_env == "dev":
     env_file = ".env.development"
 print(f"加载配置文件: {env_file}")
-# 清除dotenv缓存，重新加载
-load_dotenv(env_file, override=True)
+
+# Docker、systemd、CI 这类部署场景通常会通过外部环境变量注入配置。
+# 这里采用“外部环境优先，.env 文件兜底”的方式，既兼容本地开发，
+# 也避免容器里已经注入的 DB_HOST、SECRET_KEY 被文件再次覆盖。
+load_dotenv(env_file, override=False)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "通用卡密与授权系统" # 项目名称

@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { User, Card, Device, Statistics } from '@/types'
+import type { User, Card, Device, Statistics, UserActiveCardDetail } from '@/types'
 
 /**
  * 批量生成卡密
@@ -54,6 +54,21 @@ export const getUserList = (params: {
 }
 
 /**
+ * 查询用户当前有效卡密详情
+ * @description 查询指定用户当前有效卡密的完整信息（需要管理员权限）
+ * @param userId 用户ID
+ * @returns Promise 返回用户有效卡密详情
+ */
+export const getUserActiveCards = (userId: number) => {
+  return request.get<{
+    user_id: number
+    username: string
+    total: number
+    cards: UserActiveCardDetail[]
+  }>(`/admin/user/${userId}/active-cards`)
+}
+
+/**
  * 更新用户状态
  * @description 封禁或解封用户（需要管理员权限）
  * @param userId 用户ID
@@ -73,8 +88,9 @@ export const updateUserStatus = (userId: number, status: string) => {
  * @param params.page 页码（从1开始）
  * @param params.size 每页数量
  * @param params.app_id 应用ID筛选（可选）
- * @param params.status 卡密状态筛选（可选：unused-未使用，used-已使用，disabled-已禁用）
+ * @param params.status 卡密状态筛选（可选：unused-未使用，used-已使用，disabled-已禁用，expired-已过期）
  * @param params.keyword 关键词搜索（可选，搜索卡密或备注）
+ * @param params.username 用户名筛选（可选）
  * @returns Promise 返回卡密列表
  */
 export const getCardList = (params: {
@@ -83,6 +99,7 @@ export const getCardList = (params: {
   app_id?: number
   status?: string
   keyword?: string
+  username?: string
 }) => {
   return request.get<{
     total: number
@@ -104,6 +121,17 @@ export const updateCardStatus = (cardId: number, status: string) => {
 }
 
 /**
+ * 更新卡密过期时间
+ * @description 管理员修改卡密过期时间；是否过期由服务端按 expire_time 动态判断
+ * @param cardId 卡密ID
+ * @param expireTime 新的过期时间（ISO 8601格式）
+ * @returns Promise 更新结果
+ */
+export const updateCardExpireTime = (cardId: number, expireTime: string) => {
+  return request.post(`/admin/card/${cardId}/expire-time`, { expire_time: expireTime })
+}
+
+/**
  * 更新卡密权限
  * @description 实时修改卡密的权限配置（需要管理员权限）
  * @param cardId 卡密ID
@@ -122,14 +150,18 @@ export const updateCardPermissions = (cardId: number, permissions: string[]) => 
  * @param params.size 每页数量
  * @param params.card_id 卡密ID筛选（可选）
  * @param params.user_id 用户ID筛选（可选）
+ * @param params.card_key 卡密字符串筛选（可选）
+ * @param params.username 用户名筛选（可选）
  * @param params.status 设备状态筛选（可选：active-激活，disabled-禁用）
  * @returns Promise 返回设备列表
  */
 export const getDeviceList = (params: {
   page: number
   size: number
-  card_id?: number
-  user_id?: number
+  card_id?: string | number
+  user_id?: string | number
+  card_key?: string
+  username?: string
   status?: string
 }) => {
   return request.get<{

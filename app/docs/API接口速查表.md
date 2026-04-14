@@ -40,8 +40,13 @@
 |------|------|------|--------|------|
 | GET | `/api/v1/app/list` | 查询应用列表 | - | 🔑 管理员 |
 | POST | `/api/v1/app/create` | 创建应用 | `{app_name, app_key?}` | 🔑 管理员 |
-| PUT | `/api/v1/app/{app_id}/status` | 更新应用状态 | `{status}` | 🔑 管理员 |
+| POST | `/api/v1/app/{app_id}/status` | 更新应用状态 | `{status}` | 🔑 管理员 |
 | GET | `/api/v1/app/{app_id}` | 查询应用详情 | - | 🔑 管理员 |
+
+补充说明：
+
+- `GET /api/v1/app/list` 现在除了应用基础字段，还会返回 `card_count`、`permission_count`
+- 管理后台可以直接用这两个统计值做应用维度导航，无需逐行追加统计请求
 
 ---
 
@@ -49,9 +54,9 @@
 
 | 方法 | 路径 | 说明 | 请求体 | 权限 |
 |------|------|------|--------|------|
-| POST | `/api/v1/permission/check` | 权限校验 | `{permission, device_id?}` | 🔒 登录 |
-| POST | `/api/v1/permission/batch-check` | 批量权限校验 | `{permissions, device_id?}` | 🔒 登录 |
-| GET | `/api/v1/permission/my-permissions` | 查询我的权限 | - | 🔒 登录 |
+| POST | `/api/v1/permission/check` | 权限校验 | `{permission, device_id?, card_id?}` | 🔒 登录 |
+| POST | `/api/v1/permission/batch-check` | 批量权限校验 | `{permissions, device_id?, card_id?}` | 🔒 登录 |
+| GET | `/api/v1/permission/my-permissions` | 查询我的权限 | `device_id?`, `card_id?` | 🔒 登录 |
 
 ---
 
@@ -61,21 +66,41 @@
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | POST | `/api/v1/admin/card/generate` | 批量生成卡密 | 🔑 管理员 |
-| GET | `/api/v1/admin/cards` | 查询所有卡密 | 🔑 管理员 |
-| PUT | `/api/v1/admin/card/{card_id}/status` | 修改卡密状态 | 🔑 管理员 |
-| PUT | `/api/v1/admin/card/{card_id}/permissions` | 修改卡密权限 | 🔑 管理员 |
+| GET | `/api/v1/admin/cards` | 查询所有卡密（支持 `username` 筛选，并返回关联用户名） | 🔑 管理员 |
+| POST | `/api/v1/admin/card/{card_id}/status` | 修改卡密状态 | 🔑 管理员 |
+| POST | `/api/v1/admin/card/{card_id}/expire-time` | 修改卡密过期时间（按时间动态判断是否过期） | 🔑 管理员 |
+| POST | `/api/v1/admin/card/{card_id}/permissions` | 修改卡密权限 | 🔑 管理员 |
 
 ### 用户管理
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | GET | `/api/v1/admin/users` | 查询所有用户 | 🔑 管理员 |
+| GET | `/api/v1/admin/user/{user_id}/active-cards` | 查询用户当前有效卡密详情 | 🔑 管理员 |
 | PUT | `/api/v1/admin/user/{user_id}/status` | 封禁/解封用户 | 🔑 管理员 |
 
 ### 设备管理
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| GET | `/api/v1/admin/devices` | 查询设备列表 | 🔑 管理员 |
+| GET | `/api/v1/admin/devices` | 查询设备列表（支持 `card_key`、`username`，兼容 `card_id`、`user_id`） | 🔑 管理员 |
 | PUT | `/api/v1/admin/device/{device_id}/status` | 禁用/启用设备 | 🔑 管理员 |
+
+### 功能权限管理
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/admin/feature-permissions/list` | 查询功能权限列表 | 🔑 管理员 |
+| GET | `/api/v1/admin/feature-permissions/categories` | 查询功能权限分类 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/export` | 导出当前勾选权限的快照文件 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/import` | 导入权限快照文件并按 `permission_key` 写入数据库 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/create` | 创建功能权限 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/update/{permission_id}` | 更新功能权限 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/delete/{permission_id}` | 删除功能权限 | 🔑 管理员 |
+| POST | `/api/v1/admin/feature-permissions/batch-delete` | 批量删除功能权限，请求体为 `number[]` | 🔑 管理员 |
+
+补充说明：
+
+- 功能权限的“分类”在后台主视图中统一按“所属应用”理解；
+- 导出会按应用分组携带权限，导入会按应用解析，不存在的应用会自动创建；
+- 批量删除只删除权限元数据，不自动清理历史卡密中的旧 `permission_key`。
 
 ---
 
@@ -142,4 +167,4 @@ http://localhost:8003/docs
 
 ---
 
-**最后更新**: 2026-01-27
+**最后更新**: 2026-04-14

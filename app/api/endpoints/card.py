@@ -40,6 +40,7 @@ async def get_my_cards(
     返回当前用户绑定的所有卡密信息，包括：
     - 卡密字符串
     - 过期时间
+    - 是否已过期（按过期时间动态判断，不改变原状态字段）
     - 权限配置
     - 已绑定设备数
     - 最大设备数
@@ -54,6 +55,7 @@ async def get_my_cards(
             card_id=card["card_id"],
             card_key=card["card_key"],
             expire_time=card["expire_time"],
+            is_expired=card["is_expired"],
             app_id=card["app_id"],
             app_key=card["app_key"],
             app_name=card["app_name"],
@@ -136,6 +138,7 @@ async def bind_card(
             card_id=card_info["card_id"],
             card_key=card_info["card_key"],
             expire_time=card_info["expire_time"],
+            is_expired=False,
             permissions=card_info["permissions"],
             bind_devices=1,  # 刚绑定，显示1
             max_device_count=card_info["max_device_count"],
@@ -312,4 +315,3 @@ async def batch_delete_cards(
         admin_permission="管理员",
         service_class_name="卡密服务"
     )
-

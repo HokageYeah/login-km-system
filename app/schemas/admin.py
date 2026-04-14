@@ -31,7 +31,8 @@ class CardGenerateResponse(BaseModel):
 class AdminCardListRequest(BaseModel):
     """管理员查询卡密列表请求"""
     app_id: Optional[int] = Field(None, description="应用ID筛选")
-    status: Optional[str] = Field(None, description="状态筛选")
+    status: Optional[str] = Field(None, description="状态筛选：unused/used/disabled/expired，其中 expired 为按时间判断的已过期筛选")
+    username: Optional[str] = Field(None, description="用户名筛选")
     page: int = Field(1, ge=1, description="页码")
     size: int = Field(20, ge=1, le=100, description="每页数量")
 
@@ -43,11 +44,13 @@ class AdminCardInfo(BaseModel):
     app_name: str = Field(..., description="应用名称")
     card_key: str = Field(..., description="卡密字符串")
     status: str = Field(..., description="卡密状态")
+    is_expired: bool = Field(False, description="是否已过期（根据 expire_time 动态计算，不属于数据库状态枚举）")
     expire_time: Optional[datetime] = Field(None, description="过期时间")
     max_device_count: int = Field(..., description="最大设备数")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
     remark: Optional[str] = Field(None, description="备注")
     bind_user_count: int = Field(..., description="绑定用户数")
+    related_usernames: List[str] = Field(default_factory=list, description="关联用户名列表")
     bind_device_count: int = Field(..., description="绑定设备数")
     created_at: Optional[datetime] = Field(None, description="创建时间")
 
@@ -65,6 +68,11 @@ class UpdateCardStatusRequest(BaseModel):
     status: str = Field(..., description="卡密状态: unused-未使用, used-已使用, disabled-禁用")
 
 
+class UpdateCardExpireTimeRequest(BaseModel):
+    """更新卡密过期时间请求"""
+    expire_time: datetime = Field(..., description="新的过期时间")
+
+
 class UpdateCardPermissionsRequest(BaseModel):
     """更新卡密权限请求"""
     permissions: Union[List[str], Dict] = Field(..., description="权限配置")
@@ -80,6 +88,8 @@ class AdminDeviceListRequest(BaseModel):
     """管理员查询设备列表请求"""
     card_id: Optional[int] = Field(None, description="卡密ID筛选")
     user_id: Optional[int] = Field(None, description="用户ID筛选")
+    card_key: Optional[str] = Field(None, description="卡密字符串筛选")
+    username: Optional[str] = Field(None, description="用户名筛选")
     page: int = Field(1, ge=1, description="页码")
     size: int = Field(20, ge=1, le=100, description="每页数量")
 
@@ -91,6 +101,9 @@ class AdminDeviceInfo(BaseModel):
     card_key: str = Field(..., description="卡密字符串")
     device_id: str = Field(..., description="设备ID")
     device_name: Optional[str] = Field(None, description="设备名称")
+    related_user_ids: List[int] = Field(default_factory=list, description="关联用户ID列表")
+    related_usernames: List[str] = Field(default_factory=list, description="关联用户名列表")
+    related_user_count: int = Field(0, description="关联用户数量")
     bind_time: datetime = Field(..., description="绑定时间")
     last_active_at: datetime = Field(..., description="最后活跃时间")
     status: str = Field(..., description="设备状态")
@@ -124,6 +137,30 @@ class AdminUserInfo(BaseModel):
     card_count: int = Field(..., description="绑定卡密数量")
     created_at: Optional[datetime] = Field(None, description="创建时间")
     last_login_at: Optional[datetime] = Field(None, description="最后登录时间")
+
+
+class AdminUserActiveCardInfo(BaseModel):
+    """管理员查看用户有效卡密详情"""
+    card_id: int = Field(..., description="卡密ID")
+    card_key: str = Field(..., description="卡密字符串")
+    app_id: int = Field(..., description="应用ID")
+    app_name: str = Field(..., description="应用名称")
+    status: str = Field(..., description="卡密状态")
+    is_expired: bool = Field(False, description="是否已过期")
+    expire_time: Optional[datetime] = Field(None, description="过期时间")
+    max_device_count: int = Field(..., description="最大设备数")
+    bind_device_count: int = Field(..., description="绑定设备数")
+    permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
+    remark: Optional[str] = Field(None, description="备注")
+    bind_time: Optional[datetime] = Field(None, description="用户绑定时间")
+
+
+class AdminUserActiveCardListResponse(BaseModel):
+    """管理员查看用户有效卡密详情响应"""
+    user_id: int = Field(..., description="用户ID")
+    username: str = Field(..., description="用户名")
+    total: int = Field(..., description="有效卡密数量")
+    cards: List[AdminUserActiveCardInfo] = Field(..., description="有效卡密列表")
 
 
 class AdminUserListResponse(BaseModel):

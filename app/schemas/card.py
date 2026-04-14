@@ -23,6 +23,7 @@ class CardInfo(BaseModel):
     card_id: int = Field(..., description="卡密ID")
     card_key: str = Field(..., description="卡密字符串")
     expire_time: datetime = Field(..., description="过期时间")
+    is_expired: bool = Field(False, description="是否已过期（根据 expire_time 动态计算，不属于数据库状态枚举）")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
     bind_devices: int = Field(..., description="已绑定设备数")
     max_device_count: int = Field(..., description="最大可绑定设备数")

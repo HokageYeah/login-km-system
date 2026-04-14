@@ -1,4 +1,9 @@
-import axios, { type AxiosResponse, type AxiosError } from 'axios'
+import axios, {
+  type AxiosResponse,
+  type AxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig
+} from 'axios'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import router from '@/router'
@@ -44,10 +49,21 @@ export class ApiError extends Error {
  * 创建 Axios 实例
  * @description 配置基础 URL 和超时时间
  */
+interface RequestInstance extends Omit<AxiosInstance, 'request' | 'get' | 'delete' | 'head' | 'options' | 'post' | 'put' | 'patch'> {
+  request<T = any>(config: AxiosRequestConfig): Promise<T>
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  head<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  options<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
+}
+
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,    // API 基础地址
   timeout: 10000                                  // 请求超时时间（10 秒）
-})
+}) as RequestInstance
 
 /**
  * 请求拦截器
@@ -78,6 +94,49 @@ const parseErrorMessage = (statusCode: string): string => {
     return ''
   }
   return statusCode
+}
+
+/**
+ * 是否为需要强制退回登录页的鉴权失效错误
+ * @description 统一识别 Token 过期、Token 无效、未登录等 401 场景，
+ * 避免只对某一条固定文案做脆弱判断。
+ */
+const isAuthExpiredError = (status: number, errorMessage: string, requestUrl?: string): boolean => {
+  if (status !== 401) {
+    return false
+  }
+
+  // 登录接口本身返回 401 表示账号密码错误，不应触发强制登出跳转
+  if (requestUrl?.includes('/auth/login')) {
+    return false
+  }
+
+  const normalizedMessage = errorMessage.trim()
+  const authExpiredKeywords = [
+    'Token已过期',
+    'Token无效',
+    '未登录',
+    '认证失效',
+    '登录已过期',
+    '请重新登录'
+  ]
+
+  return authExpiredKeywords.some((keyword) => normalizedMessage.includes(keyword))
+}
+
+/**
+ * 统一处理鉴权失效
+ * @description 先提示用户，再清理本地登录态并跳转到登录页。
+ */
+const handleAuthExpired = async (message: string) => {
+  const userStore = useUserStore()
+
+  ElMessage.error(message || '登录已过期，请重新登录')
+  userStore.clearToken()
+
+  if (router.currentRoute.value.path !== '/login') {
+    await router.push('/login')
+  }
 }
 
 /**
@@ -160,7 +219,7 @@ request.interceptors.response.use(
       )
     }
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     // HTTP 状态码错误或网络错误
     console.error('响应拦截器错误:', error)
 
@@ -189,12 +248,9 @@ request.interceptors.response.use(
         }
       }
 
-      // 401: 未授权，Token 过期或无效
-      if (status === 401 && errorMessage.includes('HTTP')) {
-        const userStore = useUserStore()
-        userStore.clearToken()                      // 清除本地 Token
-        router.push('/login')                       // 跳转到登录页
-        ElMessage.error('登录已过期，请重新登录')
+      // 401: 未授权，统一处理 Token 失效类场景
+      if (isAuthExpiredError(status, errorMessage, error.config?.url)) {
+        await handleAuthExpired(errorMessage)
       }
       // 403: 无权限
       else if (status === 403 && errorMessage.includes('HTTP')) {

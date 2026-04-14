@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 
 from app.db.sqlalchemy_db import Base
+from app.models.enum_helper import build_value_enum
 
 
 class CardDeviceStatus(str, enum.Enum):
@@ -23,7 +24,7 @@ class CardDevice(Base):
     bind_time = Column(DateTime, default=func.now(), nullable=False, comment="绑定时间")
     last_active_at = Column(DateTime, default=func.now(), nullable=False, comment="最后活跃时间")
     status = Column(
-        SQLEnum(CardDeviceStatus),
+        build_value_enum(CardDeviceStatus, "carddevicestatus"),
         default=CardDeviceStatus.ACTIVE,
         nullable=False,
         comment="设备状态: active-激活, disabled-禁用"

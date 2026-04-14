@@ -2,7 +2,7 @@
 API 依赖函数
 提供通用的依赖注入功能，如获取当前用户、验证权限等
 """
-from typing import Optional
+from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -16,14 +16,23 @@ from loguru import logger
 security = HTTPBearer()
 
 
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     """
     获取数据库会话
     
     Returns:
         数据库会话
     """
-    return get_sqlalchemy_db()
+    db = get_sqlalchemy_db()
+    try:
+        yield db
+    except Exception:
+        # 请求处理异常时回滚当前会话，避免连接带着未完成事务回到连接池。
+        db.rollback()
+        raise
+    finally:
+        db.close()
+        logger.debug("数据库会话已关闭")
 
 
 async def get_current_user(

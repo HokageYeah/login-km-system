@@ -4,9 +4,26 @@
     <div class="permission-header">
       <div>
         <h1 class="permission-title">功能权限管理</h1>
-        <p class="permission-subtitle">配置卡密可使用的功能权限</p>
+        <p class="permission-subtitle">按应用维度配置卡密可使用的功能权限</p>
       </div>
       <div class="header-actions">
+        <el-button
+          :icon="Download"
+          :loading="exportLoading"
+          :disabled="selectedPermissionKeys.length === 0"
+          @click="handleExport"
+          class="export-btn"
+        >
+          导出选中权限
+        </el-button>
+        <el-button
+          :icon="Upload"
+          :loading="importLoading"
+          @click="triggerImport"
+          class="import-btn"
+        >
+          导入权限文件
+        </el-button>
         <el-button
           type="primary"
           :icon="Plus"
@@ -30,17 +47,17 @@
           @input="handleSearch"
         />
         <el-select
-          v-model="filters.category"
-          placeholder="选择分类"
+          v-model="filters.app_id"
+          placeholder="选择所属应用"
           clearable
           class="filter-select"
           @change="handleFilter"
         >
           <el-option
-            v-for="category in categories"
-            :key="category"
-            :label="category"
-            :value="category"
+            v-for="app in appOptions"
+            :key="app.id"
+            :label="app.app_name"
+            :value="app.id"
           />
         </el-select>
         <el-select
@@ -65,12 +82,39 @@
 
     <!-- 权限列表 -->
     <div class="permission-list">
+      <div v-if="selectedPermissions.length > 0" class="batch-actions-bar">
+        <div class="selected-info">
+          <span>已选择 <strong>{{ selectedPermissions.length }}</strong> 个功能权限</span>
+        </div>
+        <div class="action-buttons">
+          <el-button
+            type="danger"
+            :icon="Delete"
+            @click="handleBatchDelete"
+          >
+            批量删除
+          </el-button>
+          <el-button @click="clearSelection">
+            取消选择
+          </el-button>
+        </div>
+      </div>
+
       <el-table
+        ref="tableRef"
         v-loading="loading"
         :data="permissions"
+        row-key="permission_key"
         stripe
         class="permission-table"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column
+          type="selection"
+          width="56"
+          align="center"
+          reserve-selection
+        />
         <el-table-column prop="permission_key" label="权限标识" min-width="150">
           <template #default="{ row }">
             <el-tag type="primary" size="small" class="permission-tag">
@@ -88,12 +132,19 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="category" label="分类" min-width="120">
+        <el-table-column prop="app_name" label="所属应用" min-width="160">
           <template #default="{ row }">
-            <el-tag v-if="row.category" type="info" size="small" effect="plain">
-              {{ row.category }}
+            <el-tag
+              v-if="row.app_name"
+              size="small"
+              effect="plain"
+              :style="getAppBadgeStyle(row)"
+            >
+              {{ row.app_name }}
             </el-tag>
-            <span v-else class="text-muted">-</span>
+            <el-tag v-else type="warning" size="small" effect="plain">
+              未绑定应用
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
@@ -199,21 +250,25 @@
           />
         </el-form-item>
 
-        <el-form-item label="权限分类" prop="category">
+        <el-form-item label="所属应用" prop="app_id">
           <el-select
-            v-model="formData.category"
-            placeholder="选择或输入分类"
+            v-model="formData.app_id"
+            placeholder="请选择所属应用"
             filterable
-            allow-create
             clearable
+            class="w-full"
           >
             <el-option
-              v-for="category in categories"
-              :key="category"
-              :label="category"
-              :value="category"
+              v-for="app in appOptions"
+              :key="app.id"
+              :label="app.app_name"
+              :value="app.id"
             />
           </el-select>
+          <div v-if="appOptions.length === 0" class="empty-app-tip">
+            当前还没有应用，请先去应用管理中创建应用后再创建权限。
+            <el-button link type="primary" @click="goToAppManagement">去创建应用</el-button>
+          </div>
         </el-form-item>
 
         <el-form-item label="图标" prop="icon">
@@ -272,6 +327,7 @@
         </el-button>
       </template>
     </el-dialog>
+
   </div>
 </template>
 
@@ -280,13 +336,21 @@
  * 功能权限管理页面
  * @description 管理系统中的功能权限，支持增删改查
  */
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  ElMessage,
+  ElMessageBox,
+  type FormInstance,
+  type FormRules
+} from 'element-plus'
 import {
   Plus,
   Search,
   Refresh,
   QuestionFilled,
+  Upload,
+  Delete,
   ChatDotRound,
   Document,
   VideoPlay,
@@ -298,12 +362,17 @@ import {
 } from '@element-plus/icons-vue'
 import {
   getFeaturePermissionList,
-  getPermissionCategories,
   createFeaturePermission,
   updateFeaturePermission,
-  deleteFeaturePermission
+  deleteFeaturePermission,
+  batchDeleteFeaturePermissions,
+  exportFeaturePermissions,
+  importFeaturePermissions
 } from '@/api/feature-permission'
-import type { FeaturePermission } from '@/types'
+import { getAppList } from '@/api/app'
+import type { App, FeaturePermission } from '@/types'
+import { getAppTagStyle } from '@/utils/app-tag'
+import type { ElTable } from 'element-plus'
 
 /**
  * 图标选项
@@ -319,12 +388,20 @@ const iconOptions = [
   { label: '设置', value: 'Setting' }
 ]
 
+const router = useRouter()
+const route = useRoute()
+
 /**
  * 状态定义
  */
 const loading = ref(false)
+const exportLoading = ref(false)
+const importLoading = ref(false)
 const permissions = ref<FeaturePermission[]>([])
-const categories = ref<string[]>([])
+const appOptions = ref<App[]>([])
+const selectedPermissionKeys = ref<string[]>([])
+const selectedPermissions = ref<FeaturePermission[]>([])
+const tableRef = ref<InstanceType<typeof ElTable>>()
 
 /**
  * 分页参数
@@ -340,7 +417,7 @@ const pagination = ref({
  */
 const filters = ref({
   keyword: '',
-  category: '',
+  app_id: undefined as number | undefined,
   status: ''
 })
 
@@ -352,15 +429,16 @@ const dialogTitle = ref('创建功能权限')
 const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref<FormInstance>()
+const currentEditPermissionId = ref<number | null>(null)
 
 /**
  * 表单数据
  */
-const formData = ref({
+const formData = ref<any>({
   permission_key: '',
   permission_name: '',
+  app_id: undefined as number | undefined,
   description: '',
-  category: '',
   icon: '',
   sort_order: 0,
   status: 'normal'
@@ -386,8 +464,8 @@ const formRules: FormRules = {
   description: [
     { max: 500, message: '描述最多500个字符', trigger: 'blur' }
   ],
-  category: [
-    { max: 50, message: '分类最多50个字符', trigger: 'blur' }
+  app_id: [
+    { required: true, message: '请选择所属应用', trigger: 'change' }
   ],
   sort_order: [
     { type: 'number', message: '排序必须为数字', trigger: 'blur' }
@@ -403,17 +481,34 @@ const formRules: FormRules = {
 const loadPermissions = async () => {
   loading.value = true
   try {
-    const response = await getFeaturePermissionList({
+    console.info('[功能权限管理] 开始加载权限列表', {
       page: pagination.value.page,
       size: pagination.value.size,
-      category: filters.value.category || undefined,
+      app_id: filters.value.app_id,
+      status: filters.value.status,
+      keyword: filters.value.keyword
+    })
+    const data = await getFeaturePermissionList({
+      page: pagination.value.page,
+      size: pagination.value.size,
+      app_id: filters.value.app_id,
       status: filters.value.status || undefined,
       keyword: filters.value.keyword || undefined
     })
-    const data = response.data || response
     permissions.value = data.permissions || []
     pagination.value.total = data.total
+    selectedPermissions.value = selectedPermissions.value.filter((selectedPermission) =>
+      permissions.value.some((permission) => permission.id === selectedPermission.id)
+    )
+    selectedPermissionKeys.value = selectedPermissionKeys.value.filter((permissionKey) =>
+      permissions.value.some((permission) => permission.permission_key === permissionKey)
+    )
+    console.info('[功能权限管理] 权限列表加载完成', {
+      total: pagination.value.total,
+      currentPageCount: permissions.value.length
+    })
   } catch (error: any) {
+    console.error('[功能权限管理] 加载权限列表失败', error)
     ElMessage.error(error.response?.data?.detail || '加载权限列表失败')
   } finally {
     loading.value = false
@@ -421,16 +516,35 @@ const loadPermissions = async () => {
 }
 
 /**
- * 加载权限分类
+ * 加载应用列表
  */
-const loadCategories = async () => {
+const loadApps = async () => {
   try {
-    const response = await getPermissionCategories()
-    const data = response.data || response
-    categories.value = data.categories || []
+    console.info('[功能权限管理] 开始加载应用列表')
+    const data = await getAppList()
+    appOptions.value = data.apps || []
+    console.info('[功能权限管理] 应用列表加载完成', {
+      total: appOptions.value.length
+    })
   } catch (error: any) {
-    console.error('加载分类失败:', error)
+    console.error('[功能权限管理] 加载应用列表失败', error)
+    ElMessage.error('加载应用列表失败')
   }
+}
+
+/**
+ * 根据路由同步筛选条件
+ * @description 应用管理页跳转时会携带 app_id，这里统一做落地，避免每个跳转入口各写一份解析逻辑。
+ */
+const syncFilterFromRoute = () => {
+  const routeAppId = route.query.app_id
+  if (typeof routeAppId === 'string' && routeAppId) {
+    const parsedAppId = Number(routeAppId)
+    filters.value.app_id = Number.isNaN(parsedAppId) ? undefined : parsedAppId
+    return
+  }
+
+  filters.value.app_id = undefined
 }
 
 /**
@@ -453,7 +567,30 @@ const handleFilter = () => {
  * 刷新
  */
 const handleRefresh = () => {
+  console.info('[功能权限管理] 手动刷新权限页数据')
+  loadApps()
   loadPermissions()
+}
+
+/**
+ * 处理表格勾选变化
+ * @description 导出能力以勾选项为准，因此统一维护当前页面已选权限标识。
+ */
+const handleSelectionChange = (selectedRows: FeaturePermission[]) => {
+  selectedPermissions.value = selectedRows
+  selectedPermissionKeys.value = selectedRows.map((row) => row.permission_key)
+  console.info('[功能权限管理] 勾选权限变化', {
+    selectedPermissionKeys: selectedPermissionKeys.value
+  })
+}
+
+/**
+ * 清除表格勾选
+ */
+const clearSelection = () => {
+  tableRef.value?.clearSelection()
+  selectedPermissions.value = []
+  selectedPermissionKeys.value = []
 }
 
 /**
@@ -476,17 +613,37 @@ const handlePageChange = (page: number) => {
  * 创建权限
  */
 const handleCreate = () => {
+  if (appOptions.value.length === 0) {
+    console.warn('[功能权限管理] 当前没有应用，禁止创建权限并提示跳转')
+    ElMessageBox.confirm(
+      '当前还没有应用，权限必须绑定到应用后才能创建。现在跳转到应用管理页吗？',
+      '请先创建应用',
+      {
+        confirmButtonText: '去创建应用',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(() => {
+      goToAppManagement()
+    }).catch(() => {
+      console.info('[功能权限管理] 用户取消跳转到应用管理页')
+    })
+    return
+  }
+
   dialogTitle.value = '创建功能权限'
   isEdit.value = false
+  currentEditPermissionId.value = null
   formData.value = {
     permission_key: '',
     permission_name: '',
+    app_id: undefined,
     description: '',
-    category: '',
     icon: '',
     sort_order: 0,
     status: 'normal'
   }
+  console.info('[功能权限管理] 打开创建权限弹窗')
   dialogVisible.value = true
 }
 
@@ -496,17 +653,39 @@ const handleCreate = () => {
 const handleEdit = (permission: FeaturePermission) => {
   dialogTitle.value = '编辑功能权限'
   isEdit.value = true
+  currentEditPermissionId.value = permission.id
   formData.value = {
     permission_key: permission.permission_key,
     permission_name: permission.permission_name,
+    app_id: permission.app_id,
     description: permission.description || '',
-    category: permission.category || '',
     icon: permission.icon || '',
     sort_order: permission.sort_order,
     status: permission.status
   }
+  console.info('[功能权限管理] 打开编辑权限弹窗', {
+    permission_id: permission.id,
+    permission_key: permission.permission_key,
+    app_id: permission.app_id
+  })
   dialogVisible.value = true
 }
+
+/**
+ * 跳转到应用管理页
+ */
+const goToAppManagement = () => {
+  console.info('[功能权限管理] 跳转到应用管理页')
+  router.push('/apps')
+}
+
+/**
+ * 获取应用徽标样式
+ */
+const getAppBadgeStyle = (permission: FeaturePermission) => getAppTagStyle(
+  permission.app_key,
+  permission.app_name
+)
 
 /**
  * 删除权限
@@ -524,11 +703,62 @@ const handleDelete = async (permission: FeaturePermission) => {
     )
 
     await deleteFeaturePermission(permission.id)
+    console.info('[功能权限管理] 删除权限成功', {
+      permission_id: permission.id,
+      permission_key: permission.permission_key
+    })
     ElMessage.success('删除成功')
     await loadPermissions()
   } catch (error: any) {
     if (error !== 'cancel') {
+      console.error('[功能权限管理] 删除权限失败', error)
       ElMessage.error(error.response?.data?.detail || '删除失败')
+    }
+  }
+}
+
+/**
+ * 批量删除功能权限
+ */
+const handleBatchDelete = async () => {
+  if (selectedPermissions.value.length === 0) {
+    ElMessage.warning('请先选择要删除的功能权限')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedPermissions.value.length} 个功能权限吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+        message: `
+          <div>
+            <p>即将删除 <strong>${selectedPermissions.value.length}</strong> 个功能权限</p>
+            <p style="color: #f56c6c; margin-top: 10px;">
+              <strong>警告：</strong>删除操作不可恢复！
+            </p>
+            <p style="color: #f56c6c;">
+              删除的是权限元数据，历史卡密中的旧 permission_key 不会自动清理。
+            </p>
+          </div>
+        `
+      }
+    )
+
+    const result = await batchDeleteFeaturePermissions(
+      selectedPermissions.value.map((permission) => permission.id)
+    )
+    ElMessage.success(result.message)
+    clearSelection()
+    await loadPermissions()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('[功能权限管理] 批量删除功能权限失败', error)
+      ElMessage.error(error.response?.data?.detail || '批量删除失败')
     }
   }
 }
@@ -545,16 +775,21 @@ const handleSubmit = async () => {
     submitLoading.value = true
     try {
       if (isEdit.value) {
-        // 编辑：需要找到当前编辑的权限ID
-        const currentPermission = permissions.value.find(
-          p => p.permission_key === formData.value.permission_key
-        )
-        if (currentPermission) {
-          await updateFeaturePermission(currentPermission.id, formData.value)
-          ElMessage.success('更新成功')
+        if (!currentEditPermissionId.value) {
+          ElMessage.error('未找到当前编辑的权限记录')
+          return
         }
+
+        console.info('[功能权限管理] 开始更新权限', {
+          permission_id: currentEditPermissionId.value,
+          formData: formData.value
+        })
+        await updateFeaturePermission(currentEditPermissionId.value, formData.value)
+        ElMessage.success('更新成功')
       } else {
-        // 创建
+        console.info('[功能权限管理] 开始创建权限', {
+          formData: formData.value
+        })
         await createFeaturePermission(formData.value)
         ElMessage.success('创建成功')
       }
@@ -562,11 +797,118 @@ const handleSubmit = async () => {
       dialogVisible.value = false
       await loadPermissions()
     } catch (error: any) {
+      console.error('[功能权限管理] 提交权限表单失败', error)
       ElMessage.error(error.response?.data?.detail || '操作失败')
     } finally {
       submitLoading.value = false
     }
   })
+}
+
+/**
+ * 构建导出文件名
+ * @description 浏览器侧兜底生成文件名，避免部分浏览器拿不到响应头时无法命名文件。
+ */
+const buildExportFilename = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  return `feature_permissions_${year}${month}${day}_${hours}${minutes}${seconds}.json`
+}
+
+/**
+ * 下载导出文件
+ */
+const downloadBlobFile = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * 导出勾选权限
+ * @description 仅导出用户明确勾选的权限，避免分页或筛选造成误导出。
+ */
+const handleExport = async () => {
+  if (selectedPermissionKeys.value.length === 0) {
+    ElMessage.warning('请先勾选要导出的权限')
+    return
+  }
+
+  exportLoading.value = true
+  try {
+    console.info('[功能权限管理] 开始导出权限', {
+      selectedPermissionKeys: selectedPermissionKeys.value
+    })
+    const blob = await exportFeaturePermissions(selectedPermissionKeys.value)
+
+    downloadBlobFile(blob, buildExportFilename())
+    ElMessage.success(`导出成功，共导出 ${selectedPermissionKeys.value.length} 条权限`)
+  } catch (error: any) {
+    console.error('[功能权限管理] 导出权限失败', error)
+    ElMessage.error(error.response?.data?.detail || '导出权限失败')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+/**
+ * 触发导入文件选择
+ * @description 直接在用户点击事件里动态创建 input，兼容性比隐藏 input 和组件代理更稳定。
+ */
+const triggerImport = () => {
+  if (importLoading.value) {
+    return
+  }
+
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = '.json,application/json'
+
+  fileInput.onchange = async () => {
+    const selectedFile = fileInput.files?.[0]
+    if (!selectedFile) {
+      return
+    }
+
+    await importPermissionFile(selectedFile)
+  }
+
+  fileInput.click()
+}
+
+/**
+ * 导入权限文件
+ */
+const importPermissionFile = async (selectedFile: File) => {
+  importLoading.value = true
+  try {
+    console.info('[功能权限管理] 开始导入权限文件', {
+      fileName: selectedFile.name,
+      fileSize: selectedFile.size
+    })
+    const result = await importFeaturePermissions(selectedFile)
+    ElMessage.success(
+      `导入成功，共处理 ${result.total_count} 条，新增 ${result.created_count} 条，更新 ${result.updated_count} 条，自动创建应用 ${result.created_app_count} 个`
+    )
+    pagination.value.page = 1
+    await loadPermissions()
+    await loadApps()
+  } catch (error: any) {
+    console.error('[功能权限管理] 导入权限失败', error)
+    ElMessage.error(error.response?.data?.detail || '导入权限失败')
+  } finally {
+    importLoading.value = false
+  }
 }
 
 /**
@@ -588,9 +930,19 @@ const formatDate = (dateStr: string) => {
  * 组件挂载时加载数据
  */
 onMounted(() => {
+  syncFilterFromRoute()
+  loadApps()
   loadPermissions()
-  loadCategories()
 })
+
+watch(
+  () => route.query.app_id,
+  () => {
+    syncFilterFromRoute()
+    pagination.value.page = 1
+    loadPermissions()
+  }
+)
 </script>
 
 <style scoped>
@@ -622,6 +974,16 @@ onMounted(() => {
 
 .header-actions {
   @apply flex gap-4;
+}
+
+.export-btn {
+  @apply px-5 py-2.5 rounded-xl border border-blue-100;
+  @apply bg-white text-blue-600 font-medium;
+}
+
+.import-btn {
+  @apply px-5 py-2.5 rounded-xl border border-emerald-100;
+  @apply bg-emerald-50 text-emerald-700 font-medium;
 }
 
 .create-btn {
@@ -666,6 +1028,15 @@ onMounted(() => {
   @apply shadow-sm border border-gray-100;
 }
 
+.batch-actions-bar {
+  @apply flex items-center justify-between mb-4 px-4 py-3;
+  @apply rounded-xl border border-red-100 bg-red-50;
+}
+
+.selected-info {
+  @apply text-sm text-gray-700;
+}
+
 .permission-table {
   @apply w-full;
 }
@@ -689,6 +1060,10 @@ onMounted(() => {
 
 .text-muted {
   @apply text-gray-400;
+}
+
+.empty-app-tip {
+  @apply mt-2 text-sm text-amber-600;
 }
 
 .action-buttons {

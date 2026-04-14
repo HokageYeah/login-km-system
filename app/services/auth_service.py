@@ -141,8 +141,8 @@ class AuthService:
             self.db.add(user_token)
             self.db.commit()
             
-            # 检查用户是否已绑定卡密
-            has_card = self._check_user_has_card(user.id)
+            # 管理员不受卡密绑定限制，登录态中视为可直接进入系统
+            has_card = True if user.role == UserRole.ADMIN else self._check_user_has_card(user.id)
             
             # 构造用户信息
             user_info = {

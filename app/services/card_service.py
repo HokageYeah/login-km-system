@@ -19,6 +19,11 @@ class CardService:
     
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _is_card_expired(card: Card) -> bool:
+        """按过期时间动态判断卡密是否已过期，不写回数据库状态。"""
+        return bool(card.expire_time and card.expire_time < datetime.now())
     
     def get_user_cards(self, user_id: int) -> List[dict]:
         """
@@ -61,6 +66,7 @@ class CardService:
                 "app_status": app.status,
                 "app_created_at": app.created_at,
                 "expire_time": card.expire_time,
+                "is_expired": self._is_card_expired(card),
                 "permissions": card.permissions,
                 "bind_devices": device_count,
                 "max_device_count": card.max_device_count,
@@ -99,71 +105,90 @@ class CardService:
         # 2. 验证卡密是否属于当前应用
         if card.app_id != app_id:
             return None, "卡密不属于当前应用"
+
+        app = self.db.query(App).filter(App.id == card.app_id).first()
+        if not app:
+            return None, "卡密所属应用不存在"
         
         # 3. 验证卡密状态
         if card.status == CardStatus.DISABLED:
             return None, "卡密已被禁用"
         
         # 4. 验证卡密是否过期
-        if card.expire_time < datetime.now():
+        if self._is_card_expired(card):
             return None, "卡密已过期"
         
-        # 5. 检查用户是否已绑定该卡密
+        # 5. 检查用户是否曾绑定该卡密
+        # user_cards 在数据库层限制同一用户和卡密只能有一条记录；
+        # 解绑后再次绑定应恢复历史记录，而不是插入新记录导致唯一索引冲突。
         existing_binding = self.db.query(UserCard).filter(
             and_(
                 UserCard.user_id == user_id,
-                UserCard.card_id == card.id,
-                UserCard.status == UserCardStatus.ACTIVE
+                UserCard.card_id == card.id
             )
         ).first()
-        
-        if existing_binding:
-            # 用户已绑定该卡密，检查设备是否已绑定
-            existing_device = self.db.query(CardDevice).filter(
-                and_(
-                    CardDevice.card_id == card.id,
-                    CardDevice.device_id == device_id
-                )
-            ).first()
-            
-            if existing_device:
-                if existing_device.status == CardDeviceStatus.DISABLED:
-                    return None, "该设备已被禁用"
-                return None, "该设备已绑定此卡密"
-        
-        # 6. 检查设备数量限制
-        active_devices = self.db.query(CardDevice).filter(
+
+        # 6. 检查设备是否已绑定该卡密
+        # card_devices 同样有唯一索引，必须统一处理已有记录，避免重复插入。
+        existing_device = self.db.query(CardDevice).filter(
             and_(
                 CardDevice.card_id == card.id,
-                CardDevice.status == CardDeviceStatus.ACTIVE
+                CardDevice.device_id == device_id
             )
-        ).count()
+        ).first()
+
+        if existing_device:
+            if existing_device.status == CardDeviceStatus.DISABLED:
+                return None, "该设备已被禁用"
+            if not existing_binding:
+                return None, "该设备已绑定此卡密"
+            if existing_binding and existing_binding.status == UserCardStatus.ACTIVE:
+                return None, "该设备已绑定此卡密"
         
-        if active_devices >= card.max_device_count:
-            return None, f"设备数量已达上限（{card.max_device_count}个）"
+        if not existing_device:
+            # 7. 检查设备数量限制
+            active_devices = self.db.query(CardDevice).filter(
+                and_(
+                    CardDevice.card_id == card.id,
+                    CardDevice.status == CardDeviceStatus.ACTIVE
+                )
+            ).count()
+            
+            if active_devices >= card.max_device_count:
+                return None, f"设备数量已达上限（{card.max_device_count}个）"
         
-        # 7. 创建用户-卡密绑定（如果不存在）
-        if not existing_binding:
+        now = datetime.now()
+
+        # 8. 创建或恢复用户-卡密绑定
+        if existing_binding:
+            if existing_binding.status != UserCardStatus.ACTIVE:
+                existing_binding.status = UserCardStatus.ACTIVE
+                existing_binding.bind_time = now
+        else:
             user_card = UserCard(
                 user_id=user_id,
                 card_id=card.id,
-                bind_time=datetime.now(),
+                bind_time=now,
                 status=UserCardStatus.ACTIVE
             )
             self.db.add(user_card)
         
-        # 8. 创建设备绑定
-        card_device = CardDevice(
-            card_id=card.id,
-            device_id=device_id,
-            device_name=device_name,
-            bind_time=datetime.now(),
-            last_active_at=datetime.now(),
-            status=CardDeviceStatus.ACTIVE
-        )
-        self.db.add(card_device)
+        # 9. 创建或更新设备绑定
+        if existing_device:
+            existing_device.device_name = device_name or existing_device.device_name
+            existing_device.last_active_at = now
+        else:
+            card_device = CardDevice(
+                card_id=card.id,
+                device_id=device_id,
+                device_name=device_name,
+                bind_time=now,
+                last_active_at=now,
+                status=CardDeviceStatus.ACTIVE
+            )
+            self.db.add(card_device)
         
-        # 9. 更新卡密状态为已使用
+        # 10. 更新卡密状态为已使用
         if card.status == CardStatus.UNUSED:
             card.status = CardStatus.USED
         
@@ -171,10 +196,7 @@ class CardService:
         
         logger.info(f"用户 {user_id} 成功绑定卡密 {card_key}，设备: {device_id}")
         
-        # 10. 查询应用信息
-        app = self.db.query(App).filter(App.id == card.app_id).first()
-        
-        # 11. 返回卡密信息（包含应用信息）
+        # 11. 返回卡密信息
         return {
             "card_id": card.id,
             "card_key": card.card_key,
@@ -182,11 +204,11 @@ class CardService:
             "permissions": card.permissions,
             "max_device_count": card.max_device_count,
             "remark": card.remark,
-            "app_name": app.app_name if app else "",
-            "app_id": app.id if app else None,
-            "app_key": app.app_key if app else "",
-            "app_status": app.status if app else "",
-            "app_created_at": app.created_at if app else None
+            "app_name": app.app_name,
+            "app_id": app.id,
+            "app_key": app.app_key,
+            "app_status": app.status.value,
+            "app_created_at": app.created_at
         }, None
     
     def unbind_device(
@@ -347,7 +369,7 @@ class CardService:
                 continue
             
             # 检查是否过期
-            if card.expire_time < datetime.now():
+            if self._is_card_expired(card):
                 continue
             
             # 检查设备是否绑定

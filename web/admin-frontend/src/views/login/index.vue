@@ -188,8 +188,9 @@ const fetchAppList = async () => {
     if (res && res.apps) {
       appList.value = res.apps
       // 如果有应用，默认选中第一个
-      if (res.apps.length > 0) {
-        loginForm.app_key = res.apps[0].app_key
+      const [firstApp] = res.apps
+      if (firstApp) {
+        loginForm.app_key = firstApp.app_key
       }
     }
   } catch (error) {

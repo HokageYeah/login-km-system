@@ -111,9 +111,16 @@
         
         <el-table-column prop="card_count" label="有效卡密" width="100" align="center">
           <template #default="{ row }">
-            <el-tag type="info" size="small">
-              {{ row.card_count || 0 }}
-            </el-tag>
+            <el-button
+              v-if="row.card_count"
+              type="primary"
+              link
+              class="card-count-btn"
+              @click="showActiveCardsDialog(row)"
+            >
+              {{ row.card_count }}
+            </el-button>
+            <el-tag v-else type="info" size="small">0</el-tag>
           </template>
         </el-table-column>
         
@@ -177,6 +184,88 @@
         />
       </div>
     </div>
+
+    <el-dialog
+      v-model="activeCardsDialogVisible"
+      :title="activeCardsDialogTitle"
+      width="960px"
+      :close-on-click-modal="false"
+    >
+      <el-table
+        v-loading="activeCardsLoading"
+        :data="activeCards"
+        stripe
+        class="active-cards-table"
+      >
+        <el-table-column prop="card_key" label="卡密" min-width="210">
+          <template #default="{ row }">
+            <el-button
+              type="primary"
+              link
+              class="card-link-btn"
+              @click="goToCardManagement(row)"
+            >
+              {{ row.card_key }}
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="app_name" label="所属应用" width="140" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <div class="card-status-cell">
+              <el-tag :type="row.status === 'disabled' ? 'danger' : 'success'" size="small">
+                {{ row.status === 'disabled' ? '禁用' : row.status === 'used' ? '已使用' : '未使用' }}
+              </el-tag>
+              <el-tag
+                v-if="isCardExpired(row)"
+                type="danger"
+                size="small"
+                effect="plain"
+              >
+                已过期
+              </el-tag>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="expire_time" label="过期时间" width="180">
+          <template #default="{ row }">
+            {{ formatDateTime(row.expire_time) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="max_device_count" label="设备限制" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag type="info" size="small">
+              {{ row.bind_device_count || 0 }} / {{ row.max_device_count }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="permissions" label="权限" min-width="180">
+          <template #default="{ row }">
+            <div class="permissions-cell">
+              <el-tag
+                v-for="permission in getPermissions(row.permissions)"
+                :key="permission"
+                size="small"
+                class="permission-tag"
+              >
+                {{ permission }}
+              </el-tag>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="bind_time" label="绑定时间" width="180">
+          <template #default="{ row }">
+            {{ formatDateTime(row.bind_time) }}
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-empty
+        v-if="!activeCardsLoading && activeCards.length === 0"
+        description="该用户暂无有效卡密"
+        :image-size="120"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -185,7 +274,7 @@
  * 用户管理页面
  * @description 管理员管理系统中的所有用户
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -198,9 +287,10 @@ import {
   InfoFilled
 } from '@element-plus/icons-vue'
 import type { ElTable } from 'element-plus'
-import { getUserList, updateUserStatus } from '@/api/admin'
+import { useRouter } from 'vue-router'
+import { getUserList, updateUserStatus, getUserActiveCards } from '@/api/admin'
 import { batchDeleteUsers } from '@/api/auth'
-import type { User as UserType } from '@/types'
+import type { User as UserType, UserActiveCardDetail } from '@/types'
 
 /**
  * 状态定义
@@ -209,6 +299,11 @@ const loading = ref(false)                              // 加载状态
 const userList = ref<UserType[]>([])                    // 用户列表
 const selectedUsers = ref<UserType[]>([])               // 选中的用户
 const tableRef = ref<InstanceType<typeof ElTable>>()    // 表格引用
+const activeCardsDialogVisible = ref(false)             // 有效卡密弹窗
+const activeCardsLoading = ref(false)                   // 有效卡密加载状态
+const activeCards = ref<UserActiveCardDetail[]>([])     // 有效卡密详情
+const currentUser = ref<UserType | null>(null)          // 当前查看用户
+const router = useRouter()
 
 /**
  * 筛选表单
@@ -227,6 +322,11 @@ const pagination = reactive({
   total: 0
 })
 
+const activeCardsDialogTitle = computed(() => {
+  if (!currentUser.value) return '有效卡密详情'
+  return `${currentUser.value.username} 的有效卡密详情`
+})
+
 /**
  * 格式化日期时间
  * @param dateStr ISO 8601 格式的日期字符串
@@ -242,6 +342,24 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const getPermissions = (permissions: unknown): string[] => {
+  if (Array.isArray(permissions)) {
+    return permissions.map(item => String(item))
+  }
+  if (typeof permissions === 'object' && permissions !== null) {
+    return Object.entries(permissions)
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([key]) => key)
+  }
+  return []
+}
+
+const isCardExpired = (card: UserActiveCardDetail) => {
+  if (card.is_expired) return true
+  if (!card.expire_time) return false
+  return new Date(card.expire_time).getTime() < Date.now()
 }
 
 /**
@@ -404,6 +522,33 @@ const handleStatusChange = async (user: UserType) => {
   }
 }
 
+const showActiveCardsDialog = async (user: UserType) => {
+  currentUser.value = user
+  activeCardsDialogVisible.value = true
+  activeCardsLoading.value = true
+
+  try {
+    const data = await getUserActiveCards(user.id)
+    activeCards.value = data.cards || []
+  } catch (error) {
+    activeCards.value = []
+    ElMessage.error('加载用户有效卡密失败')
+    console.error('加载用户有效卡密失败:', error)
+  } finally {
+    activeCardsLoading.value = false
+  }
+}
+
+const goToCardManagement = (card: UserActiveCardDetail) => {
+  activeCardsDialogVisible.value = false
+  router.push({
+    name: 'Cards',
+    query: {
+      card_key: card.card_key
+    }
+  })
+}
+
 /**
  * 处理搜索
  */
@@ -545,6 +690,27 @@ onMounted(() => {
 /* 状态标签 */
 .status-tag {
   @apply font-medium;
+}
+
+.card-status-cell {
+  @apply flex flex-col items-center gap-1;
+}
+
+.card-count-btn,
+.card-link-btn {
+  @apply font-medium;
+}
+
+.active-cards-table {
+  @apply w-full;
+}
+
+.permissions-cell {
+  @apply flex flex-wrap gap-2;
+}
+
+.permission-tag {
+  @apply mb-1;
 }
 
 /* 时间单元格 */

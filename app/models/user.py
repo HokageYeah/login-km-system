@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 
 from app.db.sqlalchemy_db import Base
+from app.models.enum_helper import build_value_enum
 
 
 class UserStatus(str, enum.Enum):
@@ -26,13 +27,13 @@ class User(Base):
     username = Column(String(100), unique=True, index=True, nullable=False, comment="用户名")
     password_hash = Column(String(255), nullable=False, comment="密码哈希")
     status = Column(
-        SQLEnum(UserStatus),
+        build_value_enum(UserStatus, "userstatus"),
         default=UserStatus.NORMAL,
         nullable=False,
         comment="用户状态: normal-正常, banned-封禁"
     )
     role = Column(
-        SQLEnum(UserRole),
+        build_value_enum(UserRole, "userrole"),
         default=UserRole.USER,
         nullable=False,
         comment="用户角色: user-普通用户, admin-管理员"
