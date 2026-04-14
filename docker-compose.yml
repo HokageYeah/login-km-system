@@ -23,6 +23,16 @@ services:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
+      # 构建阶段为 build 容器额外挂载一个固定宿主机别名：
+      # host.docker.internal -> host-gateway
+      #
+      # 设计说明：
+      # 1. Linux 下 docker build 默认不能像 Docker Desktop 那样直接识别 host.docker.internal；
+      # 2. 增加这条映射后，构建阶段的 pip install 就可以通过
+      #    http://host.docker.internal:8118 访问宿主机上的代理服务；
+      # 3. 这样可以避免把宿主机代理写成 127.0.0.1 后，在构建容器里变成“指向容器自己”的问题。
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
       args:
         # 可选：后端镜像构建阶段的 HTTP 代理。
         # 典型用于 Linux 服务器在执行 pip install 时访问外网。
@@ -65,6 +75,11 @@ services:
       https_proxy: ${KM_DOCKER_HTTPS_PROXY:-}
       all_proxy: ${KM_DOCKER_ALL_PROXY:-}
       no_proxy: ${KM_DOCKER_NO_PROXY:-}
+    extra_hosts:
+      # 运行阶段也补上相同的宿主机别名映射。
+      # 原因是后端服务启动后如果还需要访问外网接口，
+      # 也会继续复用 HTTP_PROXY / HTTPS_PROXY / ALL_PROXY。
+      - "host.docker.internal:host-gateway"
     depends_on:
       mysql:
         condition: service_healthy
@@ -91,6 +106,11 @@ services:
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
+      # 前端镜像构建阶段同样需要访问宿主机代理。
+      # 这里主要服务于 npm ci 拉取依赖时的联网能力，
+      # 不涉及前端运行态的 Nginx 反向代理逻辑。
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
       args:
         # 可选：前端镜像构建阶段的 HTTP 代理。
         # 主要用于 npm ci 拉取依赖时访问外网。
