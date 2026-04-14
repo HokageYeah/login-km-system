@@ -4,8 +4,20 @@ from dotenv import load_dotenv
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
-# 获取当前环境
-ENV = os.getenv("ENV", "development").lower()
+# 先加载根目录 .env，作为“环境选择器”和公共兜底配置。
+# 设计说明：
+# 1. 本地开发时，通常通过 .env 指定当前机器默认使用 development / prod / test 哪套配置；
+# 2. Docker、systemd、CI 如果已经通过外部环境变量注入 ENV，则仍然保持外部优先；
+# 3. 因为 override=False，所以 .env 只做兜底，不会覆盖外部显式传入的值。
+load_dotenv(".env", override=False)
+
+# 获取当前环境。
+# 优先级：
+# 1. 外部传入的 ENV
+# 2. .env 中的 ENV
+# 3. .env 中的 ENVIRONMENT
+# 4. 默认 development
+ENV = os.getenv("ENV", os.getenv("ENVIRONMENT", "development")).lower()
 print(f"当前环境: {ENV}")
 
 # 对常见环境别名做统一映射，避免 Docker / CI 使用 production、development
@@ -19,22 +31,26 @@ ENV_ALIAS_MAP = {
 }
 normalized_env = ENV_ALIAS_MAP.get(ENV, ENV)
 
-# 根据环境选择配置文件（老方法，根据文件名去拿文件配置，未使用dotenv库）以下使用dotenv库
-# env_file = f".env.{ENV}" if os.path.exists(f".env.{ENV}") else ".env"
-# 优先加载 .env 文件
+# 根据环境选择配置文件。
+# 当前约定：
+# - development / dev -> .env.development
+# - production / prod -> .env.production
+# - test             -> .env.test
+# - 其他情况         -> .env
 env_file = ".env"
 if normalized_env == "prod":
     env_file = ".env.production"
 elif normalized_env == "test":
-    env_file = ".env"
+    env_file = ".env.test"
 elif normalized_env == "dev":
     env_file = ".env.development"
 print(f"加载配置文件: {env_file}")
 
 # Docker、systemd、CI 这类部署场景通常会通过外部环境变量注入配置。
-# 这里采用“外部环境优先，.env 文件兜底”的方式，既兼容本地开发，
+# 这里采用“外部环境优先，环境文件兜底”的方式，既兼容本地开发，
 # 也避免容器里已经注入的 DB_HOST、SECRET_KEY 被文件再次覆盖。
-load_dotenv(env_file, override=False)
+if env_file != ".env":
+    load_dotenv(env_file, override=False)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "通用卡密与授权系统" # 项目名称
