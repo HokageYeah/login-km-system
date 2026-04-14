@@ -23,9 +23,48 @@ services:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
+      args:
+        # 可选：后端镜像构建阶段的 HTTP 代理。
+        # 典型用于 Linux 服务器在执行 pip install 时访问外网。
+        # 如果服务器不需要代理，或本地开发不想走代理，请保持为空。
+        KM_DOCKER_HTTP_PROXY: ${KM_DOCKER_HTTP_PROXY:-}
+        # 可选：后端镜像构建阶段的 HTTPS 代理。
+        # 与 KM_DOCKER_HTTP_PROXY 一样，只在 .env.docker 显式填写时生效。
+        KM_DOCKER_HTTPS_PROXY: ${KM_DOCKER_HTTPS_PROXY:-}
+        # 可选：后端镜像构建阶段的全局代理，例如 socks5。
+        # 只有你的服务器网络环境明确需要时才填写。
+        KM_DOCKER_ALL_PROXY: ${KM_DOCKER_ALL_PROXY:-}
+        # 可选：后端镜像构建阶段的代理白名单。
+        # 建议至少保留 localhost、127.0.0.1、mysql，避免容器内访问本地或数据库时误走代理。
+        KM_DOCKER_NO_PROXY: ${KM_DOCKER_NO_PROXY:-}
     restart: unless-stopped
     env_file:
+      # 第一个环境文件负责 Docker / Compose 层面的部署参数，
+      # 例如代理、数据库容器初始化、时区等。
       - .env.docker
+      # 第二个环境文件负责应用自身的业务配置，
+      # 例如 DB_*、SECRET_KEY、DEBUG、API_PREFIX。
+      #
+      # 通过 KM_APP_ENV_FILE 可以显式决定本次 Docker 部署使用哪套应用配置：
+      # - .env.production
+      # - .env.development
+      # - .env.test
+      #
+      # 默认值使用 .env.production，因为 Docker 部署通常面向生产环境。
+      - ${KM_APP_ENV_FILE:-.env.production}
+    environment:
+      # 运行阶段的代理变量说明：
+      # 1. 这里只给后端容器注入，是因为后端运行时可能真的需要访问国外网站；
+      # 2. 如果 .env.docker 中没有填写，下面这些值会回落为空字符串，等价于“未启用代理”；
+      # 3. 这样可以保证 Linux 服务器可按需走代理，而本地 Docker 测试仍保持原行为。
+      HTTP_PROXY: ${KM_DOCKER_HTTP_PROXY:-}
+      HTTPS_PROXY: ${KM_DOCKER_HTTPS_PROXY:-}
+      ALL_PROXY: ${KM_DOCKER_ALL_PROXY:-}
+      NO_PROXY: ${KM_DOCKER_NO_PROXY:-}
+      http_proxy: ${KM_DOCKER_HTTP_PROXY:-}
+      https_proxy: ${KM_DOCKER_HTTPS_PROXY:-}
+      all_proxy: ${KM_DOCKER_ALL_PROXY:-}
+      no_proxy: ${KM_DOCKER_NO_PROXY:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -52,6 +91,16 @@ services:
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
+      args:
+        # 可选：前端镜像构建阶段的 HTTP 代理。
+        # 主要用于 npm ci 拉取依赖时访问外网。
+        KM_DOCKER_HTTP_PROXY: ${KM_DOCKER_HTTP_PROXY:-}
+        # 可选：前端镜像构建阶段的 HTTPS 代理。
+        KM_DOCKER_HTTPS_PROXY: ${KM_DOCKER_HTTPS_PROXY:-}
+        # 可选：前端镜像构建阶段的全局代理。
+        KM_DOCKER_ALL_PROXY: ${KM_DOCKER_ALL_PROXY:-}
+        # 可选：前端镜像构建阶段的代理白名单。
+        KM_DOCKER_NO_PROXY: ${KM_DOCKER_NO_PROXY:-}
     restart: unless-stopped
     depends_on:
       backend:
