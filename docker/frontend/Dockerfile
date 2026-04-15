@@ -22,6 +22,14 @@ ENV http_proxy=${KM_DOCKER_HTTP_PROXY}
 ENV https_proxy=${KM_DOCKER_HTTPS_PROXY}
 ENV all_proxy=${KM_DOCKER_ALL_PROXY}
 ENV no_proxy=${KM_DOCKER_NO_PROXY}
+# 限制 Node.js 在前端构建阶段的最大堆内存。
+# 设计说明：
+# 1. 当前项目在 Linux 小内存云服务器上执行 `vue-tsc -b && vite build` 时，
+#    有概率因为瞬时内存占用过高被系统 OOM Killer 直接杀掉；
+# 2. 增加这一限制后，可以降低 Node 构建阶段的峰值内存使用，减少 exit code 137；
+# 3. 这里不是为了“提速”，而是为了让自动部署在资源紧张的服务器上更稳定；
+# 4. 1536MB 对当前项目通常足够，如果后续前端规模继续增长，再按实际构建日志调整。
+ENV NODE_OPTIONS=--max-old-space-size=1536
 
 WORKDIR /build
 
