@@ -18,7 +18,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Dashboard',
             component: () => import('@/views/dashboard/index.vue'),
             meta: {
-              title: '表格数据',
+              title: '清爽数据看板',
               icon: 'DataLine',
               roles: ['admin'],
             }
@@ -28,7 +28,7 @@ const routes: Array<RouteRecordRaw> = [
             name: 'Dashboard2',
             component: () => import('@/views/dashboard/index2.vue'),
             meta: {
-              title: '测试页面',
+              title: '水墨仪表盘',
               icon: 'DataLine',
               roles: ['admin'],
             }

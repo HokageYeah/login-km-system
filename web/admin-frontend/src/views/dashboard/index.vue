@@ -2,10 +2,11 @@
   <div class="dashboard-container">
     <section class="dashboard-header">
       <div class="header-copy">
-        <span class="header-badge">Dashboard Overview</span>
-        <h1 class="dashboard-title">授权系统数据仪表盘</h1>
+        <span class="header-badge">Comprehensive Operations Board</span>
+        <h1 class="dashboard-title">授权系统综合数据看板</h1>
         <p class="dashboard-subtitle">
-          基于后台统计接口统一展示系统快照、状态结构与近 7 日增长趋势，帮助你快速判断整体运行情况。
+          这一版继续聚焦综合快照，把用户、卡密、设备、应用与最近 7 日趋势统一放进一张经营总览图里，
+          让你既能看当前规模，也能看增长、库存、风险和资源协同情况。
         </p>
       </div>
 
@@ -13,6 +14,10 @@
         <div class="header-info-card">
           <span>最近更新时间</span>
           <strong>{{ lastUpdatedText }}</strong>
+        </div>
+        <div class="header-info-card">
+          <span>增长动量</span>
+          <strong>{{ growthMomentumRate }}%</strong>
         </div>
         <div class="header-info-card">
           <span>健康评分</span>
@@ -65,28 +70,17 @@
       <article class="panel-card panel-summary">
         <div class="panel-head">
           <div>
-            <p class="panel-eyebrow">Today Focus</p>
+            <p class="panel-eyebrow">Today Snapshot</p>
             <h3 class="panel-title">当日增长摘要</h3>
           </div>
           <el-icon class="panel-icon"><TrendCharts /></el-icon>
         </div>
 
         <div class="summary-list">
-          <div class="summary-item">
-            <span>今日新增用户</span>
-            <strong>{{ todayNewUsers }}</strong>
-          </div>
-          <div class="summary-item">
-            <span>今日新增设备</span>
-            <strong>{{ todayNewDevices }}</strong>
-          </div>
-          <div class="summary-item">
-            <span>卡密使用率</span>
-            <strong>{{ cardUsageRate }}%</strong>
-          </div>
-          <div class="summary-item">
-            <span>未使用卡密储备</span>
-            <strong>{{ cardReserveRate }}%</strong>
+          <div v-for="item in summaryItems" :key="item.label" class="summary-item">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <em>{{ item.desc }}</em>
           </div>
         </div>
       </article>
@@ -95,7 +89,7 @@
         <div class="panel-head">
           <div>
             <p class="panel-eyebrow">System Reading</p>
-            <h3 class="panel-title">系统状态观察</h3>
+            <h3 class="panel-title">综合运营观察</h3>
           </div>
           <el-icon class="panel-icon"><DataAnalysis /></el-icon>
         </div>
@@ -123,16 +117,30 @@
       </article>
     </section>
 
+    <section class="signal-grid">
+      <article
+        v-for="item in executiveMetrics"
+        :key="item.label"
+        class="signal-card"
+      >
+        <div class="signal-card-top">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+        <p>{{ item.desc }}</p>
+      </article>
+    </section>
+
     <section class="charts-grid" v-loading="loading">
       <article class="chart-card chart-span-2">
         <div class="panel-head">
           <div>
-            <p class="panel-eyebrow">Status Line</p>
-            <h3 class="panel-title">状态趋势总览</h3>
+            <p class="panel-eyebrow">Scale Compare</p>
+            <h3 class="panel-title">核心资源总量对比</h3>
           </div>
           <el-icon class="panel-icon"><Histogram /></el-icon>
         </div>
-        <div ref="statusTrendRef" class="chart-container chart-medium"></div>
+        <div ref="resourceCompareRef" class="chart-container chart-medium"></div>
       </article>
 
       <article class="chart-card">
@@ -149,8 +157,19 @@
       <article class="chart-card chart-span-2">
         <div class="panel-head">
           <div>
-            <p class="panel-eyebrow">Daily Compare</p>
-            <h3 class="panel-title">每日新增用户 / 设备对比</h3>
+            <p class="panel-eyebrow">Status Line</p>
+            <h3 class="panel-title">核心状态占比走势</h3>
+          </div>
+          <el-icon class="panel-icon"><DataLine /></el-icon>
+        </div>
+        <div ref="statusTrendRef" class="chart-container chart-medium"></div>
+      </article>
+
+      <article class="chart-card chart-span-2">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Daily Core Growth</p>
+            <h3 class="panel-title">每日新增核心资源趋势</h3>
           </div>
           <el-icon class="panel-icon"><TrendCharts /></el-icon>
         </div>
@@ -171,6 +190,17 @@
       <article class="chart-card chart-span-2">
         <div class="panel-head">
           <div>
+            <p class="panel-eyebrow">Growth Matrix</p>
+            <h3 class="panel-title">近 7 日资源新增矩阵</h3>
+          </div>
+          <el-icon class="panel-icon"><Grid /></el-icon>
+        </div>
+        <div ref="growthHeatmapRef" class="chart-container chart-medium"></div>
+      </article>
+
+      <article class="chart-card chart-span-2">
+        <div class="panel-head">
+          <div>
             <p class="panel-eyebrow">Cumulative Trend</p>
             <h3 class="panel-title">近 7 日累计规模趋势</h3>
           </div>
@@ -183,9 +213,9 @@
         <div class="panel-head">
           <div>
             <p class="panel-eyebrow">Radar View</p>
-            <h3 class="panel-title">核心能力雷达</h3>
+            <h3 class="panel-title">综合协同雷达</h3>
           </div>
-          <el-icon class="panel-icon"><Grid /></el-icon>
+          <el-icon class="panel-icon"><Memo /></el-icon>
         </div>
         <div ref="radarChartRef" class="chart-container"></div>
       </article>
@@ -194,9 +224,9 @@
         <div class="panel-head">
           <div>
             <p class="panel-eyebrow">Quick Board</p>
-            <h3 class="panel-title">数据摘要面板</h3>
+            <h3 class="panel-title">综合数据摘要</h3>
           </div>
-          <el-icon class="panel-icon"><Memo /></el-icon>
+          <el-icon class="panel-icon"><CollectionTag /></el-icon>
         </div>
 
         <div class="summary-board">
@@ -217,17 +247,20 @@
 
 <script setup lang="ts">
 /**
- * 仪表盘页面
- * @description 这一版重点优化两点：
- * 1. 视觉配色减轻，改为更清晰的浅色数据看板；
- * 2. 统一接入真实统计趋势，新增最近 7 日新增用户/设备对比与累计规模折线图。
+ * 综合仪表盘页面
+ * @description 这一版继续围绕“综合数据总览”增强：
+ * 1. 统一复用公共统计派生 helper，保证多个仪表盘的指标口径一致；
+ * 2. 增加资源总量对比、7 日资源新增矩阵、更多联动分析卡；
+ * 3. 所有图表都严格基于 /admin/statistics 当前返回，不拼接虚假趋势数据。
  */
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import type { ECharts, EChartsOption } from 'echarts'
 import {
+  CollectionTag,
   DataAnalysis,
+  DataLine,
   Grid,
   Histogram,
   Memo,
@@ -240,13 +273,25 @@ import {
 } from '@element-plus/icons-vue'
 import { getStatistics } from '@/api/admin'
 import type { Statistics } from '@/types'
+import {
+  clampPercent,
+  createDashboardFallbackStatistics,
+  formatDashboardNumber,
+  getAverageValue,
+  getLastValue,
+  getRate,
+  getSeriesPeak,
+  getSeriesTotal
+} from './dashboard-metrics'
 
 type ChartKey =
   | 'healthGauge'
+  | 'resourceCompare'
   | 'statusTrend'
   | 'cardDonut'
   | 'dailyCompare'
   | 'healthBar'
+  | 'growthHeatmap'
   | 'growthLine'
   | 'radarChart'
 
@@ -255,10 +300,12 @@ const statistics = ref<Statistics | null>(null)         // 仪表盘统计快照
 const lastUpdatedAt = ref<Date | null>(null)            // 最近刷新时间
 
 const healthGaugeRef = ref<HTMLDivElement>()
+const resourceCompareRef = ref<HTMLDivElement>()
 const statusTrendRef = ref<HTMLDivElement>()
 const cardDonutRef = ref<HTMLDivElement>()
 const dailyCompareRef = ref<HTMLDivElement>()
 const healthBarRef = ref<HTMLDivElement>()
+const growthHeatmapRef = ref<HTMLDivElement>()
 const growthLineRef = ref<HTMLDivElement>()
 const radarChartRef = ref<HTMLDivElement>()
 
@@ -266,46 +313,13 @@ const chartInstances: Partial<Record<ChartKey, ECharts>> = {}
 
 /**
  * 统计数据兜底
- * @description 页面首屏和异常场景都使用这一层兜底，避免模板和图表出现空引用。
+ * @description 使用统一 helper 生成空结构，避免模板和图表直接访问空对象。
  */
 const statisticsSnapshot = computed<Statistics>(() => {
-  return statistics.value ?? {
-    users: { total: 0, normal: 0, banned: 0 },
-    cards: { total: 0, unused: 0, used: 0, disabled: 0 },
-    devices: { total: 0, active: 0, disabled: 0 },
-    apps: { total: 0, active: 0 },
-    trends: {
-      labels: Array.from({ length: 7 }, (_, index) => {
-        const date = new Date()
-        date.setDate(date.getDate() - (6 - index))
-        return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-      }),
-      daily_new: {
-        users: Array(7).fill(0),
-        devices: Array(7).fill(0),
-        cards: Array(7).fill(0),
-        apps: Array(7).fill(0)
-      },
-      cumulative: {
-        users: Array(7).fill(0),
-        devices: Array(7).fill(0),
-        cards: Array(7).fill(0),
-        apps: Array(7).fill(0)
-      }
-    }
-  }
+  return statistics.value ?? createDashboardFallbackStatistics()
 })
 
-const formatNumber = (num: number) => num.toLocaleString('zh-CN')
-
-const getLastValue = (values: number[]) => {
-  return values.length > 0 ? values[values.length - 1] : 0
-}
-
-const getRate = (value: number, total: number) => {
-  if (!total) return 0
-  return Math.round((value / total) * 100)
-}
+const formatNumber = (num: number) => formatDashboardNumber(num)
 
 const lastUpdatedText = computed(() => {
   if (!lastUpdatedAt.value) return '尚未刷新'
@@ -318,53 +332,109 @@ const lastUpdatedText = computed(() => {
   })
 })
 
-const userHealthRate = computed(() => {
+const abnormalAppCount = computed(() => {
   const snapshot = statisticsSnapshot.value
-  return getRate(snapshot.users.normal, snapshot.users.total)
+  return Math.max(snapshot.apps.total - snapshot.apps.active, 0)
 })
 
-const cardUsageRate = computed(() => {
-  const snapshot = statisticsSnapshot.value
-  return getRate(snapshot.cards.used, snapshot.cards.total)
+const userHealthRate = computed(() => getRate(statisticsSnapshot.value.users.normal, statisticsSnapshot.value.users.total))
+const cardUsageRate = computed(() => getRate(statisticsSnapshot.value.cards.used, statisticsSnapshot.value.cards.total))
+const cardReserveRate = computed(() => getRate(statisticsSnapshot.value.cards.unused, statisticsSnapshot.value.cards.total))
+const deviceHealthRate = computed(() => getRate(statisticsSnapshot.value.devices.active, statisticsSnapshot.value.devices.total))
+const appAvailabilityRate = computed(() => getRate(statisticsSnapshot.value.apps.active, statisticsSnapshot.value.apps.total))
+
+const todayNewUsers = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.users))
+const todayNewDevices = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.devices))
+const todayNewCards = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.cards))
+const todayNewApps = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.apps))
+
+const averageDailyUsers = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.users))
+const averageDailyDevices = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.devices))
+const averageDailyCards = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.cards))
+const averageDailyApps = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.apps))
+
+const todayGrowthTotal = computed(() => {
+  return todayNewUsers.value + todayNewDevices.value + todayNewCards.value + todayNewApps.value
 })
 
-const cardReserveRate = computed(() => {
-  const snapshot = statisticsSnapshot.value
-  return getRate(snapshot.cards.unused, snapshot.cards.total)
+const weeklyGrowthTotal = computed(() => {
+  const trends = statisticsSnapshot.value.trends.daily_new
+  return getSeriesTotal(trends.users) + getSeriesTotal(trends.devices) + getSeriesTotal(trends.cards) + getSeriesTotal(trends.apps)
 })
 
-const deviceHealthRate = computed(() => {
-  const snapshot = statisticsSnapshot.value
-  return getRate(snapshot.devices.active, snapshot.devices.total)
+const averageGrowthTotal = computed(() => {
+  return averageDailyUsers.value + averageDailyDevices.value + averageDailyCards.value + averageDailyApps.value
 })
 
-const appAvailabilityRate = computed(() => {
+/**
+ * 增长动量
+ * @description 观察今日总新增相对近 7 日均值的强弱，用于综合版首页快速判断。
+ */
+const growthMomentumRate = computed(() => {
+  if (!averageGrowthTotal.value) {
+    return todayGrowthTotal.value > 0 ? 100 : 0
+  }
+  return clampPercent((todayGrowthTotal.value / averageGrowthTotal.value) * 100)
+})
+
+/**
+ * 库存支持天数
+ * @description 用未使用卡密对比平均新增用户，帮助判断库存还能支撑多久。
+ */
+const inventorySupportDays = computed(() => {
+  const averageUsers = Math.max(averageDailyUsers.value, 1)
+  return Math.round(statisticsSnapshot.value.cards.unused / averageUsers)
+})
+
+/**
+ * 风险暴露率
+ * @description 用异常用户、禁用卡密、禁用设备、异常应用占整体资源的比例来观察系统风险面。
+ */
+const riskExposureRate = computed(() => {
   const snapshot = statisticsSnapshot.value
-  return getRate(snapshot.apps.active, snapshot.apps.total)
+  const abnormalTotal =
+    snapshot.users.banned +
+    snapshot.cards.disabled +
+    snapshot.devices.disabled +
+    abnormalAppCount.value
+
+  const resourceTotal =
+    snapshot.users.total +
+    snapshot.cards.total +
+    snapshot.devices.total +
+    snapshot.apps.total
+
+  return getRate(abnormalTotal, resourceTotal)
+})
+
+/**
+ * 资源协同分
+ * @description 主要观察用户增长、设备跟随和卡密库存是否协同。
+ */
+const resourceSynergyScore = computed(() => {
+  const deviceFollowRate = clampPercent((todayNewDevices.value / Math.max(todayNewUsers.value, 1)) * 100)
+  const inventoryRate = cardReserveRate.value
+
+  return Math.round(
+    growthMomentumRate.value * 0.4 +
+    deviceFollowRate * 0.28 +
+    inventoryRate * 0.18 +
+    appAvailabilityRate.value * 0.14
+  )
 })
 
 const overallHealthScore = computed(() => {
   const score = (
-    userHealthRate.value * 0.28 +
+    userHealthRate.value * 0.24 +
     cardReserveRate.value * 0.18 +
     cardUsageRate.value * 0.14 +
-    deviceHealthRate.value * 0.22 +
-    appAvailabilityRate.value * 0.18
+    deviceHealthRate.value * 0.2 +
+    appAvailabilityRate.value * 0.12 +
+    (100 - riskExposureRate.value) * 0.12
   )
   return Math.round(score)
 })
 
-const todayNewUsers = computed(() => {
-  return getLastValue(statisticsSnapshot.value.trends.daily_new.users)
-})
-
-const todayNewDevices = computed(() => {
-  return getLastValue(statisticsSnapshot.value.trends.daily_new.devices)
-})
-
-/**
- * 顶部概览卡片
- */
 const overviewCards = computed(() => {
   const snapshot = statisticsSnapshot.value
 
@@ -376,7 +446,7 @@ const overviewCards = computed(() => {
       metaLabel: '正常用户',
       metaValue: `${snapshot.users.normal} 人`,
       rate: userHealthRate.value,
-      tag: `封禁 ${snapshot.users.banned}`,
+      tag: `今日 +${todayNewUsers.value}`,
       icon: User,
       iconClass: 'icon-user'
     },
@@ -387,7 +457,7 @@ const overviewCards = computed(() => {
       metaLabel: '已使用卡密',
       metaValue: `${snapshot.cards.used} 个`,
       rate: cardUsageRate.value,
-      tag: `储备 ${snapshot.cards.unused}`,
+      tag: `库存 ${snapshot.cards.unused}`,
       icon: Ticket,
       iconClass: 'icon-card'
     },
@@ -398,7 +468,7 @@ const overviewCards = computed(() => {
       metaLabel: '活跃设备',
       metaValue: `${snapshot.devices.active} 台`,
       rate: deviceHealthRate.value,
-      tag: `禁用 ${snapshot.devices.disabled}`,
+      tag: `今日 +${todayNewDevices.value}`,
       icon: Monitor,
       iconClass: 'icon-device'
     },
@@ -409,9 +479,113 @@ const overviewCards = computed(() => {
       metaLabel: '可用应用',
       metaValue: `${snapshot.apps.active} 个`,
       rate: appAvailabilityRate.value,
-      tag: `今日新增 ${getLastValue(statisticsSnapshot.value.trends.daily_new.apps)}`,
+      tag: `异常 ${abnormalAppCount.value}`,
       icon: Grid,
       iconClass: 'icon-app'
+    }
+  ]
+})
+
+const summaryItems = computed(() => {
+  return [
+    {
+      label: '今日新增用户',
+      value: `${todayNewUsers.value}`,
+      desc: `7日均值 ${averageDailyUsers.value}`
+    },
+    {
+      label: '今日新增设备',
+      value: `${todayNewDevices.value}`,
+      desc: `7日均值 ${averageDailyDevices.value}`
+    },
+    {
+      label: '今日新增卡密',
+      value: `${todayNewCards.value}`,
+      desc: `7日均值 ${averageDailyCards.value}`
+    },
+    {
+      label: '今日新增应用',
+      value: `${todayNewApps.value}`,
+      desc: `7日均值 ${averageDailyApps.value}`
+    },
+    {
+      label: '今日总新增',
+      value: `${todayGrowthTotal.value}`,
+      desc: `近7日累计 ${weeklyGrowthTotal.value}`
+    },
+    {
+      label: '卡密使用率',
+      value: `${cardUsageRate.value}%`,
+      desc: `库存率 ${cardReserveRate.value}%`
+    }
+  ]
+})
+
+const focusItems = computed(() => {
+  const snapshot = statisticsSnapshot.value
+
+  return [
+    {
+      label: '增长动能',
+      text: growthMomentumRate.value >= 100
+        ? `今日总新增 ${todayGrowthTotal.value} 条，已经达到或超过近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}。`
+        : `今日总新增 ${todayGrowthTotal.value} 条，低于近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}，建议继续观察接入节奏。`,
+      levelClass: growthMomentumRate.value >= 100 ? 'level-success' : 'level-info'
+    },
+    {
+      label: '库存覆盖',
+      text: snapshot.cards.unused > 0
+        ? `当前仍有 ${snapshot.cards.unused} 个未使用卡密，按近 7 日平均新增用户估算可支撑约 ${inventorySupportDays.value} 天。`
+        : '未使用卡密已经耗尽，建议优先补充卡密库存，避免影响后续授权转化。',
+      levelClass: snapshot.cards.unused > 0 ? 'level-success' : 'level-danger'
+    },
+    {
+      label: '用户与设备协同',
+      text: todayNewDevices.value >= todayNewUsers.value
+        ? `今日新增设备 ${todayNewDevices.value} 台，基本跟上新增用户 ${todayNewUsers.value} 人，接入转化表现稳定。`
+        : `今日新增设备 ${todayNewDevices.value} 台，低于新增用户 ${todayNewUsers.value} 人，建议排查是否存在激活漏斗损耗。`,
+      levelClass: todayNewDevices.value >= todayNewUsers.value ? 'level-success' : 'level-warning'
+    },
+    {
+      label: '风险暴露',
+      text: riskExposureRate.value > 10
+        ? `当前异常资源暴露率为 ${riskExposureRate.value}%，相对偏高，需要重点关注封禁与禁用带来的经营影响。`
+        : `当前异常资源暴露率为 ${riskExposureRate.value}%，整体仍处于可控区间。`,
+      levelClass: riskExposureRate.value > 10 ? 'level-warning' : 'level-success'
+    },
+    {
+      label: '应用可用性',
+      text: abnormalAppCount.value > 0
+        ? `当前有 ${abnormalAppCount.value} 个应用未处于正常状态，建议检查应用配置、接入参数和管理员操作记录。`
+        : '当前所有应用都处于正常状态，应用侧没有明显可用性风险。',
+      levelClass: abnormalAppCount.value > 0 ? 'level-warning' : 'level-success'
+    }
+  ]
+})
+
+const executiveMetrics = computed(() => {
+  const snapshot = statisticsSnapshot.value
+
+  return [
+    {
+      label: '增长动量',
+      value: `${growthMomentumRate.value}%`,
+      desc: `今日总新增 ${todayGrowthTotal.value}，对比近 7 日平均总新增 ${averageGrowthTotal.value.toFixed(1)}。`
+    },
+    {
+      label: '库存覆盖',
+      value: `${inventorySupportDays.value} 天`,
+      desc: `按近 7 日平均新增用户估算，当前 ${snapshot.cards.unused} 个库存还能支撑的大致天数。`
+    },
+    {
+      label: '风险暴露率',
+      value: `${riskExposureRate.value}%`,
+      desc: `异常用户、禁用卡密、禁用设备和异常应用合并观察，更适合看综合风险面。`
+    },
+    {
+      label: '资源协同分',
+      value: `${resourceSynergyScore.value} 分`,
+      desc: '重点衡量用户增长、设备跟随、卡密库存和应用可用是否同步支撑整体业务。'
     }
   ]
 })
@@ -439,40 +613,16 @@ const summaryMetrics = computed(() => {
       label: '可用应用 / 总应用',
       value: `${snapshot.apps.active} / ${snapshot.apps.total}`,
       rate: appAvailabilityRate.value
-    }
-  ]
-})
-
-const focusItems = computed(() => {
-  const snapshot = statisticsSnapshot.value
-  const abnormalApps = Math.max(snapshot.apps.total - snapshot.apps.active, 0)
-
-  return [
-    {
-      label: '增长观察',
-      text: `今日新增用户 ${todayNewUsers.value} 人，新增设备 ${todayNewDevices.value} 台。`,
-      levelClass: 'level-info'
     },
     {
-      label: '用户状态',
-      text: snapshot.users.banned > 0
-        ? `当前有 ${snapshot.users.banned} 个封禁用户，建议持续关注异常账号。`
-        : '当前暂无封禁用户，账号侧状态较为稳定。',
-      levelClass: snapshot.users.banned > 0 ? 'level-warning' : 'level-success'
+      label: '今日总新增 / 7日均值',
+      value: `${todayGrowthTotal.value} / ${averageGrowthTotal.value.toFixed(1)}`,
+      rate: growthMomentumRate.value
     },
     {
-      label: '卡密库存',
-      text: snapshot.cards.unused > 0
-        ? `当前仍有 ${snapshot.cards.unused} 个未使用卡密，可继续支撑新授权。`
-        : '未使用卡密已耗尽，建议尽快补充库存。',
-      levelClass: snapshot.cards.unused > 0 ? 'level-success' : 'level-danger'
-    },
-    {
-      label: '应用可用性',
-      text: abnormalApps > 0
-        ? `当前有 ${abnormalApps} 个应用未处于正常状态，建议检查接入配置。`
-        : '所有应用均处于正常状态，可用性表现良好。',
-      levelClass: abnormalApps > 0 ? 'level-warning' : 'level-success'
+      label: '资源协同分 / 100',
+      value: `${resourceSynergyScore.value} / 100`,
+      rate: resourceSynergyScore.value
     }
   ]
 })
@@ -487,13 +637,40 @@ const statusTrendIndicators = computed(() => {
   ]
 })
 
+const heatmapMatrix = computed(() => {
+  const trends = statisticsSnapshot.value.trends.daily_new
+  const rows = [
+    { name: '用户', values: trends.users },
+    { name: '设备', values: trends.devices },
+    { name: '卡密', values: trends.cards },
+    { name: '应用', values: trends.apps }
+  ]
+
+  return rows.flatMap((row, rowIndex) => {
+    return row.values.map((value, colIndex) => [colIndex, rowIndex, value])
+  })
+})
+
+const heatmapMaxValue = computed(() => {
+  const allValues = [
+    ...statisticsSnapshot.value.trends.daily_new.users,
+    ...statisticsSnapshot.value.trends.daily_new.devices,
+    ...statisticsSnapshot.value.trends.daily_new.cards,
+    ...statisticsSnapshot.value.trends.daily_new.apps
+  ]
+
+  return Math.max(getSeriesPeak(allValues), 1)
+})
+
 const getChartElement = (chartKey: ChartKey) => {
   const elementMap: Record<ChartKey, HTMLDivElement | undefined> = {
     healthGauge: healthGaugeRef.value,
+    resourceCompare: resourceCompareRef.value,
     statusTrend: statusTrendRef.value,
     cardDonut: cardDonutRef.value,
     dailyCompare: dailyCompareRef.value,
     healthBar: healthBarRef.value,
+    growthHeatmap: growthHeatmapRef.value,
     growthLine: growthLineRef.value,
     radarChart: radarChartRef.value
   }
@@ -571,6 +748,62 @@ const renderHealthGauge = () => {
   instance.setOption(option)
 }
 
+const renderResourceCompareChart = () => {
+  const instance = ensureChartInstance('resourceCompare')
+  if (!instance) return
+
+  const snapshot = statisticsSnapshot.value
+
+  const option: EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
+    },
+    grid: {
+      left: '4%',
+      right: '4%',
+      bottom: '6%',
+      top: '12%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: ['用户', '卡密', '设备', '应用'],
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: '#d7dee8' } },
+      axisLabel: { color: '#475569' }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: { color: '#64748b' }
+    },
+    series: [
+      {
+        type: 'bar',
+        barWidth: '42%',
+        data: [
+          { value: snapshot.users.total, itemStyle: { color: '#38bdf8' } },
+          { value: snapshot.cards.total, itemStyle: { color: '#f59e0b' } },
+          { value: snapshot.devices.total, itemStyle: { color: '#14b8a6' } },
+          { value: snapshot.apps.total, itemStyle: { color: '#8b5cf6' } }
+        ],
+        label: {
+          show: true,
+          position: 'top',
+          color: '#0f172a',
+          fontWeight: 600
+        },
+        itemStyle: {
+          borderRadius: [10, 10, 0, 0]
+        }
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
 const renderStatusTrendChart = () => {
   const instance = ensureChartInstance('statusTrend')
   if (!instance) return
@@ -622,7 +855,7 @@ const renderStatusTrendChart = () => {
         },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(56, 189, 248, 0.28)' },
+            { offset: 0, color: 'rgba(56, 189, 248, 0.26)' },
             { offset: 1, color: 'rgba(56, 189, 248, 0.04)' }
           ])
         },
@@ -715,31 +948,38 @@ const renderDailyCompareChart = () => {
         name: '新增用户',
         type: 'line',
         smooth: true,
-        symbolSize: 9,
+        symbolSize: 8,
         lineStyle: { width: 3, color: '#14b8a6' },
         itemStyle: { color: '#14b8a6' },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(20, 184, 166, 0.25)' },
-            { offset: 1, color: 'rgba(20, 184, 166, 0.03)' }
-          ])
-        },
         data: trends.daily_new.users
       },
       {
         name: '新增设备',
         type: 'line',
         smooth: true,
-        symbolSize: 9,
+        symbolSize: 8,
         lineStyle: { width: 3, color: '#60a5fa' },
         itemStyle: { color: '#60a5fa' },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(96, 165, 250, 0.22)' },
-            { offset: 1, color: 'rgba(96, 165, 250, 0.03)' }
-          ])
-        },
         data: trends.daily_new.devices
+      },
+      {
+        name: '新增卡密',
+        type: 'line',
+        smooth: true,
+        symbolSize: 8,
+        lineStyle: { width: 3, color: '#f59e0b' },
+        itemStyle: { color: '#f59e0b' },
+        data: trends.daily_new.cards
+      },
+      {
+        name: '新增应用',
+        type: 'bar',
+        barWidth: 18,
+        itemStyle: {
+          color: 'rgba(139, 92, 246, 0.35)',
+          borderRadius: [8, 8, 0, 0]
+        },
+        data: trends.daily_new.apps
       }
     ]
   }
@@ -752,7 +992,6 @@ const renderHealthBarChart = () => {
   if (!instance) return
 
   const snapshot = statisticsSnapshot.value
-  const abnormalApps = Math.max(snapshot.apps.total - snapshot.apps.active, 0)
 
   const option: EChartsOption = {
     tooltip: {
@@ -797,7 +1036,75 @@ const renderHealthBarChart = () => {
         stack: 'total',
         itemStyle: { color: '#fda4af', borderRadius: [0, 8, 8, 0] },
         label: { show: true, color: '#0f172a' },
-        data: [snapshot.devices.disabled, abnormalApps]
+        data: [snapshot.devices.disabled, abnormalAppCount.value]
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderGrowthHeatmap = () => {
+  const instance = ensureChartInstance('growthHeatmap')
+  if (!instance) return
+
+  const option: EChartsOption = {
+    tooltip: {
+      position: 'top',
+      formatter: (params: any) => {
+        const [xIndex, yIndex, value] = params.value as [number, number, number]
+        const labels = statisticsSnapshot.value.trends.labels
+        const rows = ['用户', '设备', '卡密', '应用']
+        return `${rows[yIndex]}<br/>${labels[xIndex]}：${value}`
+      }
+    },
+    grid: {
+      left: '6%',
+      right: '6%',
+      top: '10%',
+      bottom: '12%'
+    },
+    xAxis: {
+      type: 'category',
+      data: statisticsSnapshot.value.trends.labels,
+      splitArea: { show: true },
+      axisTick: { show: false },
+      axisLabel: { color: '#64748b' },
+      axisLine: { lineStyle: { color: '#d7dee8' } }
+    },
+    yAxis: {
+      type: 'category',
+      data: ['用户', '设备', '卡密', '应用'],
+      splitArea: { show: true },
+      axisTick: { show: false },
+      axisLabel: { color: '#475569', fontWeight: 600 },
+      axisLine: { show: false }
+    },
+    visualMap: {
+      min: 0,
+      max: heatmapMaxValue.value,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 0,
+      textStyle: { color: '#64748b' },
+      inRange: {
+        color: ['#f8fafc', '#bae6fd', '#38bdf8', '#0284c7']
+      }
+    },
+    series: [
+      {
+        type: 'heatmap',
+        data: heatmapMatrix.value,
+        label: {
+          show: true,
+          color: '#0f172a',
+          fontWeight: 600
+        },
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: 'rgba(255,255,255,0.8)',
+          borderWidth: 2
+        }
       }
     ]
   }
@@ -871,8 +1178,8 @@ const renderGrowthLineChart = () => {
         type: 'line',
         smooth: true,
         symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#a78bfa' },
-        itemStyle: { color: '#a78bfa' },
+        lineStyle: { width: 2.5, color: '#8b5cf6' },
+        itemStyle: { color: '#8b5cf6' },
         data: trends.cumulative.apps
       }
     ]
@@ -904,10 +1211,10 @@ const renderRadarChart = () => {
       },
       indicator: [
         { name: '用户健康', max: 100 },
-        { name: '卡密储备', max: 100 },
+        { name: '卡密库存', max: 100 },
         { name: '卡密使用', max: 100 },
         { name: '设备活跃', max: 100 },
-        { name: '应用可用', max: 100 }
+        { name: '资源协同', max: 100 }
       ]
     },
     series: [
@@ -927,7 +1234,7 @@ const renderRadarChart = () => {
               cardReserveRate.value,
               cardUsageRate.value,
               deviceHealthRate.value,
-              appAvailabilityRate.value
+              resourceSynergyScore.value
             ]
           }
         ]
@@ -943,39 +1250,47 @@ const renderAllCharts = async () => {
 
   if (!statistics.value) return
 
-  console.info('[仪表盘] 开始渲染图表', {
+  console.info('[综合仪表盘] 开始渲染图表', {
     users: statistics.value.users,
     cards: statistics.value.cards,
     devices: statistics.value.devices,
     apps: statistics.value.apps,
-    trendLabels: statistics.value.trends.labels
+    trends: statistics.value.trends
   })
 
   renderHealthGauge()
+  renderResourceCompareChart()
   renderStatusTrendChart()
   renderCardDonut()
   renderDailyCompareChart()
   renderHealthBarChart()
+  renderGrowthHeatmap()
   renderGrowthLineChart()
   renderRadarChart()
 }
 
 const loadStatistics = async () => {
   loading.value = true
-  console.info('[仪表盘] 开始加载统计数据')
+  console.info('[综合仪表盘] 开始加载统计数据')
 
   try {
     const data = await getStatistics()
     statistics.value = data
     lastUpdatedAt.value = new Date()
 
-    console.info('[仪表盘] 统计数据加载完成', data)
-    ElMessage.success('仪表盘数据已刷新')
+    console.info('[综合仪表盘] 统计数据加载完成', {
+      users: data.users,
+      cards: data.cards,
+      devices: data.devices,
+      apps: data.apps,
+      trendLabels: data.trends.labels
+    })
+    ElMessage.success('综合数据看板已刷新')
 
     await renderAllCharts()
   } catch (error) {
-    ElMessage.error('加载统计数据失败')
-    console.error('[仪表盘] 加载统计数据失败', error)
+    ElMessage.error('加载综合数据看板失败')
+    console.error('[综合仪表盘] 加载统计数据失败', error)
   } finally {
     loading.value = false
   }
@@ -990,10 +1305,12 @@ const handleResize = () => {
 const disposeCharts = () => {
   const chartKeys: ChartKey[] = [
     'healthGauge',
+    'resourceCompare',
     'statusTrend',
     'cardDonut',
     'dailyCompare',
     'healthBar',
+    'growthHeatmap',
     'growthLine',
     'radarChart'
   ]
@@ -1005,13 +1322,13 @@ const disposeCharts = () => {
 }
 
 onMounted(() => {
-  console.info('[仪表盘] 页面挂载，准备初始化轻量化看板')
+  console.info('[综合仪表盘] 页面挂载，准备初始化综合数据看板')
   loadStatistics()
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
-  console.info('[仪表盘] 页面卸载，开始清理图表实例')
+  console.info('[综合仪表盘] 页面卸载，开始清理图表实例')
   window.removeEventListener('resize', handleResize)
   disposeCharts()
 })
@@ -1023,8 +1340,8 @@ onBeforeUnmount(() => {
 .dashboard-container {
   @apply min-h-full px-6 py-6 lg:px-8;
   background:
-    radial-gradient(circle at top left, rgba(125, 211, 252, 0.18), transparent 26%),
-    radial-gradient(circle at top right, rgba(196, 181, 253, 0.12), transparent 24%),
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.18), transparent 24%),
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.1), transparent 22%),
     linear-gradient(180deg, #f8fbfd 0%, #f4f8fb 52%, #f8fafc 100%);
 }
 
@@ -1050,7 +1367,7 @@ onBeforeUnmount(() => {
 }
 
 .header-actions {
-  @apply flex flex-col sm:flex-row gap-3 xl:items-center;
+  @apply flex flex-col sm:flex-row sm:flex-wrap gap-3 xl:items-center xl:justify-end;
 }
 
 .header-info-card {
@@ -1076,7 +1393,8 @@ onBeforeUnmount(() => {
 
 .overview-card,
 .panel-card,
-.chart-card {
+.chart-card,
+.signal-card {
   @apply rounded-[28px] border border-slate-200/80 bg-white/88 shadow-sm;
   @apply backdrop-blur-sm;
 }
@@ -1151,7 +1469,7 @@ onBeforeUnmount(() => {
 }
 
 .highlight-grid {
-  @apply grid grid-cols-1 xl:grid-cols-[1fr_1.2fr_0.8fr] gap-4 mb-6;
+  @apply grid grid-cols-1 xl:grid-cols-[1.1fr_1.2fr_0.82fr] gap-4 mb-4;
 }
 
 .panel-card,
@@ -1188,7 +1506,11 @@ onBeforeUnmount(() => {
 }
 
 .summary-item strong {
-  @apply text-2xl font-semibold text-slate-900;
+  @apply block text-2xl font-semibold text-slate-900;
+}
+
+.summary-item em {
+  @apply mt-2 block text-xs leading-5 text-slate-500 not-italic;
 }
 
 .focus-list {
@@ -1209,6 +1531,30 @@ onBeforeUnmount(() => {
 
 .focus-body p {
   @apply mt-1 text-sm leading-6 text-slate-500;
+}
+
+.signal-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
+}
+
+.signal-card {
+  @apply p-4 lg:p-5;
+}
+
+.signal-card-top {
+  @apply flex items-start justify-between gap-4;
+}
+
+.signal-card-top span {
+  @apply text-sm text-slate-500;
+}
+
+.signal-card-top strong {
+  @apply text-2xl font-semibold text-slate-900;
+}
+
+.signal-card p {
+  @apply mt-3 text-sm leading-6 text-slate-500;
 }
 
 .level-success {
@@ -1279,7 +1625,7 @@ onBeforeUnmount(() => {
 
 .summary-board-bar {
   @apply h-full rounded-full;
-  background: linear-gradient(90deg, #7dd3fc 0%, #22c55e 100%);
+  background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
 }
 
 @media (max-width: 768px) {
@@ -1291,14 +1637,19 @@ onBeforeUnmount(() => {
     @apply text-3xl;
   }
 
-  .overview-card,
-  .panel-card,
-  .chart-card {
-    @apply rounded-3xl p-4;
-  }
-
   .summary-list {
     @apply grid-cols-1;
+  }
+
+  .header-actions {
+    @apply flex-col;
+  }
+
+  .overview-card,
+  .panel-card,
+  .chart-card,
+  .signal-card {
+    @apply rounded-3xl;
   }
 
   .mini-chart-container {
