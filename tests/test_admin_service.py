@@ -1,6 +1,7 @@
 """
 管理员服务测试
 """
+import asyncio
 from datetime import datetime, timedelta
 
 
@@ -128,3 +129,140 @@ def test_reenable_disabled_bound_card_restores_used_status(db_session):
     assert success is True
     assert error is None
     assert card.status == CardStatus.USED
+
+
+def test_get_statistics_returns_nested_groups(db_session):
+    """统计服务应返回前端仪表盘可直接使用的分组结构。"""
+    from app.models.app import App, AppStatus
+    from app.models.card import Card, CardStatus
+    from app.models.card_device import CardDevice, CardDeviceStatus
+    from app.models.user import User, UserRole, UserStatus
+    from app.services.admin_service import AdminService
+    from app.utils.security import hash_password
+
+    app = App(
+        app_key="statistics_service_app",
+        app_name="统计测试应用",
+        status=AppStatus.NORMAL
+    )
+    normal_user = User(
+        username="statistics_normal_user",
+        password_hash=hash_password("testpass123"),
+        status=UserStatus.NORMAL,
+        role=UserRole.USER
+    )
+    banned_user = User(
+        username="statistics_banned_user",
+        password_hash=hash_password("testpass123"),
+        status=UserStatus.BANNED,
+        role=UserRole.USER
+    )
+    unused_card = Card(
+        app_id=0,
+        card_key="STAT-UNUSED-CARD-0001",
+        status=CardStatus.UNUSED,
+        expire_time=datetime.now() + timedelta(days=10),
+        max_device_count=1,
+        permissions=["demo"],
+        remark="统计测试未使用卡密"
+    )
+    disabled_card = Card(
+        app_id=0,
+        card_key="STAT-DISABLED-0001",
+        status=CardStatus.DISABLED,
+        expire_time=datetime.now() + timedelta(days=10),
+        max_device_count=1,
+        permissions=["demo"],
+        remark="统计测试禁用卡密"
+    )
+
+    db_session.add_all([app, normal_user, banned_user])
+    db_session.commit()
+    db_session.refresh(app)
+
+    unused_card.app_id = app.id
+    disabled_card.app_id = app.id
+    db_session.add_all([unused_card, disabled_card])
+    db_session.commit()
+    db_session.refresh(unused_card)
+    db_session.refresh(disabled_card)
+
+    active_device = CardDevice(
+        card_id=unused_card.id,
+        device_id="statistics_active_device",
+        device_name="统计活跃设备",
+        bind_time=datetime.now(),
+        last_active_at=datetime.now(),
+        status=CardDeviceStatus.ACTIVE
+    )
+    disabled_device = CardDevice(
+        card_id=disabled_card.id,
+        device_id="statistics_disabled_device",
+        device_name="统计禁用设备",
+        bind_time=datetime.now(),
+        last_active_at=datetime.now(),
+        status=CardDeviceStatus.DISABLED
+    )
+    db_session.add_all([active_device, disabled_device])
+    db_session.commit()
+
+    statistics, error = AdminService(db_session).get_statistics()
+
+    assert error is None
+    assert statistics["users"] == {"total": 2, "normal": 1, "banned": 1}
+    assert statistics["cards"] == {"total": 2, "unused": 1, "used": 0, "disabled": 1}
+    assert statistics["devices"] == {"total": 2, "active": 1, "disabled": 1}
+    assert statistics["apps"] == {"total": 1, "active": 1}
+    assert len(statistics["trends"]["labels"]) == 7
+    assert len(statistics["trends"]["daily_new"]["users"]) == 7
+    assert len(statistics["trends"]["daily_new"]["devices"]) == 7
+    assert len(statistics["trends"]["cumulative"]["cards"]) == 7
+    assert statistics["trends"]["daily_new"]["users"][-1] == 2
+    assert statistics["trends"]["daily_new"]["devices"][-1] == 2
+    assert statistics["trends"]["daily_new"]["cards"][-1] == 2
+    assert statistics["trends"]["daily_new"]["apps"][-1] == 1
+    assert statistics["trends"]["cumulative"]["users"][-1] == 2
+    assert statistics["trends"]["cumulative"]["devices"][-1] == 2
+
+
+def test_admin_statistics_endpoint_returns_nested_groups(db_session):
+    """管理员统计接口应直接返回嵌套统计结构，避免旧字段映射导致 KeyError。"""
+    from app.api.endpoints.admin import get_statistics
+    from app.models.app import App, AppStatus
+    from app.models.user import User, UserRole, UserStatus
+    from app.utils.security import hash_password
+
+    app = App(
+        app_key="statistics_endpoint_app",
+        app_name="统计接口测试应用",
+        status=AppStatus.NORMAL
+    )
+    admin_user = User(
+        username="statistics_admin_user",
+        password_hash=hash_password("adminpass123"),
+        status=UserStatus.NORMAL,
+        role=UserRole.ADMIN
+    )
+    db_session.add_all([app, admin_user])
+    db_session.commit()
+
+    result = asyncio.run(
+        get_statistics(
+            admin={
+                "user_id": admin_user.id,
+                "username": admin_user.username,
+                "role": UserRole.ADMIN.value
+            },
+            db=db_session
+        )
+    )
+
+    assert "users" in result
+    assert "cards" in result
+    assert "devices" in result
+    assert "apps" in result
+    assert "trends" in result
+    assert result["users"]["total"] >= 1
+    assert result["apps"]["total"] >= 1
+    assert len(result["trends"]["labels"]) == 7
+    assert len(result["trends"]["daily_new"]["users"]) == 7

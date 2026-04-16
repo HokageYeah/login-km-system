@@ -51,6 +51,17 @@
           value-format="YYYY-MM-DDTHH:mm:ss"
           class="w-full"
         />
+        <div class="expire-shortcut-group">
+          <el-button
+            v-for="shortcut in expireShortcutOptions"
+            :key="shortcut.key"
+            size="small"
+            plain
+            @click="handleExpireShortcutSelect(shortcut.key)"
+          >
+            {{ shortcut.label }}
+          </el-button>
+        </div>
         <div class="form-tip">必须大于当前时间</div>
       </el-form-item>
 
@@ -175,6 +186,11 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { CircleCheckFilled, CopyDocument, Download } from '@element-plus/icons-vue'
 import { generateCards } from '@/api/admin'
 import { getFeaturePermissionList } from '@/api/feature-permission'
+import {
+  EXPIRE_SHORTCUT_OPTIONS,
+  getExpireShortcutValue,
+  type ExpireShortcutKey
+} from '@/utils/expire-shortcuts'
 import type { App, FeaturePermission } from '@/types'
 
 /**
@@ -212,6 +228,7 @@ const generatedCards = ref<string[]>([])                // 生成的卡密列表
 const formRef = ref<FormInstance>()                     // 表单引用
 const availablePermissions = ref<FeaturePermission[]>([])  // 可用权限列表
 const loadingPermissions = ref(false)                    // 加载权限列表状态
+const expireShortcutOptions = EXPIRE_SHORTCUT_OPTIONS    // 过期时间快捷选项
 
 /**
  * 表单数据
@@ -258,10 +275,30 @@ const disabledDate = (time: Date) => {
 }
 
 /**
+ * 处理快捷过期时间选择
+ * @description 每次点击都以“当前时间”为基准重新计算目标时间，
+ * 避免弹窗长时间停留后，按钮仍然沿用旧时间基准。
+ * @param shortcutKey 快捷时间 key
+ */
+const handleExpireShortcutSelect = (shortcutKey: ExpireShortcutKey) => {
+  const selectedShortcut = expireShortcutOptions.find(item => item.key === shortcutKey)
+  const expireTimeValue = getExpireShortcutValue(shortcutKey)
+
+  form.expire_time = expireTimeValue
+
+  console.info('[卡密生成弹窗] 选择快捷过期时间', {
+    shortcutKey,
+    shortcutLabel: selectedShortcut?.label,
+    expireTime: expireTimeValue
+  })
+}
+
+/**
  * 加载权限列表
  */
 const loadPermissions = async () => {
   loadingPermissions.value = true
+  console.info('[卡密生成弹窗] 开始加载权限列表')
   try {
     const response = await getFeaturePermissionList({
       page: 1,
@@ -269,6 +306,10 @@ const loadPermissions = async () => {
     })
     // 只显示正常状态的权限
     availablePermissions.value = response.permissions.filter(p => p.status === 'normal')
+    console.info('[卡密生成弹窗] 权限列表加载完成', {
+      total: response.permissions.length,
+      enabledCount: availablePermissions.value.length
+    })
   } catch (error: any) {
     console.error('加载权限列表失败:', error)
     if (error.response?.data?.detail) {
@@ -333,6 +374,14 @@ const handleGenerate = async () => {
     await formRef.value.validate()
     
     loading.value = true
+
+    console.info('[卡密生成弹窗] 开始批量生成卡密', {
+      appId: form.app_id,
+      count: form.count,
+      expireTime: form.expire_time,
+      maxDeviceCount: form.max_device_count,
+      permissionCount: form.permissions.length
+    })
     
     // 调用生成 API
     const data = await generateCards({
@@ -347,6 +396,11 @@ const handleGenerate = async () => {
     // 保存生成的卡密
     generatedCards.value = data.cards
     generated.value = true
+
+    console.info('[卡密生成弹窗] 卡密生成成功', {
+      generatedCount: data.cards.length,
+      expireTime: form.expire_time
+    })
     
     ElMessage.success(data.message || '生成成功')
     emit('success')
@@ -366,6 +420,7 @@ const handleGenerate = async () => {
  * 处理关闭弹窗
  */
 const handleClose = () => {
+  console.info('[卡密生成弹窗] 关闭弹窗')
   dialogVisible.value = false
 }
 
@@ -373,6 +428,7 @@ const handleClose = () => {
  * 重置表单
  */
 const resetForm = () => {
+  console.info('[卡密生成弹窗] 重置表单状态')
   if (formRef.value) {
     formRef.value.resetFields()
   }
@@ -392,6 +448,7 @@ const resetForm = () => {
  */
 watch(dialogVisible, (newVal) => {
   if (newVal) {
+    console.info('[卡密生成弹窗] 弹窗已打开，准备初始化数据')
     // 打开弹窗时加载权限列表
     loadPermissions()
   } else {
@@ -408,6 +465,10 @@ watch(dialogVisible, (newVal) => {
 
 .form-tip {
   @apply text-xs text-gray-500 mt-1;
+}
+
+.expire-shortcut-group {
+  @apply flex flex-wrap gap-2 mt-3;
 }
 
 /* 权限选项样式 */

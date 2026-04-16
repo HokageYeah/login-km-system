@@ -1,14 +1,30 @@
 <template>
   <div class="dashboard-container">
-    <!-- 页面标题区域 -->
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-title">数据统计仪表盘</h1>
-        <p class="dashboard-subtitle">实时监控系统运行状态</p>
+    <section class="dashboard-header">
+      <div class="header-copy">
+        <span class="header-badge">Comprehensive Operations Board</span>
+        <h1 class="dashboard-title">授权系统综合数据看板</h1>
+        <p class="dashboard-subtitle">
+          这一版继续聚焦综合快照，把用户、卡密、设备、应用与最近 7 日趋势统一放进一张经营总览图里，
+          让你既能看当前规模，也能看增长、库存、风险和资源协同情况。
+        </p>
       </div>
+
       <div class="header-actions">
+        <div class="header-info-card">
+          <span>最近更新时间</span>
+          <strong>{{ lastUpdatedText }}</strong>
+        </div>
+        <div class="header-info-card">
+          <span>增长动量</span>
+          <strong>{{ growthMomentumRate }}%</strong>
+        </div>
+        <div class="header-info-card">
+          <span>健康评分</span>
+          <strong>{{ overallHealthScore }} 分</strong>
+        </div>
         <el-button
-          :icon="Refresh"
+          :icon="RefreshRight"
           :loading="loading"
           @click="loadStatistics"
           class="refresh-btn"
@@ -16,793 +32,1305 @@
           刷新数据
         </el-button>
       </div>
-    </div>
+    </section>
 
-    <!-- 数据统计卡片区域 -->
-    <div v-loading="loading" v-if="false" class="stats-section">
-      <!-- 用户统计组 -->
-      <div class="stat-group">
-        <div class="stat-group-header">
-          <el-icon class="group-icon"><User /></el-icon>
-          <h3 class="group-title">用户统计</h3>
-        </div>
-        <div class="stat-group-cards">
-          <div class="stat-card stat-primary">
-            <div class="stat-icon-wrapper">
-              <el-icon :size="32" class="stat-icon"><User /></el-icon>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">用户总数</div>
-              <div class="stat-value">{{ formatNumber(statistics?.users?.total || 0) }}</div>
-              <div class="stat-footer">
-                <span class="footer-item success">
-                  <el-icon><CircleCheck /></el-icon>
-                  正常 {{ statistics?.users?.normal || 0 }}
-                </span>
-                <span class="footer-item danger">
-                  <el-icon><CircleClose /></el-icon>
-                  封禁 {{ statistics?.users?.banned || 0 }}
-                </span>
-              </div>
-            </div>
+    <section class="overview-grid">
+      <article
+        v-for="item in overviewCards"
+        :key="item.key"
+        class="overview-card"
+      >
+        <div class="overview-card-top">
+          <div class="overview-icon" :class="item.iconClass">
+            <el-icon :size="20">
+              <component :is="item.icon" />
+            </el-icon>
           </div>
+          <span class="overview-tag">{{ item.tag }}</span>
         </div>
-      </div>
 
-      <!-- 卡密统计组 -->
-      <div class="stat-group">
-        <div class="stat-group-header">
-          <el-icon class="group-icon"><Ticket /></el-icon>
-          <h3 class="group-title">卡密统计</h3>
-        </div>
-        <div class="stat-group-cards">
-          <div class="stat-card stat-info">
-            <div class="stat-icon-wrapper">
-              <el-icon :size="32" class="stat-icon"><Key /></el-icon>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">卡密总数</div>
-              <div class="stat-value">{{ formatNumber(statistics?.cards?.total || 0) }}</div>
-            </div>
+        <div class="overview-main">
+          <span class="overview-label">{{ item.label }}</span>
+          <strong class="overview-value">{{ formatNumber(item.value) }}</strong>
+          <div class="overview-meta">
+            <span>{{ item.metaLabel }}</span>
+            <b>{{ item.metaValue }}</b>
           </div>
-          <div class="stat-card stat-success">
-            <div class="stat-icon-wrapper">
-              <el-icon :size="32" class="stat-icon"><CircleCheck /></el-icon>
+          <div class="overview-progress">
+            <div class="overview-progress-track">
+              <div class="overview-progress-bar" :style="{ width: `${item.rate}%` }" />
             </div>
-            <div class="stat-content">
-              <div class="stat-label">未使用</div>
-              <div class="stat-value">{{ formatNumber(statistics?.cards?.unused || 0) }}</div>
-            </div>
-          </div>
-          <div class="stat-card stat-warning">
-            <div class="stat-icon-wrapper">
-              <el-icon :size="32" class="stat-icon"><DocumentChecked /></el-icon>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">已使用</div>
-              <div class="stat-value">{{ formatNumber(statistics?.cards?.used || 0) }}</div>
-            </div>
-          </div>
-          <div class="stat-card stat-danger">
-            <div class="stat-icon-wrapper">
-              <el-icon :size="32" class="stat-icon"><CircleClose /></el-icon>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">已禁用</div>
-              <div class="stat-value">{{ formatNumber(statistics?.cards?.disabled || 0) }}</div>
-            </div>
+            <span>{{ item.rate }}%</span>
           </div>
         </div>
-      </div>
+      </article>
+    </section>
 
-      <!-- 设备统计组 -->
-      <div class="stat-group">
-        <div class="stat-group-header">
-          <el-icon class="group-icon"><Monitor /></el-icon>
-          <h3 class="group-title">设备统计</h3>
+    <section class="highlight-grid">
+      <article class="panel-card panel-summary">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Today Snapshot</p>
+            <h3 class="panel-title">当日增长摘要</h3>
+          </div>
+          <el-icon class="panel-icon"><TrendCharts /></el-icon>
         </div>
-        <div class="stat-group-cards">
-          <div class="stat-card stat-primary">
-            <div class="stat-icon-wrapper">
-              <el-icon :size="32" class="stat-icon"><Monitor /></el-icon>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">设备总数</div>
-              <div class="stat-value">{{ formatNumber(statistics?.devices?.total || 0) }}</div>
-              <div class="stat-footer">
-                <span class="footer-item success">
-                  <el-icon><Connection /></el-icon>
-                  活跃 {{ statistics?.devices?.active || 0 }}
-                </span>
-                <span class="footer-item danger">
-                  <el-icon><RemoveFilled /></el-icon>
-                  禁用 {{ statistics?.devices?.disabled || 0 }}
-                </span>
-              </div>
+
+        <div class="summary-list">
+          <div v-for="item in summaryItems" :key="item.label" class="summary-item">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <em>{{ item.desc }}</em>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel-card panel-status">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">System Reading</p>
+            <h3 class="panel-title">综合运营观察</h3>
+          </div>
+          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
+        </div>
+
+        <div class="focus-list">
+          <div v-for="item in focusItems" :key="item.label" class="focus-item">
+            <span class="focus-dot" :class="item.levelClass" />
+            <div class="focus-body">
+              <strong>{{ item.label }}</strong>
+              <p>{{ item.text }}</p>
             </div>
           </div>
         </div>
-      </div>
+      </article>
 
-      <!-- 应用统计组 -->
-      <div class="stat-group">
-        <div class="stat-group-header">
-          <el-icon class="group-icon"><Grid /></el-icon>
-          <h3 class="group-title">应用统计</h3>
+      <article class="panel-card panel-gauge">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Health Score</p>
+            <h3 class="panel-title">系统健康度</h3>
+          </div>
+          <el-icon class="panel-icon"><Odometer /></el-icon>
         </div>
-        <div class="stat-group-cards">
-          <div class="stat-card stat-purple">
-            <div class="stat-icon-wrapper">
-              <el-icon :size="32" class="stat-icon"><Grid /></el-icon>
+        <div ref="healthGaugeRef" class="mini-chart-container"></div>
+      </article>
+    </section>
+
+    <section class="signal-grid">
+      <article
+        v-for="item in executiveMetrics"
+        :key="item.label"
+        class="signal-card"
+      >
+        <div class="signal-card-top">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+        <p>{{ item.desc }}</p>
+      </article>
+    </section>
+
+    <section class="charts-grid" v-loading="loading">
+      <article class="chart-card chart-span-2">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Scale Compare</p>
+            <h3 class="panel-title">核心资源总量对比</h3>
+          </div>
+          <el-icon class="panel-icon"><Histogram /></el-icon>
+        </div>
+        <div ref="resourceCompareRef" class="chart-container chart-medium"></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Card Mix</p>
+            <h3 class="panel-title">卡密状态分布</h3>
+          </div>
+          <el-icon class="panel-icon"><Ticket /></el-icon>
+        </div>
+        <div ref="cardDonutRef" class="chart-container"></div>
+      </article>
+
+      <article class="chart-card chart-span-2">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Status Line</p>
+            <h3 class="panel-title">核心状态占比走势</h3>
+          </div>
+          <el-icon class="panel-icon"><DataLine /></el-icon>
+        </div>
+        <div ref="statusTrendRef" class="chart-container chart-medium"></div>
+      </article>
+
+      <article class="chart-card chart-span-2">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Daily Core Growth</p>
+            <h3 class="panel-title">每日新增核心资源趋势</h3>
+          </div>
+          <el-icon class="panel-icon"><TrendCharts /></el-icon>
+        </div>
+        <div ref="dailyCompareRef" class="chart-container chart-large"></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Status Board</p>
+            <h3 class="panel-title">设备与应用健康</h3>
+          </div>
+          <el-icon class="panel-icon"><Monitor /></el-icon>
+        </div>
+        <div ref="healthBarRef" class="chart-container"></div>
+      </article>
+
+      <article class="chart-card chart-span-2">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Growth Matrix</p>
+            <h3 class="panel-title">近 7 日资源新增矩阵</h3>
+          </div>
+          <el-icon class="panel-icon"><Grid /></el-icon>
+        </div>
+        <div ref="growthHeatmapRef" class="chart-container chart-medium"></div>
+      </article>
+
+      <article class="chart-card chart-span-2">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Cumulative Trend</p>
+            <h3 class="panel-title">近 7 日累计规模趋势</h3>
+          </div>
+          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
+        </div>
+        <div ref="growthLineRef" class="chart-container chart-large"></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Radar View</p>
+            <h3 class="panel-title">综合协同雷达</h3>
+          </div>
+          <el-icon class="panel-icon"><Memo /></el-icon>
+        </div>
+        <div ref="radarChartRef" class="chart-container"></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Quick Board</p>
+            <h3 class="panel-title">综合数据摘要</h3>
+          </div>
+          <el-icon class="panel-icon"><CollectionTag /></el-icon>
+        </div>
+
+        <div class="summary-board">
+          <div v-for="metric in summaryMetrics" :key="metric.label" class="summary-board-item">
+            <div class="summary-board-top">
+              <span>{{ metric.label }}</span>
+              <strong>{{ metric.value }}</strong>
             </div>
-            <div class="stat-content">
-              <div class="stat-label">应用总数</div>
-              <div class="stat-value">{{ formatNumber(statistics?.apps?.total || 0) }}</div>
-              <div class="stat-footer">
-                <span class="footer-item success">
-                  <el-icon><CircleCheckFilled /></el-icon>
-                  正常 {{ statistics?.apps?.active || 0 }}
-                </span>
-              </div>
+            <div class="summary-board-track">
+              <div class="summary-board-bar" :style="{ width: `${metric.rate}%` }" />
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ECharts 图表区域 -->
-    <div class="charts-section">
-      <!-- 卡密使用情况饼图 -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <el-icon class="title-icon"><Ticket /></el-icon>
-            卡密使用情况
-          </h3>
-        </div>
-        <div ref="pieChartRef" class="chart-container pie-chart-container"></div>
-      </div>
-
-      <!-- 用户状态对比柱状图 -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <el-icon class="title-icon"><User /></el-icon>
-            用户状态分布
-          </h3>
-        </div>
-        <div ref="barChartRef" class="chart-container"></div>
-      </div>
-
-      <!-- 设备状态分布 -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <el-icon class="title-icon"><Monitor /></el-icon>
-            设备状态分布
-          </h3>
-        </div>
-        <div ref="deviceChartRef" class="chart-container"></div>
-      </div>
-
-      <!-- 应用分布环形图 -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <el-icon class="title-icon"><Grid /></el-icon>
-            应用分布统计
-          </h3>
-        </div>
-        <div ref="appChartRef" class="chart-container"></div>
-      </div>
-
-      <!-- 卡密趋势折线图（跨越整行） -->
-      <div class="chart-card chart-wide">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <el-icon class="title-icon"><TrendCharts /></el-icon>
-            卡密状态趋势
-          </h3>
-        </div>
-        <div ref="trendChartRef" class="chart-container trend-chart-container"></div>
-      </div>
-
-      <!-- 数据汇总表格 -->
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">
-            <el-icon class="title-icon"><DataAnalysis /></el-icon>
-            数据汇总
-          </h3>
-        </div>
-        <div class="summary-table">
-          <div class="summary-row">
-            <div class="summary-item">
-              <span class="summary-label">用户总数</span>
-              <span class="summary-value">{{ formatNumber(statistics?.users?.total || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">正常用户</span>
-              <span class="summary-value success">{{ formatNumber(statistics?.users?.normal || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">封禁用户</span>
-              <span class="summary-value danger">{{ formatNumber(statistics?.users?.banned || 0) }}</span>
-            </div>
-          </div>
-          <div class="summary-row">
-            <div class="summary-item">
-              <span class="summary-label">卡密总数</span>
-              <span class="summary-value">{{ formatNumber(statistics?.cards?.total || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">未使用</span>
-              <span class="summary-value success">{{ formatNumber(statistics?.cards?.unused || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">已使用</span>
-              <span class="summary-value warning">{{ formatNumber(statistics?.cards?.used || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">已禁用</span>
-              <span class="summary-value danger">{{ formatNumber(statistics?.cards?.disabled || 0) }}</span>
-            </div>
-          </div>
-          <div class="summary-row">
-            <div class="summary-item">
-              <span class="summary-label">设备总数</span>
-              <span class="summary-value">{{ formatNumber(statistics?.devices?.total || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">活跃设备</span>
-              <span class="summary-value success">{{ formatNumber(statistics?.devices?.active || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">禁用设备</span>
-              <span class="summary-value danger">{{ formatNumber(statistics?.devices?.disabled || 0) }}</span>
-            </div>
-          </div>
-          <div class="summary-row">
-            <div class="summary-item">
-              <span class="summary-label">应用总数</span>
-              <span class="summary-value">{{ formatNumber(statistics?.apps?.total || 0) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">正常应用</span>
-              <span class="summary-value success">{{ formatNumber(statistics?.apps?.active || 0) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </article>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * 仪表盘页面
- * @description 展示系统的各项统计数据和 ECharts 图表
+ * 综合仪表盘页面
+ * @description 这一版继续围绕“综合数据总览”增强：
+ * 1. 统一复用公共统计派生 helper，保证多个仪表盘的指标口径一致；
+ * 2. 增加资源总量对比、7 日资源新增矩阵、更多联动分析卡；
+ * 3. 所有图表都严格基于 /admin/statistics 当前返回，不拼接虚假趋势数据。
  */
-import { ref, computed, onMounted, onBeforeUnmount, nextTick} from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import type { EChartsOption } from 'echarts'
+import type { ECharts, EChartsOption } from 'echarts'
 import {
-  User,
-  Ticket,
-  Monitor,
-  Grid,
-  CircleCheck,
-  CircleClose,
-  Connection,
-  RemoveFilled,
-  DocumentChecked,
-  CircleCheckFilled,
-  Key,
-  Refresh,
+  CollectionTag,
   DataAnalysis,
-  TrendCharts
+  DataLine,
+  Grid,
+  Histogram,
+  Memo,
+  Monitor,
+  Odometer,
+  RefreshRight,
+  Ticket,
+  TrendCharts,
+  User
 } from '@element-plus/icons-vue'
 import { getStatistics } from '@/api/admin'
 import type { Statistics } from '@/types'
+import {
+  clampPercent,
+  createDashboardFallbackStatistics,
+  formatDashboardNumber,
+  getAverageValue,
+  getLastValue,
+  getRate,
+  getSeriesPeak,
+  getSeriesTotal
+} from './dashboard-metrics'
+
+type ChartKey =
+  | 'healthGauge'
+  | 'resourceCompare'
+  | 'statusTrend'
+  | 'cardDonut'
+  | 'dailyCompare'
+  | 'healthBar'
+  | 'growthHeatmap'
+  | 'growthLine'
+  | 'radarChart'
+
+const loading = ref(false)                              // 页面加载状态
+const statistics = ref<Statistics | null>(null)         // 仪表盘统计快照
+const lastUpdatedAt = ref<Date | null>(null)            // 最近刷新时间
+
+const healthGaugeRef = ref<HTMLDivElement>()
+const resourceCompareRef = ref<HTMLDivElement>()
+const statusTrendRef = ref<HTMLDivElement>()
+const cardDonutRef = ref<HTMLDivElement>()
+const dailyCompareRef = ref<HTMLDivElement>()
+const healthBarRef = ref<HTMLDivElement>()
+const growthHeatmapRef = ref<HTMLDivElement>()
+const growthLineRef = ref<HTMLDivElement>()
+const radarChartRef = ref<HTMLDivElement>()
+
+const chartInstances: Partial<Record<ChartKey, ECharts>> = {}
 
 /**
- * 状态定义
+ * 统计数据兜底
+ * @description 使用统一 helper 生成空结构，避免模板和图表直接访问空对象。
  */
-const loading = ref(false)                              // 加载状态
-const statistics = ref<Statistics | null>(null)          // 统计数据
+const statisticsSnapshot = computed<Statistics>(() => {
+  return statistics.value ?? createDashboardFallbackStatistics()
+})
+
+const formatNumber = (num: number) => formatDashboardNumber(num)
+
+const lastUpdatedText = computed(() => {
+  if (!lastUpdatedAt.value) return '尚未刷新'
+  return lastUpdatedAt.value.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+})
+
+const abnormalAppCount = computed(() => {
+  const snapshot = statisticsSnapshot.value
+  return Math.max(snapshot.apps.total - snapshot.apps.active, 0)
+})
+
+const userHealthRate = computed(() => getRate(statisticsSnapshot.value.users.normal, statisticsSnapshot.value.users.total))
+const cardUsageRate = computed(() => getRate(statisticsSnapshot.value.cards.used, statisticsSnapshot.value.cards.total))
+const cardReserveRate = computed(() => getRate(statisticsSnapshot.value.cards.unused, statisticsSnapshot.value.cards.total))
+const deviceHealthRate = computed(() => getRate(statisticsSnapshot.value.devices.active, statisticsSnapshot.value.devices.total))
+const appAvailabilityRate = computed(() => getRate(statisticsSnapshot.value.apps.active, statisticsSnapshot.value.apps.total))
+
+const todayNewUsers = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.users))
+const todayNewDevices = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.devices))
+const todayNewCards = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.cards))
+const todayNewApps = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.apps))
+
+const averageDailyUsers = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.users))
+const averageDailyDevices = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.devices))
+const averageDailyCards = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.cards))
+const averageDailyApps = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.apps))
+
+const todayGrowthTotal = computed(() => {
+  return todayNewUsers.value + todayNewDevices.value + todayNewCards.value + todayNewApps.value
+})
+
+const weeklyGrowthTotal = computed(() => {
+  const trends = statisticsSnapshot.value.trends.daily_new
+  return getSeriesTotal(trends.users) + getSeriesTotal(trends.devices) + getSeriesTotal(trends.cards) + getSeriesTotal(trends.apps)
+})
+
+const averageGrowthTotal = computed(() => {
+  return averageDailyUsers.value + averageDailyDevices.value + averageDailyCards.value + averageDailyApps.value
+})
 
 /**
- * ECharts 实例引用
+ * 增长动量
+ * @description 观察今日总新增相对近 7 日均值的强弱，用于综合版首页快速判断。
  */
-const pieChartRef = ref<HTMLDivElement>()
-const barChartRef = ref<HTMLDivElement>()
-const deviceChartRef = ref<HTMLDivElement>()
-const appChartRef = ref<HTMLDivElement>()
-const trendChartRef = ref<HTMLDivElement>()
+const growthMomentumRate = computed(() => {
+  if (!averageGrowthTotal.value) {
+    return todayGrowthTotal.value > 0 ? 100 : 0
+  }
+  return clampPercent((todayGrowthTotal.value / averageGrowthTotal.value) * 100)
+})
 
 /**
- * ECharts 实例
+ * 库存支持天数
+ * @description 用未使用卡密对比平均新增用户，帮助判断库存还能支撑多久。
  */
-let pieChartInstance: echarts.ECharts | null = null
-let barChartInstance: echarts.ECharts | null = null
-let deviceChartInstance: echarts.ECharts | null = null
-let appChartInstance: echarts.ECharts | null = null
-let trendChartInstance: echarts.ECharts | null = null
+const inventorySupportDays = computed(() => {
+  const averageUsers = Math.max(averageDailyUsers.value, 1)
+  return Math.round(statisticsSnapshot.value.cards.unused / averageUsers)
+})
 
 /**
- * 格式化数字
- * @description 使用千分位分隔符格式化数字
- * @param num 要格式化的数字
- * @returns 格式化后的字符串
+ * 风险暴露率
+ * @description 用异常用户、禁用卡密、禁用设备、异常应用占整体资源的比例来观察系统风险面。
  */
-const formatNumber = (num: number) => {
-  return num.toLocaleString()
+const riskExposureRate = computed(() => {
+  const snapshot = statisticsSnapshot.value
+  const abnormalTotal =
+    snapshot.users.banned +
+    snapshot.cards.disabled +
+    snapshot.devices.disabled +
+    abnormalAppCount.value
+
+  const resourceTotal =
+    snapshot.users.total +
+    snapshot.cards.total +
+    snapshot.devices.total +
+    snapshot.apps.total
+
+  return getRate(abnormalTotal, resourceTotal)
+})
+
+/**
+ * 资源协同分
+ * @description 主要观察用户增长、设备跟随和卡密库存是否协同。
+ */
+const resourceSynergyScore = computed(() => {
+  const deviceFollowRate = clampPercent((todayNewDevices.value / Math.max(todayNewUsers.value, 1)) * 100)
+  const inventoryRate = cardReserveRate.value
+
+  return Math.round(
+    growthMomentumRate.value * 0.4 +
+    deviceFollowRate * 0.28 +
+    inventoryRate * 0.18 +
+    appAvailabilityRate.value * 0.14
+  )
+})
+
+const overallHealthScore = computed(() => {
+  const score = (
+    userHealthRate.value * 0.24 +
+    cardReserveRate.value * 0.18 +
+    cardUsageRate.value * 0.14 +
+    deviceHealthRate.value * 0.2 +
+    appAvailabilityRate.value * 0.12 +
+    (100 - riskExposureRate.value) * 0.12
+  )
+  return Math.round(score)
+})
+
+const overviewCards = computed(() => {
+  const snapshot = statisticsSnapshot.value
+
+  return [
+    {
+      key: 'users',
+      label: '用户总数',
+      value: snapshot.users.total,
+      metaLabel: '正常用户',
+      metaValue: `${snapshot.users.normal} 人`,
+      rate: userHealthRate.value,
+      tag: `今日 +${todayNewUsers.value}`,
+      icon: User,
+      iconClass: 'icon-user'
+    },
+    {
+      key: 'cards',
+      label: '卡密总数',
+      value: snapshot.cards.total,
+      metaLabel: '已使用卡密',
+      metaValue: `${snapshot.cards.used} 个`,
+      rate: cardUsageRate.value,
+      tag: `库存 ${snapshot.cards.unused}`,
+      icon: Ticket,
+      iconClass: 'icon-card'
+    },
+    {
+      key: 'devices',
+      label: '设备总数',
+      value: snapshot.devices.total,
+      metaLabel: '活跃设备',
+      metaValue: `${snapshot.devices.active} 台`,
+      rate: deviceHealthRate.value,
+      tag: `今日 +${todayNewDevices.value}`,
+      icon: Monitor,
+      iconClass: 'icon-device'
+    },
+    {
+      key: 'apps',
+      label: '应用总数',
+      value: snapshot.apps.total,
+      metaLabel: '可用应用',
+      metaValue: `${snapshot.apps.active} 个`,
+      rate: appAvailabilityRate.value,
+      tag: `异常 ${abnormalAppCount.value}`,
+      icon: Grid,
+      iconClass: 'icon-app'
+    }
+  ]
+})
+
+const summaryItems = computed(() => {
+  return [
+    {
+      label: '今日新增用户',
+      value: `${todayNewUsers.value}`,
+      desc: `7日均值 ${averageDailyUsers.value}`
+    },
+    {
+      label: '今日新增设备',
+      value: `${todayNewDevices.value}`,
+      desc: `7日均值 ${averageDailyDevices.value}`
+    },
+    {
+      label: '今日新增卡密',
+      value: `${todayNewCards.value}`,
+      desc: `7日均值 ${averageDailyCards.value}`
+    },
+    {
+      label: '今日新增应用',
+      value: `${todayNewApps.value}`,
+      desc: `7日均值 ${averageDailyApps.value}`
+    },
+    {
+      label: '今日总新增',
+      value: `${todayGrowthTotal.value}`,
+      desc: `近7日累计 ${weeklyGrowthTotal.value}`
+    },
+    {
+      label: '卡密使用率',
+      value: `${cardUsageRate.value}%`,
+      desc: `库存率 ${cardReserveRate.value}%`
+    }
+  ]
+})
+
+const focusItems = computed(() => {
+  const snapshot = statisticsSnapshot.value
+
+  return [
+    {
+      label: '增长动能',
+      text: growthMomentumRate.value >= 100
+        ? `今日总新增 ${todayGrowthTotal.value} 条，已经达到或超过近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}。`
+        : `今日总新增 ${todayGrowthTotal.value} 条，低于近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}，建议继续观察接入节奏。`,
+      levelClass: growthMomentumRate.value >= 100 ? 'level-success' : 'level-info'
+    },
+    {
+      label: '库存覆盖',
+      text: snapshot.cards.unused > 0
+        ? `当前仍有 ${snapshot.cards.unused} 个未使用卡密，按近 7 日平均新增用户估算可支撑约 ${inventorySupportDays.value} 天。`
+        : '未使用卡密已经耗尽，建议优先补充卡密库存，避免影响后续授权转化。',
+      levelClass: snapshot.cards.unused > 0 ? 'level-success' : 'level-danger'
+    },
+    {
+      label: '用户与设备协同',
+      text: todayNewDevices.value >= todayNewUsers.value
+        ? `今日新增设备 ${todayNewDevices.value} 台，基本跟上新增用户 ${todayNewUsers.value} 人，接入转化表现稳定。`
+        : `今日新增设备 ${todayNewDevices.value} 台，低于新增用户 ${todayNewUsers.value} 人，建议排查是否存在激活漏斗损耗。`,
+      levelClass: todayNewDevices.value >= todayNewUsers.value ? 'level-success' : 'level-warning'
+    },
+    {
+      label: '风险暴露',
+      text: riskExposureRate.value > 10
+        ? `当前异常资源暴露率为 ${riskExposureRate.value}%，相对偏高，需要重点关注封禁与禁用带来的经营影响。`
+        : `当前异常资源暴露率为 ${riskExposureRate.value}%，整体仍处于可控区间。`,
+      levelClass: riskExposureRate.value > 10 ? 'level-warning' : 'level-success'
+    },
+    {
+      label: '应用可用性',
+      text: abnormalAppCount.value > 0
+        ? `当前有 ${abnormalAppCount.value} 个应用未处于正常状态，建议检查应用配置、接入参数和管理员操作记录。`
+        : '当前所有应用都处于正常状态，应用侧没有明显可用性风险。',
+      levelClass: abnormalAppCount.value > 0 ? 'level-warning' : 'level-success'
+    }
+  ]
+})
+
+const executiveMetrics = computed(() => {
+  const snapshot = statisticsSnapshot.value
+
+  return [
+    {
+      label: '增长动量',
+      value: `${growthMomentumRate.value}%`,
+      desc: `今日总新增 ${todayGrowthTotal.value}，对比近 7 日平均总新增 ${averageGrowthTotal.value.toFixed(1)}。`
+    },
+    {
+      label: '库存覆盖',
+      value: `${inventorySupportDays.value} 天`,
+      desc: `按近 7 日平均新增用户估算，当前 ${snapshot.cards.unused} 个库存还能支撑的大致天数。`
+    },
+    {
+      label: '风险暴露率',
+      value: `${riskExposureRate.value}%`,
+      desc: `异常用户、禁用卡密、禁用设备和异常应用合并观察，更适合看综合风险面。`
+    },
+    {
+      label: '资源协同分',
+      value: `${resourceSynergyScore.value} 分`,
+      desc: '重点衡量用户增长、设备跟随、卡密库存和应用可用是否同步支撑整体业务。'
+    }
+  ]
+})
+
+const summaryMetrics = computed(() => {
+  const snapshot = statisticsSnapshot.value
+
+  return [
+    {
+      label: '正常用户 / 总用户',
+      value: `${snapshot.users.normal} / ${snapshot.users.total}`,
+      rate: userHealthRate.value
+    },
+    {
+      label: '已使用卡密 / 总卡密',
+      value: `${snapshot.cards.used} / ${snapshot.cards.total}`,
+      rate: cardUsageRate.value
+    },
+    {
+      label: '活跃设备 / 总设备',
+      value: `${snapshot.devices.active} / ${snapshot.devices.total}`,
+      rate: deviceHealthRate.value
+    },
+    {
+      label: '可用应用 / 总应用',
+      value: `${snapshot.apps.active} / ${snapshot.apps.total}`,
+      rate: appAvailabilityRate.value
+    },
+    {
+      label: '今日总新增 / 7日均值',
+      value: `${todayGrowthTotal.value} / ${averageGrowthTotal.value.toFixed(1)}`,
+      rate: growthMomentumRate.value
+    },
+    {
+      label: '资源协同分 / 100',
+      value: `${resourceSynergyScore.value} / 100`,
+      rate: resourceSynergyScore.value
+    }
+  ]
+})
+
+const statusTrendIndicators = computed(() => {
+  return [
+    { label: '正常用户率', value: userHealthRate.value },
+    { label: '卡密储备率', value: cardReserveRate.value },
+    { label: '卡密使用率', value: cardUsageRate.value },
+    { label: '设备活跃率', value: deviceHealthRate.value },
+    { label: '应用可用率', value: appAvailabilityRate.value }
+  ]
+})
+
+const heatmapMatrix = computed(() => {
+  const trends = statisticsSnapshot.value.trends.daily_new
+  const rows = [
+    { name: '用户', values: trends.users },
+    { name: '设备', values: trends.devices },
+    { name: '卡密', values: trends.cards },
+    { name: '应用', values: trends.apps }
+  ]
+
+  return rows.flatMap((row, rowIndex) => {
+    return row.values.map((value, colIndex) => [colIndex, rowIndex, value])
+  })
+})
+
+const heatmapMaxValue = computed(() => {
+  const allValues = [
+    ...statisticsSnapshot.value.trends.daily_new.users,
+    ...statisticsSnapshot.value.trends.daily_new.devices,
+    ...statisticsSnapshot.value.trends.daily_new.cards,
+    ...statisticsSnapshot.value.trends.daily_new.apps
+  ]
+
+  return Math.max(getSeriesPeak(allValues), 1)
+})
+
+const getChartElement = (chartKey: ChartKey) => {
+  const elementMap: Record<ChartKey, HTMLDivElement | undefined> = {
+    healthGauge: healthGaugeRef.value,
+    resourceCompare: resourceCompareRef.value,
+    statusTrend: statusTrendRef.value,
+    cardDonut: cardDonutRef.value,
+    dailyCompare: dailyCompareRef.value,
+    healthBar: healthBarRef.value,
+    growthHeatmap: growthHeatmapRef.value,
+    growthLine: growthLineRef.value,
+    radarChart: radarChartRef.value
+  }
+
+  return elementMap[chartKey]
 }
 
-/**
- * 初始化饼图
- * @description 卡密使用情况饼图
- */
-const initPieChart = () => {
-  if (!pieChartRef.value || !statistics.value) return
+const ensureChartInstance = (chartKey: ChartKey) => {
+  const element = getChartElement(chartKey)
+  if (!element) return null
 
-  pieChartInstance = echarts.init(pieChartRef.value)
-  
+  const currentInstance = chartInstances[chartKey]
+  if (currentInstance) return currentInstance
+
+  const createdInstance = echarts.init(element)
+  chartInstances[chartKey] = createdInstance
+  return createdInstance
+}
+
+const renderHealthGauge = () => {
+  const instance = ensureChartInstance('healthGauge')
+  if (!instance) return
+
   const option: EChartsOption = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{a} <br/>数量: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left',
-      data: ['未使用', '已使用', '已禁用']
-    },
     series: [
       {
-        name: '卡密使用情况',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
+        type: 'gauge',
+        startAngle: 210,
+        endAngle: -30,
+        min: 0,
+        max: 100,
+        progress: {
           show: true,
-          formatter: '{b}: {c}'
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 16,
-            fontWeight: 'bold'
+          roundCap: true,
+          width: 12,
+          itemStyle: {
+            color: overallHealthScore.value >= 80 ? '#14b8a6' : overallHealthScore.value >= 60 ? '#f59e0b' : '#fb7185'
           }
         },
-        labelLine: {
-          show: false
+        axisLine: {
+          roundCap: true,
+          lineStyle: {
+            width: 12,
+            color: [[1, '#e2e8f0']]
+          }
+        },
+        pointer: { show: false },
+        anchor: { show: false },
+        axisTick: { show: false },
+        splitLine: { show: false },
+        axisLabel: { show: false },
+        detail: {
+          formatter: '{value}',
+          valueAnimation: true,
+          color: '#0f172a',
+          fontSize: 26,
+          fontWeight: 'bold',
+          offsetCenter: [0, '6%']
+        },
+        title: {
+          color: '#64748b',
+          fontSize: 12,
+          offsetCenter: [0, '64%']
         },
         data: [
-          { 
-            value: statistics.value.cards.unused, 
-            name: '未使用',
-            itemStyle: { color: '#10B981' }
-          },
-          { 
-            value: statistics.value.cards.used, 
-            name: '已使用',
-            itemStyle: { color: '#F59E0B' }
-          },
-          { 
-            value: statistics.value.cards.disabled, 
-            name: '已禁用',
-            itemStyle: { color: '#EF4444' }
+          {
+            value: overallHealthScore.value,
+            name: '综合健康度'
           }
         ]
       }
     ]
   }
 
-  pieChartInstance.setOption(option)
+  instance.setOption(option)
 }
 
-/**
- * 初始化柱状图
- * @description 用户状态分布柱状图
- */
-const initBarChart = () => {
-  if (!barChartRef.value || !statistics.value) return
+const renderResourceCompareChart = () => {
+  const instance = ensureChartInstance('resourceCompare')
+  if (!instance) return
 
-  barChartInstance = echarts.init(barChartRef.value)
+  const snapshot = statisticsSnapshot.value
 
   const option: EChartsOption = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
+      axisPointer: { type: 'shadow' }
     },
     grid: {
-      left: '3%',
+      left: '4%',
       right: '4%',
-      bottom: '3%',
+      bottom: '6%',
+      top: '12%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
-      data: ['用户总数', '正常用户', '封禁用户']
+      data: ['用户', '卡密', '设备', '应用'],
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: '#d7dee8' } },
+      axisLabel: { color: '#475569' }
     },
     yAxis: {
-      type: 'value'
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: { color: '#64748b' }
     },
     series: [
       {
-        name: '用户状态',
         type: 'bar',
+        barWidth: '42%',
         data: [
-          { 
-            value: statistics.value.users.total,
-            itemStyle: { color: '#3B82F6' }
-          },
-          { 
-            value: statistics.value.users.normal,
-            itemStyle: { color: '#10B981' }
-          },
-          { 
-            value: statistics.value.users.banned,
-            itemStyle: { color: '#EF4444' }
-          }
+          { value: snapshot.users.total, itemStyle: { color: '#38bdf8' } },
+          { value: snapshot.cards.total, itemStyle: { color: '#f59e0b' } },
+          { value: snapshot.devices.total, itemStyle: { color: '#14b8a6' } },
+          { value: snapshot.apps.total, itemStyle: { color: '#8b5cf6' } }
         ],
-        barWidth: '60%',
+        label: {
+          show: true,
+          position: 'top',
+          color: '#0f172a',
+          fontWeight: 600
+        },
         itemStyle: {
-          borderRadius: [8, 8, 0, 0]
+          borderRadius: [10, 10, 0, 0]
         }
       }
     ]
   }
 
-  barChartInstance.setOption(option)
+  instance.setOption(option)
 }
 
-/**
- * 初始化设备分布图
- * @description 设备状态分布环形图
- */
-const initDeviceChart = () => {
-  if (!deviceChartRef.value || !statistics.value) return
+const renderStatusTrendChart = () => {
+  const instance = ensureChartInstance('statusTrend')
+  if (!instance) return
 
-  deviceChartInstance = echarts.init(deviceChartRef.value)
+  const indicators = statusTrendIndicators.value
 
   const option: EChartsOption = {
     tooltip: {
-      trigger: 'item',
-      formatter: '{a} <br/>数量: {c}'
+      trigger: 'axis',
+      formatter: '{b}<br/>占比：{c}%'
+    },
+    grid: {
+      left: '4%',
+      right: '4%',
+      bottom: '5%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: indicators.map(item => item.label),
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: '#d7dee8' } },
+      axisLabel: { color: '#475569' }
+    },
+    yAxis: {
+      type: 'value',
+      max: 100,
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: {
+        color: '#64748b',
+        formatter: '{value}%'
+      }
     },
     series: [
       {
-        name: '设备分布',
-        type: 'pie',
-        radius: [50, 70],
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
-        label: {
-          show: false
+        name: '状态指标',
+        type: 'line',
+        smooth: true,
+        symbolSize: 10,
+        lineStyle: {
+          width: 3,
+          color: '#38bdf8'
         },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: '20',
-            fontWeight: 'bold'
-          }
+        itemStyle: {
+          color: '#0ea5e9',
+          borderColor: '#ffffff',
+          borderWidth: 2
         },
-        data: [
-          {
-            value: statistics.value.devices.active,
-            name: '活跃设备',
-            itemStyle: {
-              color: '#10B981',
-              borderWidth: 4,
-              borderColor: '#fff'
-            }
-          },
-          {
-            value: statistics.value.devices.disabled,
-            name: '禁用设备',
-            itemStyle: {
-              color: '#EF4444',
-              borderWidth: 4,
-              borderColor: '#fff'
-            }
-          }
-        ]
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(56, 189, 248, 0.26)' },
+            { offset: 1, color: 'rgba(56, 189, 248, 0.04)' }
+          ])
+        },
+        data: indicators.map(item => item.value)
       }
     ]
   }
 
-  deviceChartInstance.setOption(option)
+  instance.setOption(option)
 }
 
-/**
- * 初始化应用分布图
- * @description 应用状态分布环形图
- */
-const initAppChart = () => {
-  if (!appChartRef.value || !statistics.value) return
+const renderCardDonut = () => {
+  const instance = ensureChartInstance('cardDonut')
+  if (!instance) return
 
-  appChartInstance = echarts.init(appChartRef.value)
+  const snapshot = statisticsSnapshot.value
 
   const option: EChartsOption = {
+    color: ['#5eead4', '#fbbf24', '#fda4af'],
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: {c}'
+      formatter: '{b}<br/>数量：{c} ({d}%)'
+    },
+    legend: {
+      bottom: 0,
+      icon: 'circle',
+      textStyle: { color: '#475569' }
     },
     series: [
       {
-        name: '应用分布',
         type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
+        radius: ['48%', '72%'],
+        center: ['50%', '42%'],
         label: {
           show: true,
           formatter: '{b}\n{c}'
         },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: '18',
-            fontWeight: 'bold'
-          }
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 4
         },
         data: [
+          { value: snapshot.cards.unused, name: '未使用' },
+          { value: snapshot.cards.used, name: '已使用' },
+          { value: snapshot.cards.disabled, name: '已禁用' }
+        ]
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderDailyCompareChart = () => {
+  const instance = ensureChartInstance('dailyCompare')
+  if (!instance) return
+
+  const trends = statisticsSnapshot.value.trends
+
+  const option: EChartsOption = {
+    tooltip: {
+      trigger: 'axis'
+    },
+    legend: {
+      top: 0,
+      textStyle: { color: '#475569' }
+    },
+    grid: {
+      left: '4%',
+      right: '4%',
+      bottom: '5%',
+      top: '14%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: trends.labels,
+      axisLine: { lineStyle: { color: '#d7dee8' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#64748b' }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: { color: '#64748b' }
+    },
+    series: [
+      {
+        name: '新增用户',
+        type: 'line',
+        smooth: true,
+        symbolSize: 8,
+        lineStyle: { width: 3, color: '#14b8a6' },
+        itemStyle: { color: '#14b8a6' },
+        data: trends.daily_new.users
+      },
+      {
+        name: '新增设备',
+        type: 'line',
+        smooth: true,
+        symbolSize: 8,
+        lineStyle: { width: 3, color: '#60a5fa' },
+        itemStyle: { color: '#60a5fa' },
+        data: trends.daily_new.devices
+      },
+      {
+        name: '新增卡密',
+        type: 'line',
+        smooth: true,
+        symbolSize: 8,
+        lineStyle: { width: 3, color: '#f59e0b' },
+        itemStyle: { color: '#f59e0b' },
+        data: trends.daily_new.cards
+      },
+      {
+        name: '新增应用',
+        type: 'bar',
+        barWidth: 18,
+        itemStyle: {
+          color: 'rgba(139, 92, 246, 0.35)',
+          borderRadius: [8, 8, 0, 0]
+        },
+        data: trends.daily_new.apps
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderHealthBarChart = () => {
+  const instance = ensureChartInstance('healthBar')
+  if (!instance) return
+
+  const snapshot = statisticsSnapshot.value
+
+  const option: EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
+    },
+    legend: {
+      bottom: 0,
+      textStyle: { color: '#475569' }
+    },
+    grid: {
+      left: '4%',
+      right: '4%',
+      bottom: '14%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: { color: '#64748b' }
+    },
+    yAxis: {
+      type: 'category',
+      data: ['设备', '应用'],
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: { color: '#334155', fontWeight: 600 }
+    },
+    series: [
+      {
+        name: '正常 / 活跃',
+        type: 'bar',
+        stack: 'total',
+        itemStyle: { color: '#5eead4', borderRadius: [0, 8, 8, 0] },
+        label: { show: true, color: '#0f172a' },
+        data: [snapshot.devices.active, snapshot.apps.active]
+      },
+      {
+        name: '异常 / 禁用',
+        type: 'bar',
+        stack: 'total',
+        itemStyle: { color: '#fda4af', borderRadius: [0, 8, 8, 0] },
+        label: { show: true, color: '#0f172a' },
+        data: [snapshot.devices.disabled, abnormalAppCount.value]
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderGrowthHeatmap = () => {
+  const instance = ensureChartInstance('growthHeatmap')
+  if (!instance) return
+
+  const option: EChartsOption = {
+    tooltip: {
+      position: 'top',
+      formatter: (params: any) => {
+        const [xIndex, yIndex, value] = params.value as [number, number, number]
+        const labels = statisticsSnapshot.value.trends.labels
+        const rows = ['用户', '设备', '卡密', '应用']
+        return `${rows[yIndex]}<br/>${labels[xIndex]}：${value}`
+      }
+    },
+    grid: {
+      left: '6%',
+      right: '6%',
+      top: '10%',
+      bottom: '12%'
+    },
+    xAxis: {
+      type: 'category',
+      data: statisticsSnapshot.value.trends.labels,
+      splitArea: { show: true },
+      axisTick: { show: false },
+      axisLabel: { color: '#64748b' },
+      axisLine: { lineStyle: { color: '#d7dee8' } }
+    },
+    yAxis: {
+      type: 'category',
+      data: ['用户', '设备', '卡密', '应用'],
+      splitArea: { show: true },
+      axisTick: { show: false },
+      axisLabel: { color: '#475569', fontWeight: 600 },
+      axisLine: { show: false }
+    },
+    visualMap: {
+      min: 0,
+      max: heatmapMaxValue.value,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 0,
+      textStyle: { color: '#64748b' },
+      inRange: {
+        color: ['#f8fafc', '#bae6fd', '#38bdf8', '#0284c7']
+      }
+    },
+    series: [
+      {
+        type: 'heatmap',
+        data: heatmapMatrix.value,
+        label: {
+          show: true,
+          color: '#0f172a',
+          fontWeight: 600
+        },
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: 'rgba(255,255,255,0.8)',
+          borderWidth: 2
+        }
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderGrowthLineChart = () => {
+  const instance = ensureChartInstance('growthLine')
+  if (!instance) return
+
+  const trends = statisticsSnapshot.value.trends
+
+  const option: EChartsOption = {
+    tooltip: {
+      trigger: 'axis'
+    },
+    legend: {
+      top: 0,
+      textStyle: { color: '#475569' }
+    },
+    grid: {
+      left: '4%',
+      right: '4%',
+      bottom: '5%',
+      top: '14%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: trends.labels,
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: '#d7dee8' } },
+      axisLabel: { color: '#64748b' }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: { color: '#64748b' }
+    },
+    series: [
+      {
+        name: '累计用户',
+        type: 'line',
+        smooth: true,
+        symbolSize: 7,
+        lineStyle: { width: 2.5, color: '#14b8a6' },
+        itemStyle: { color: '#14b8a6' },
+        data: trends.cumulative.users
+      },
+      {
+        name: '累计设备',
+        type: 'line',
+        smooth: true,
+        symbolSize: 7,
+        lineStyle: { width: 2.5, color: '#60a5fa' },
+        itemStyle: { color: '#60a5fa' },
+        data: trends.cumulative.devices
+      },
+      {
+        name: '累计卡密',
+        type: 'line',
+        smooth: true,
+        symbolSize: 7,
+        lineStyle: { width: 2.5, color: '#f59e0b' },
+        itemStyle: { color: '#f59e0b' },
+        data: trends.cumulative.cards
+      },
+      {
+        name: '累计应用',
+        type: 'line',
+        smooth: true,
+        symbolSize: 7,
+        lineStyle: { width: 2.5, color: '#8b5cf6' },
+        itemStyle: { color: '#8b5cf6' },
+        data: trends.cumulative.apps
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderRadarChart = () => {
+  const instance = ensureChartInstance('radarChart')
+  if (!instance) return
+
+  const option: EChartsOption = {
+    color: ['#38bdf8'],
+    radar: {
+      radius: '64%',
+      splitNumber: 5,
+      axisName: {
+        color: '#334155',
+        fontWeight: 600
+      },
+      splitLine: {
+        lineStyle: { color: 'rgba(203, 213, 225, 0.7)' }
+      },
+      splitArea: {
+        areaStyle: {
+          color: ['rgba(248,250,252,0.4)', 'rgba(241,245,249,0.9)']
+        }
+      },
+      indicator: [
+        { name: '用户健康', max: 100 },
+        { name: '卡密库存', max: 100 },
+        { name: '卡密使用', max: 100 },
+        { name: '设备活跃', max: 100 },
+        { name: '资源协同', max: 100 }
+      ]
+    },
+    series: [
+      {
+        type: 'radar',
+        areaStyle: {
+          color: 'rgba(56, 189, 248, 0.18)'
+        },
+        lineStyle: {
+          width: 3
+        },
+        symbolSize: 8,
+        data: [
           {
-            value: statistics.value.apps.active,
-            name: '正常应用',
-            itemStyle: {
-              color: '#10B981'
-            }
-          },
-          {
-            value: statistics.value.apps.total - statistics.value.apps.active,
-            name: '禁用应用',
-            itemStyle: {
-              color: '#EF4444'
-            }
+            value: [
+              userHealthRate.value,
+              cardReserveRate.value,
+              cardUsageRate.value,
+              deviceHealthRate.value,
+              resourceSynergyScore.value
+            ]
           }
         ]
       }
     ]
   }
 
-  appChartInstance.setOption(option)
+  instance.setOption(option)
 }
 
-/**
- * 初始化趋势图
- * @description 卡密状态趋势折线图（模拟数据）
- */
-const initTrendChart = () => {
-  if (!trendChartRef.value || !statistics.value) return
-
-  trendChartInstance = echarts.init(trendChartRef.value)
-
-  // 模拟最近7天的趋势数据
-  const dates = []
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date()
-    date.setDate(date.getDate() - i)
-    dates.push(`${date.getMonth() + 1}/${date.getDate()}`)
-  }
-
-  // 基于当前数据模拟历史趋势
-  const total = statistics.value.cards.total
-  const unused = statistics.value.cards.unused
-  const used = statistics.value.cards.used
-  const disabled = statistics.value.cards.disabled
-
-  const unusedTrend = []
-  const usedTrend = []
-  const disabledTrend = []
-
-  for (let i = 0; i < 7; i++) {
-    const factor = 0.7 + (i * 0.3 / 6)
-    unusedTrend.push(Math.floor(unused * factor))
-    usedTrend.push(Math.floor(used * factor))
-    disabledTrend.push(Math.floor(disabled * factor))
-  }
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross'
-      }
-    },
-    legend: {
-      data: ['未使用', '已使用', '已禁用'],
-      bottom: 0
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: dates
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
-      {
-        name: '未使用',
-        type: 'line',
-        smooth: true,
-        data: unusedTrend,
-        itemStyle: {
-          color: '#10B981'
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
-              { offset: 1, color: 'rgba(16, 185, 129, 0)' }
-            ]
-          }
-        }
-      },
-      {
-        name: '已使用',
-        type: 'line',
-        smooth: true,
-        data: usedTrend,
-        itemStyle: {
-          color: '#F59E0B'
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(245, 158, 11, 0.3)' },
-              { offset: 1, color: 'rgba(245, 158, 11, 0)' }
-            ]
-          }
-        }
-      },
-      {
-        name: '已禁用',
-        type: 'line',
-        smooth: true,
-        data: disabledTrend,
-        itemStyle: {
-          color: '#EF4444'
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(239, 68, 68, 0.3)' },
-              { offset: 1, color: 'rgba(239, 68, 68, 0)' }
-            ]
-          }
-        }
-      }
-    ]
-  }
-
-  trendChartInstance.setOption(option)
-}
-
-/**
- * 初始化所有图表
- * @description 在数据加载完成后初始化所有 ECharts 实例
- */
-const initCharts = async () => {
+const renderAllCharts = async () => {
   await nextTick()
-  
-  // 等待 DOM 更新后初始化图表
-  setTimeout(() => {
-    initPieChart()
-    initBarChart()
-    initDeviceChart()
-    initAppChart()
-    initTrendChart()
-  }, 100)
+
+  if (!statistics.value) return
+
+  console.info('[综合仪表盘] 开始渲染图表', {
+    users: statistics.value.users,
+    cards: statistics.value.cards,
+    devices: statistics.value.devices,
+    apps: statistics.value.apps,
+    trends: statistics.value.trends
+  })
+
+  renderHealthGauge()
+  renderResourceCompareChart()
+  renderStatusTrendChart()
+  renderCardDonut()
+  renderDailyCompareChart()
+  renderHealthBarChart()
+  renderGrowthHeatmap()
+  renderGrowthLineChart()
+  renderRadarChart()
 }
 
-/**
- * 更新所有图表
- * @description 当数据变化时更新图表
- */
-const updateCharts = async () => {
-  await nextTick()
-  
-  setTimeout(() => {
-    pieChartInstance && initPieChart()
-    barChartInstance && initBarChart()
-    deviceChartInstance && initDeviceChart()
-    appChartInstance && initAppChart()
-    trendChartInstance && initTrendChart()
-  }, 100)
-}
-
-/**
- * 加载统计数据
- * @description 从后端获取系统统计数据
- */
 const loadStatistics = async () => {
   loading.value = true
+  console.info('[综合仪表盘] 开始加载统计数据')
+
   try {
     const data = await getStatistics()
     statistics.value = data
-    ElMessage.success('数据刷新成功')
-    
-    // 数据加载完成后初始化图表
-    await initCharts()
+    lastUpdatedAt.value = new Date()
+
+    console.info('[综合仪表盘] 统计数据加载完成', {
+      users: data.users,
+      cards: data.cards,
+      devices: data.devices,
+      apps: data.apps,
+      trendLabels: data.trends.labels
+    })
+    ElMessage.success('综合数据看板已刷新')
+
+    await renderAllCharts()
   } catch (error) {
-    ElMessage.error('加载统计数据失败')
-    console.error('加载统计数据失败:', error)
+    ElMessage.error('加载综合数据看板失败')
+    console.error('[综合仪表盘] 加载统计数据失败', error)
   } finally {
     loading.value = false
   }
 }
 
-/**
- * 窗口大小变化时调整图表
- */
 const handleResize = () => {
-  pieChartInstance && pieChartInstance.resize()
-  barChartInstance && barChartInstance.resize()
-  deviceChartInstance && deviceChartInstance.resize()
-  appChartInstance && appChartInstance.resize()
-  trendChartInstance && trendChartInstance.resize()
+  Object.values(chartInstances).forEach(instance => {
+    instance?.resize()
+  })
 }
 
-/**
- * 组件挂载时加载数据
- */
+const disposeCharts = () => {
+  const chartKeys: ChartKey[] = [
+    'healthGauge',
+    'resourceCompare',
+    'statusTrend',
+    'cardDonut',
+    'dailyCompare',
+    'healthBar',
+    'growthHeatmap',
+    'growthLine',
+    'radarChart'
+  ]
+
+  chartKeys.forEach((chartKey) => {
+    chartInstances[chartKey]?.dispose()
+    delete chartInstances[chartKey]
+  })
+}
+
 onMounted(() => {
+  console.info('[综合仪表盘] 页面挂载，准备初始化综合数据看板')
   loadStatistics()
-  
-  // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
 })
 
-/**
- * 组件卸载时清理资源
- */
 onBeforeUnmount(() => {
+  console.info('[综合仪表盘] 页面卸载，开始清理图表实例')
   window.removeEventListener('resize', handleResize)
-  
-  // 销毁 ECharts 实例
-  pieChartInstance && pieChartInstance.dispose()
-  barChartInstance && barChartInstance.dispose()
-  deviceChartInstance && deviceChartInstance.dispose()
-  appChartInstance && appChartInstance.dispose()
-  trendChartInstance && trendChartInstance.dispose()
+  disposeCharts()
 })
 </script>
 
@@ -810,347 +1338,328 @@ onBeforeUnmount(() => {
 @reference "../../styles/index.css";
 
 .dashboard-container {
-  @apply w-full h-full;
-  @apply p-8;
-  @apply bg-gradient-to-br from-gray-50 to-gray-100;
-  min-height: calc(100vh - 64px);
+  @apply min-h-full px-6 py-6 lg:px-8;
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.18), transparent 24%),
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.1), transparent 22%),
+    linear-gradient(180deg, #f8fbfd 0%, #f4f8fb 52%, #f8fafc 100%);
 }
 
-/* 页面头部 */
 .dashboard-header {
-  @apply flex justify-between items-center mb-8;
+  @apply flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between mb-6;
+}
+
+.header-copy {
+  @apply max-w-3xl;
+}
+
+.header-badge {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs tracking-[0.18em] uppercase;
+  @apply bg-sky-100 text-sky-700 border border-sky-200;
 }
 
 .dashboard-title {
-  @apply text-3xl font-bold text-gray-900;
-  @apply mb-2;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  @apply mt-4 text-3xl lg:text-4xl font-semibold text-slate-900;
 }
 
 .dashboard-subtitle {
-  @apply text-base text-gray-600;
+  @apply mt-3 text-sm lg:text-base leading-7 text-slate-500;
 }
 
 .header-actions {
+  @apply flex flex-col sm:flex-row sm:flex-wrap gap-3 xl:items-center xl:justify-end;
+}
+
+.header-info-card {
+  @apply min-w-[168px] rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm;
+}
+
+.header-info-card span {
+  @apply block text-xs text-slate-400 mb-1;
+}
+
+.header-info-card strong {
+  @apply text-sm font-semibold text-slate-900;
 }
 
 .refresh-btn {
-  @apply px-6 py-2.5;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  @apply text-white font-medium rounded-xl;
-  @apply shadow-lg shadow-blue-500/20;
-  transition: all 0.3s ease;
+  @apply rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 font-medium;
+  @apply shadow-sm hover:bg-sky-100 hover:text-sky-800;
 }
 
-.refresh-btn:hover {
-  @apply shadow-xl shadow-blue-500/30;
-  transform: translateY(-2px);
+.overview-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
 }
 
-/* 统计分组 */
-.stats-section {
-  @apply space-y-6;
+.overview-card,
+.panel-card,
+.chart-card,
+.signal-card {
+  @apply rounded-[28px] border border-slate-200/80 bg-white/88 shadow-sm;
+  @apply backdrop-blur-sm;
 }
 
-.stat-group {
-  @apply bg-white rounded-2xl p-6;
-  @apply shadow-sm border border-gray-100;
-  transition: all 0.3s ease;
+.overview-card {
+  @apply p-5;
 }
 
-.stat-group:hover {
-  @apply shadow-lg shadow-blue-500/10;
+.overview-card-top {
+  @apply flex items-center justify-between mb-5;
 }
 
-.stat-group-header {
-  @apply flex items-center gap-3 mb-6;
+.overview-icon {
+  @apply flex items-center justify-center w-11 h-11 rounded-2xl;
 }
 
-.group-icon {
-  @apply w-10 h-10 rounded-xl;
-  @apply flex items-center justify-center;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  @apply text-white;
+.icon-user {
+  @apply bg-sky-100 text-sky-700;
 }
 
-.group-title {
-  @apply text-xl font-bold text-gray-900;
+.icon-card {
+  @apply bg-amber-100 text-amber-700;
 }
 
-.stat-group-cards {
-  @apply grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4;
+.icon-device {
+  @apply bg-teal-100 text-teal-700;
 }
 
-/* 统计卡片 */
-.stat-card {
-  @apply bg-gradient-to-br rounded-xl p-5;
-  @apply transition-all duration-300;
-  position: relative;
-  overflow: hidden;
+.icon-app {
+  @apply bg-violet-100 text-violet-700;
 }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  transform: rotate(30deg);
-  pointer-events: none;
+.overview-tag {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-slate-500 bg-slate-100;
 }
 
-.stat-card:hover {
-  @apply transform scale-105 shadow-xl;
+.overview-label {
+  @apply block text-sm text-slate-500;
 }
 
-.stat-primary {
-  @apply from-blue-50 to-blue-100/50;
+.overview-value {
+  @apply block mt-2 text-3xl font-semibold text-slate-900;
 }
 
-.stat-success {
-  @apply from-green-50 to-green-100/50;
+.overview-meta {
+  @apply mt-4 flex items-center justify-between text-sm;
 }
 
-.stat-warning {
-  @apply from-yellow-50 to-yellow-100/50;
+.overview-meta span {
+  @apply text-slate-400;
 }
 
-.stat-danger {
-  @apply from-red-50 to-red-100/50;
+.overview-meta b {
+  @apply text-slate-700 font-semibold;
 }
 
-.stat-purple {
-  @apply from-purple-50 to-purple-100/50;
+.overview-progress {
+  @apply mt-4 flex items-center gap-3;
 }
 
-.stat-info {
-  @apply from-cyan-50 to-cyan-100/50;
+.overview-progress-track {
+  @apply flex-1 h-2 rounded-full bg-slate-100 overflow-hidden;
 }
 
-.stat-icon-wrapper {
-  @apply w-14 h-14 rounded-xl mb-4;
-  @apply flex items-center justify-center;
-  transition: all 0.3s ease;
+.overview-progress-bar {
+  @apply h-full rounded-full;
+  background: linear-gradient(90deg, #38bdf8 0%, #22c55e 100%);
 }
 
-.stat-primary .stat-icon-wrapper {
-  @apply bg-white shadow-lg shadow-blue-500/20;
+.overview-progress span {
+  @apply text-xs font-semibold text-slate-500;
 }
 
-.stat-success .stat-icon-wrapper {
-  @apply bg-white shadow-lg shadow-green-500/20;
+.highlight-grid {
+  @apply grid grid-cols-1 xl:grid-cols-[1.1fr_1.2fr_0.82fr] gap-4 mb-4;
 }
 
-.stat-warning .stat-icon-wrapper {
-  @apply bg-white shadow-lg shadow-yellow-500/20;
-}
-
-.stat-danger .stat-icon-wrapper {
-  @apply bg-white shadow-lg shadow-red-500/20;
-}
-
-.stat-purple .stat-icon-wrapper {
-  @apply bg-white shadow-lg shadow-purple-500/20;
-}
-
-.stat-info .stat-icon-wrapper {
-  @apply bg-white shadow-lg shadow-cyan-500/20;
-}
-
-.stat-card:hover .stat-icon-wrapper {
-  @apply transform scale-110 rotate-3;
-}
-
-.stat-primary .stat-icon {
-  @apply text-blue-600;
-}
-
-.stat-success .stat-icon {
-  @apply text-green-600;
-}
-
-.stat-warning .stat-icon {
-  @apply text-yellow-600;
-}
-
-.stat-danger .stat-icon {
-  @apply text-red-600;
-}
-
-.stat-purple .stat-icon {
-  @apply text-purple-600;
-}
-
-.stat-info .stat-icon {
-  @apply text-cyan-600;
-}
-
-.stat-content {
-  @apply relative z-10;
-}
-
-.stat-label {
-  @apply text-sm font-medium text-gray-600 mb-2;
-}
-
-.stat-value {
-  @apply text-4xl font-bold text-gray-900 mb-4;
-  line-height: 1;
-}
-
-.stat-footer {
-  @apply flex gap-4 text-xs;
-}
-
-.footer-item {
-  @apply flex items-center gap-1.5 font-medium;
-}
-
-.footer-item.success {
-  @apply text-green-700;
-}
-
-.footer-item.danger {
-  @apply text-red-700;
-}
-
-/* 图表区域 */
-.charts-section {
-  @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
-}
-
+.panel-card,
 .chart-card {
-  @apply bg-white rounded-2xl p-8;
-  @apply shadow-sm border border-gray-100;
-  transition: all 0.3s ease;
+  @apply p-5 lg:p-6;
 }
 
-.chart-card:hover {
-  @apply shadow-lg shadow-blue-500/10;
-  transform: translateY(-2px);
+.panel-head {
+  @apply flex items-start justify-between gap-4 mb-5;
 }
 
-/* 宽图表卡片（跨越整行） */
-.chart-wide {
-  @apply lg:col-span-2;
+.panel-eyebrow {
+  @apply text-xs uppercase tracking-[0.2em] text-slate-400;
 }
 
-.chart-header {
-  @apply flex justify-between items-center mb-6;
+.panel-title {
+  @apply mt-1 text-xl font-semibold text-slate-900;
 }
 
-.chart-title {
-  @apply text-xl font-bold text-gray-900;
-  @apply flex items-center gap-2;
+.panel-icon {
+  @apply flex items-center justify-center w-11 h-11 rounded-2xl bg-slate-100 text-slate-600;
 }
 
-.title-icon {
-  @apply text-blue-600;
-}
-
-.chart-legend {
-  @apply flex gap-6;
-}
-
-.legend-item {
-  @apply text-sm font-medium;
-  @apply flex items-center gap-2;
-}
-
-.legend-unused {
-  @apply text-green-600;
-}
-
-.legend-used {
-  @apply text-yellow-600;
-}
-
-.legend-disabled {
-  @apply text-red-600;
-}
-
-.chart-container {
-  @apply w-full;
-  min-height: 300px;
-}
-
-.pie-chart-container {
-  min-height: 350px;
-}
-
-.trend-chart-container {
-  min-height: 400px;
-}
-
-/* 汇总表格 */
-.summary-table {
-  @apply space-y-4;
-}
-
-.summary-row {
-  @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4;
-  @apply py-3 border-b border-gray-100 last:border-b-0;
+.summary-list {
+  @apply grid grid-cols-2 gap-3;
 }
 
 .summary-item {
-  @apply flex flex-col gap-1;
+  @apply rounded-2xl bg-slate-50 px-4 py-4;
 }
 
-.summary-label {
-  @apply text-sm text-gray-600 font-medium;
+.summary-item span {
+  @apply block text-xs text-slate-400 mb-2;
 }
 
-.summary-value {
-  @apply text-2xl font-bold text-gray-900;
+.summary-item strong {
+  @apply block text-2xl font-semibold text-slate-900;
 }
 
-.summary-value.success {
-  @apply text-green-600;
+.summary-item em {
+  @apply mt-2 block text-xs leading-5 text-slate-500 not-italic;
 }
 
-.summary-value.warning {
-  @apply text-yellow-600;
+.focus-list {
+  @apply space-y-4;
 }
 
-.summary-value.danger {
-  @apply text-red-600;
+.focus-item {
+  @apply flex items-start gap-3;
 }
 
-/* 响应式调整 */
+.focus-dot {
+  @apply mt-2 w-2.5 h-2.5 rounded-full shrink-0;
+}
+
+.focus-body strong {
+  @apply block text-sm font-semibold text-slate-900;
+}
+
+.focus-body p {
+  @apply mt-1 text-sm leading-6 text-slate-500;
+}
+
+.signal-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
+}
+
+.signal-card {
+  @apply p-4 lg:p-5;
+}
+
+.signal-card-top {
+  @apply flex items-start justify-between gap-4;
+}
+
+.signal-card-top span {
+  @apply text-sm text-slate-500;
+}
+
+.signal-card-top strong {
+  @apply text-2xl font-semibold text-slate-900;
+}
+
+.signal-card p {
+  @apply mt-3 text-sm leading-6 text-slate-500;
+}
+
+.level-success {
+  @apply bg-emerald-500;
+}
+
+.level-info {
+  @apply bg-sky-500;
+}
+
+.level-warning {
+  @apply bg-amber-500;
+}
+
+.level-danger {
+  @apply bg-rose-500;
+}
+
+.mini-chart-container {
+  width: 100%;
+  height: 220px;
+}
+
+.charts-grid {
+  @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
+}
+
+.chart-span-2 {
+  @apply xl:col-span-2;
+}
+
+.chart-container {
+  width: 100%;
+  height: 320px;
+}
+
+.chart-medium {
+  height: 340px;
+}
+
+.chart-large {
+  height: 360px;
+}
+
+.summary-board {
+  @apply space-y-4;
+}
+
+.summary-board-item {
+  @apply rounded-2xl bg-slate-50 px-4 py-4;
+}
+
+.summary-board-top {
+  @apply flex items-center justify-between gap-4 mb-3;
+}
+
+.summary-board-top span {
+  @apply text-sm text-slate-500;
+}
+
+.summary-board-top strong {
+  @apply text-sm font-semibold text-slate-900;
+}
+
+.summary-board-track {
+  @apply h-2 rounded-full bg-slate-200 overflow-hidden;
+}
+
+.summary-board-bar {
+  @apply h-full rounded-full;
+  background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
+}
+
 @media (max-width: 768px) {
-  .dashboard-header {
-    @apply flex-col gap-4;
+  .dashboard-container {
+    @apply px-4 py-4;
+  }
+
+  .dashboard-title {
+    @apply text-3xl;
+  }
+
+  .summary-list {
+    @apply grid-cols-1;
   }
 
   .header-actions {
-    @apply w-full;
+    @apply flex-col;
   }
 
-  .refresh-btn {
-    @apply w-full;
+  .overview-card,
+  .panel-card,
+  .chart-card,
+  .signal-card {
+    @apply rounded-3xl;
   }
 
-  .stat-group-cards {
-    @apply grid-cols-1;
+  .mini-chart-container {
+    height: 190px;
   }
 
-  .charts-section {
-    @apply grid-cols-1;
-  }
-}
-
-@media (min-width: 769px) and (max-width: 1023px) {
-  .stat-group-cards {
-    @apply grid-cols-2;
-  }
-
-  .charts-section {
-    @apply grid-cols-1;
+  .chart-container,
+  .chart-medium,
+  .chart-large {
+    height: 300px;
   }
 }
 </style>

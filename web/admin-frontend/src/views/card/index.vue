@@ -458,6 +458,17 @@
               value-format="YYYY-MM-DDTHH:mm:ss"
               class="w-full"
             />
+            <div class="expire-shortcut-group">
+              <el-button
+                v-for="shortcut in expireShortcutOptions"
+                :key="shortcut.key"
+                size="small"
+                plain
+                @click="handleExpireTimeShortcutSelect(shortcut.key)"
+              >
+                {{ shortcut.label }}
+              </el-button>
+            </div>
             <div class="form-tip">
               可选择未来时间延长有效期，也可选择过去时间让卡密立即进入已过期状态。
             </div>
@@ -530,6 +541,12 @@ import { getAppList } from '@/api/app'
 import { useUserStore } from '@/stores/user'
 import type { Card, App } from '@/types'
 import { getAppTagStyle } from '@/utils/app-tag'
+import {
+  EXPIRE_SHORTCUT_OPTIONS,
+  formatDateTimeValue,
+  getExpireShortcutValue,
+  type ExpireShortcutKey
+} from '@/utils/expire-shortcuts'
 import GenerateDialog from './components/GenerateDialog.vue'
 import PermissionDialog from './components/PermissionDialog.vue'
 import DeviceDialog from './components/DeviceDialog.vue'
@@ -556,6 +573,7 @@ const deviceDialogVisible = ref(false)                  // 查看设备弹窗
 const cardDetailDrawerVisible = ref(false)              // 卡密详情抽屉
 const expireTimeDialogVisible = ref(false)              // 修改过期时间弹窗
 const expireTimeSubmitting = ref(false)                 // 修改过期时间提交状态
+const expireShortcutOptions = EXPIRE_SHORTCUT_OPTIONS   // 过期时间快捷选项
 
 /**
  * 筛选表单
@@ -703,17 +721,25 @@ const isExpiredByTime = (expireTime: string) => {
   return new Date(expireTime).getTime() < Date.now()
 }
 
-const padDatePart = (value: number) => String(value).padStart(2, '0')
+/**
+ * 处理修改过期时间弹窗中的快捷时间选择
+ * @description 与“批量生成卡密”复用同一套快捷规则，确保各入口行为一致，
+ * 后续若扩展快捷项，也只需要修改公共工具文件即可。
+ * @param shortcutKey 快捷时间 key
+ */
+const handleExpireTimeShortcutSelect = (shortcutKey: ExpireShortcutKey) => {
+  const selectedShortcut = expireShortcutOptions.find(item => item.key === shortcutKey)
+  const expireTimeValue = getExpireShortcutValue(shortcutKey)
 
-const formatDateTimeValue = (date: Date) => {
-  const year = date.getFullYear()
-  const month = padDatePart(date.getMonth() + 1)
-  const day = padDatePart(date.getDate())
-  const hours = padDatePart(date.getHours())
-  const minutes = padDatePart(date.getMinutes())
-  const seconds = padDatePart(date.getSeconds())
+  expireTimeForm.expire_time = expireTimeValue
 
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+  console.info('[卡密管理] 修改过期时间弹窗选择快捷时间', {
+    cardId: currentCard.value?.id,
+    cardKey: currentCard.value?.card_key,
+    shortcutKey,
+    shortcutLabel: selectedShortcut?.label,
+    expireTime: expireTimeValue
+  })
 }
 
 /**
@@ -918,6 +944,12 @@ const showExpireTimeDialog = (card: Card) => {
 
   currentCard.value = card
   expireTimeForm.expire_time = formatDateTimeValue(new Date())
+  console.info('[卡密管理] 打开修改过期时间弹窗', {
+    cardId: card.id,
+    cardKey: card.card_key,
+    currentExpireTime: card.expire_time,
+    defaultExpireTime: expireTimeForm.expire_time
+  })
   expireTimeDialogVisible.value = true
 }
 
@@ -925,6 +957,10 @@ const showExpireTimeDialog = (card: Card) => {
  * 重置修改过期时间弹窗
  */
 const resetExpireTimeDialog = () => {
+  console.info('[卡密管理] 重置修改过期时间弹窗状态', {
+    cardId: currentCard.value?.id,
+    cardKey: currentCard.value?.card_key
+  })
   expireTimeForm.expire_time = ''
   expireTimeSubmitting.value = false
 }
@@ -945,6 +981,13 @@ const handleExpireTimeSubmit = async () => {
 
   expireTimeSubmitting.value = true
   try {
+    console.info('[卡密管理] 开始提交新的过期时间', {
+      cardId: currentCard.value.id,
+      cardKey: currentCard.value.card_key,
+      oldExpireTime: currentCard.value.expire_time,
+      newExpireTime: expireTimeForm.expire_time
+    })
+
     await updateCardExpireTime(currentCard.value.id, expireTimeForm.expire_time)
 
     const updatedCard = {
@@ -959,6 +1002,12 @@ const handleExpireTimeSubmit = async () => {
       cardList.value[listIndex] = updatedCard
     }
 
+    console.info('[卡密管理] 过期时间更新成功', {
+      cardId: updatedCard.id,
+      cardKey: updatedCard.card_key,
+      newExpireTime: updatedCard.expire_time,
+      isExpired: updatedCard.is_expired
+    })
     ElMessage.success('卡密过期时间更新成功')
     expireTimeDialogVisible.value = false
     loadCardList()
@@ -1453,6 +1502,10 @@ watch(
 
 .form-tip {
   @apply mt-2 text-xs text-gray-500 leading-relaxed;
+}
+
+.expire-shortcut-group {
+  @apply flex flex-wrap gap-2 mt-3;
 }
 
 /* 分页 */

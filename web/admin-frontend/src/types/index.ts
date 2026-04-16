@@ -155,7 +155,8 @@ export interface Statistics {
   users: UserStatistics          // 用户统计
   cards: CardStatistics          // 卡密统计
   devices: DeviceStatistics      // 设备统计
-  apps: AppStatistics          // 应用统计
+  apps: AppStatistics            // 应用统计
+  trends: StatisticsTrends       // 趋势统计
 }
 
 /**
@@ -196,6 +197,27 @@ export interface DeviceStatistics {
 export interface AppStatistics {
   total: number                 // 应用总数
   active: number                // 正常应用数
+}
+
+/**
+ * 趋势统计接口
+ * @description 仪表盘最近 N 天的新增和累计趋势数据
+ */
+export interface StatisticsTrends {
+  labels: string[]              // 日期标签
+  daily_new: StatisticsTrendSeries
+  cumulative: StatisticsTrendSeries
+}
+
+/**
+ * 趋势序列接口
+ * @description 各核心资源的时间序列
+ */
+export interface StatisticsTrendSeries {
+  users: number[]
+  devices: number[]
+  cards: number[]
+  apps: number[]
 }
 
 // ==================== 分页相关类型 ====================
