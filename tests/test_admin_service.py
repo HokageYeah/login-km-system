@@ -213,6 +213,16 @@ def test_get_statistics_returns_nested_groups(db_session):
     assert statistics["cards"] == {"total": 2, "unused": 1, "used": 0, "disabled": 1}
     assert statistics["devices"] == {"total": 2, "active": 1, "disabled": 1}
     assert statistics["apps"] == {"total": 1, "active": 1}
+    assert len(statistics["trends"]["labels"]) == 7
+    assert len(statistics["trends"]["daily_new"]["users"]) == 7
+    assert len(statistics["trends"]["daily_new"]["devices"]) == 7
+    assert len(statistics["trends"]["cumulative"]["cards"]) == 7
+    assert statistics["trends"]["daily_new"]["users"][-1] == 2
+    assert statistics["trends"]["daily_new"]["devices"][-1] == 2
+    assert statistics["trends"]["daily_new"]["cards"][-1] == 2
+    assert statistics["trends"]["daily_new"]["apps"][-1] == 1
+    assert statistics["trends"]["cumulative"]["users"][-1] == 2
+    assert statistics["trends"]["cumulative"]["devices"][-1] == 2
 
 
 def test_admin_statistics_endpoint_returns_nested_groups(db_session):
@@ -251,5 +261,8 @@ def test_admin_statistics_endpoint_returns_nested_groups(db_session):
     assert "cards" in result
     assert "devices" in result
     assert "apps" in result
+    assert "trends" in result
     assert result["users"]["total"] >= 1
     assert result["apps"]["total"] >= 1
+    assert len(result["trends"]["labels"]) == 7
+    assert len(result["trends"]["daily_new"]["users"]) == 7

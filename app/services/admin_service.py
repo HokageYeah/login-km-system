@@ -3,7 +3,7 @@
 提供管理后台相关的业务逻辑
 """
 from typing import List, Tuple, Optional, Dict, Union
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from loguru import logger
@@ -21,6 +21,69 @@ class AdminService:
     
     def __init__(self, db: Session):
         self.db = db
+
+    def _build_recent_creation_trend(
+        self,
+        model,
+        days: int = 7,
+        field_name: str = "created_at"
+    ) -> Dict[str, List[int] | List[str]]:
+        """
+        构建最近 N 天的新增与累计趋势
+
+        这里统一基于 created_at 统计，确保仪表盘展示的“每日新增”与“累计规模”
+        都来自真实数据，而不是前端模拟值。
+        """
+        date_field = getattr(model, field_name)
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=days - 1)
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        end_datetime = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+
+        daily_rows = (
+            self.db.query(
+                func.date(date_field).label("day"),
+                func.count(model.id).label("count")
+            )
+            .filter(date_field >= start_datetime, date_field < end_datetime)
+            .group_by(func.date(date_field))
+            .all()
+        )
+
+        counts_by_day: Dict[str, int] = {}
+        for row in daily_rows:
+            day_value = row.day
+            day_key = day_value if isinstance(day_value, str) else day_value.isoformat()
+            counts_by_day[day_key] = int(row.count)
+
+        base_total = (
+            self.db.query(func.count(model.id))
+            .filter(date_field < start_datetime)
+            .scalar()
+            or 0
+        )
+
+        labels: List[str] = []
+        daily_counts: List[int] = []
+        cumulative_counts: List[int] = []
+        running_total = int(base_total)
+
+        for offset in range(days):
+            current_date = start_date + timedelta(days=offset)
+            current_key = current_date.isoformat()
+            current_count = counts_by_day.get(current_key, 0)
+
+            labels.append(current_date.strftime("%m-%d"))
+            daily_counts.append(current_count)
+
+            running_total += current_count
+            cumulative_counts.append(running_total)
+
+        return {
+            "labels": labels,
+            "daily": daily_counts,
+            "cumulative": cumulative_counts
+        }
 
     def _sync_card_usage_statuses(self, card_ids: Optional[List[int]] = None) -> bool:
         """
@@ -713,6 +776,12 @@ class AdminService:
             # 应用统计
             total_apps = self.db.query(App).count()
             active_apps = self.db.query(App).filter(App.status == "normal").count()
+
+            # 趋势统计
+            user_trend = self._build_recent_creation_trend(User)
+            device_trend = self._build_recent_creation_trend(CardDevice)
+            card_trend = self._build_recent_creation_trend(Card)
+            app_trend = self._build_recent_creation_trend(App)
             
             statistics = {
                 "users": {
@@ -734,6 +803,21 @@ class AdminService:
                 "apps": {
                     "total": total_apps,
                     "active": active_apps
+                },
+                "trends": {
+                    "labels": user_trend["labels"],
+                    "daily_new": {
+                        "users": user_trend["daily"],
+                        "devices": device_trend["daily"],
+                        "cards": card_trend["daily"],
+                        "apps": app_trend["daily"]
+                    },
+                    "cumulative": {
+                        "users": user_trend["cumulative"],
+                        "devices": device_trend["cumulative"],
+                        "cards": card_trend["cumulative"],
+                        "apps": app_trend["cumulative"]
+                    }
                 }
             }
 
@@ -742,7 +826,8 @@ class AdminService:
                 f"users={statistics['users']}，"
                 f"cards={statistics['cards']}，"
                 f"devices={statistics['devices']}，"
-                f"apps={statistics['apps']}"
+                f"apps={statistics['apps']}，"
+                f"trend_labels={statistics['trends']['labels']}"
             )
             
             return statistics, None

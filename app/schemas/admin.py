@@ -199,9 +199,25 @@ class AppStatisticsResponse(BaseModel):
     active: int = Field(..., description="正常应用数")
 
 
+class StatisticsTrendSeriesResponse(BaseModel):
+    """统计趋势序列响应"""
+    users: List[int] = Field(..., description="用户趋势序列")
+    devices: List[int] = Field(..., description="设备趋势序列")
+    cards: List[int] = Field(..., description="卡密趋势序列")
+    apps: List[int] = Field(..., description="应用趋势序列")
+
+
+class StatisticsTrendsResponse(BaseModel):
+    """统计趋势响应"""
+    labels: List[str] = Field(..., description="趋势日期标签")
+    daily_new: StatisticsTrendSeriesResponse = Field(..., description="每日新增趋势")
+    cumulative: StatisticsTrendSeriesResponse = Field(..., description="累计规模趋势")
+
+
 class StatisticsResponse(BaseModel):
     """统计数据响应"""
     users: UserStatisticsResponse = Field(..., description="用户统计")
     cards: CardStatisticsResponse = Field(..., description="卡密统计")
     devices: DeviceStatisticsResponse = Field(..., description="设备统计")
     apps: AppStatisticsResponse = Field(..., description="应用统计")
+    trends: StatisticsTrendsResponse = Field(..., description="统计趋势数据")
