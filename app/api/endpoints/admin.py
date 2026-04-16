@@ -364,17 +364,24 @@ async def get_statistics(
     返回用户、卡密、设备、应用的统计信息
     """
     admin_service = AdminService(db)
+    logger.info(
+        f"[管理员接口] 开始获取统计数据：admin_id={admin.get('user_id')}，username={admin.get('username')}"
+    )
     
     statistics, error = admin_service.get_statistics()
     
     if error:
+        logger.error(f"[管理员接口] 获取统计数据失败：{error}")
         raise HTTPException(status_code=400, detail=error)
-    
-    return StatisticsResponse(
-        user_count=statistics["user_count"],
-        card_count=statistics["card_count"],
-        device_count=statistics["device_count"],
-        app_count=statistics["app_count"],
-        active_device_count=statistics["active_device_count"],
-        active_user_count=statistics["active_user_count"]
-    ).model_dump(mode='json', exclude_none=True)
+
+    logger.info(
+        "[管理员接口] 获取统计数据成功："
+        f"users_total={statistics['users']['total']}，"
+        f"cards_total={statistics['cards']['total']}，"
+        f"devices_total={statistics['devices']['total']}，"
+        f"apps_total={statistics['apps']['total']}"
+    )
+
+    # 这里直接按服务层返回的分组结构构造响应，避免接口层再维护一套旧字段映射，
+    # 导致前后端结构漂移或出现 KeyError。
+    return StatisticsResponse(**statistics).model_dump(mode='json', exclude_none=True)

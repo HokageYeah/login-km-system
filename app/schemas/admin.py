@@ -171,11 +171,37 @@ class AdminUserListResponse(BaseModel):
     users: List[AdminUserInfo] = Field(..., description="用户列表")
 
 
+class UserStatisticsResponse(BaseModel):
+    """用户统计数据响应"""
+    total: int = Field(..., description="用户总数")
+    normal: int = Field(..., description="正常用户数")
+    banned: int = Field(..., description="封禁用户数")
+
+
+class CardStatisticsResponse(BaseModel):
+    """卡密统计数据响应"""
+    total: int = Field(..., description="卡密总数")
+    unused: int = Field(..., description="未使用卡密数")
+    used: int = Field(..., description="已使用卡密数")
+    disabled: int = Field(..., description="禁用卡密数")
+
+
+class DeviceStatisticsResponse(BaseModel):
+    """设备统计数据响应"""
+    total: int = Field(..., description="设备总数")
+    active: int = Field(..., description="活跃设备数")
+    disabled: int = Field(..., description="禁用设备数")
+
+
+class AppStatisticsResponse(BaseModel):
+    """应用统计数据响应"""
+    total: int = Field(..., description="应用总数")
+    active: int = Field(..., description="正常应用数")
+
+
 class StatisticsResponse(BaseModel):
     """统计数据响应"""
-    user_count: int = Field(..., description="用户总数")
-    card_count: int = Field(..., description="卡密总数")
-    device_count: int = Field(..., description="设备总数")
-    app_count: int = Field(..., description="应用总数")
-    active_device_count: int = Field(..., description="活跃设备数")
-    active_user_count: int = Field(..., description="活跃用户数")
+    users: UserStatisticsResponse = Field(..., description="用户统计")
+    cards: CardStatisticsResponse = Field(..., description="卡密统计")
+    devices: DeviceStatisticsResponse = Field(..., description="设备统计")
+    apps: AppStatisticsResponse = Field(..., description="应用统计")

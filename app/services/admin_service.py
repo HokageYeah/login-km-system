@@ -689,8 +689,10 @@ class AdminService:
             (统计数据字典, 错误信息)
         """
         try:
+            logger.info("[管理员服务] 开始汇总系统统计数据")
             if self._sync_card_usage_statuses():
                 self.db.commit()
+                logger.info("[管理员服务] 统计前已同步卡密使用状态，已提交数据库事务")
 
             # 用户统计
             total_users = self.db.query(User).count()
@@ -734,6 +736,14 @@ class AdminService:
                     "active": active_apps
                 }
             }
+
+            logger.info(
+                "[管理员服务] 系统统计汇总完成："
+                f"users={statistics['users']}，"
+                f"cards={statistics['cards']}，"
+                f"devices={statistics['devices']}，"
+                f"apps={statistics['apps']}"
+            )
             
             return statistics, None
             
