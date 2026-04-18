@@ -553,6 +553,80 @@ class AdminService:
             self.db.rollback()
             logger.error(f"更新卡密过期时间失败: card_id={card_id}, error={e}")
             return False, f"更新卡密过期时间失败: {str(e)}"
+
+    def update_card_max_device_count(
+        self,
+        card_id: int,
+        max_device_count: int
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        更新卡密最大设备数
+
+        这里不做“单页面临时修正”，而是把设备上限修改沉淀成管理员通用能力：
+        1. 统一由服务层校验输入范围；
+        2. 统一校验不能小于当前活跃设备绑定数；
+        3. 后续其他管理入口若也要改设备上限，直接复用该方法即可。
+
+        Args:
+            card_id: 卡密ID
+            max_device_count: 新的最大设备数
+
+        Returns:
+            (是否成功, 错误信息)
+        """
+        try:
+            logger.info(
+                "[管理员服务] 开始更新卡密最大设备数: "
+                f"card_id={card_id}, target_max_device_count={max_device_count}"
+            )
+
+            card = self.db.query(Card).filter(Card.id == card_id).first()
+            if not card:
+                logger.warning(
+                    "[管理员服务] 更新卡密最大设备数失败，卡密不存在: "
+                    f"card_id={card_id}"
+                )
+                return False, "卡密不存在"
+
+            if max_device_count < 1 or max_device_count > 100:
+                logger.warning(
+                    "[管理员服务] 更新卡密最大设备数失败，输入超出范围: "
+                    f"card_id={card_id}, max_device_count={max_device_count}"
+                )
+                return False, "最大设备数范围必须在 1-100 之间"
+
+            # 统计当前活跃设备数，确保卡密的配置边界和实际绑定事实一致。
+            active_device_count = self.db.query(func.count(CardDevice.id)).filter(
+                CardDevice.card_id == card_id,
+                CardDevice.status == CardDeviceStatus.ACTIVE
+            ).scalar() or 0
+
+            if max_device_count < active_device_count:
+                logger.warning(
+                    "[管理员服务] 更新卡密最大设备数失败，新上限小于当前活跃设备数: "
+                    f"card_id={card_id}, active_device_count={active_device_count}, "
+                    f"target_max_device_count={max_device_count}"
+                )
+                return False, f"新的设备上限不能小于当前已绑定设备数（{active_device_count}台）"
+
+            old_max_device_count = card.max_device_count
+            card.max_device_count = max_device_count
+            self.db.commit()
+
+            logger.info(
+                "[管理员服务] 更新卡密最大设备数成功: "
+                f"card_id={card_id}, old_max_device_count={old_max_device_count}, "
+                f"new_max_device_count={max_device_count}, active_device_count={active_device_count}"
+            )
+            return True, None
+
+        except Exception as e:
+            self.db.rollback()
+            logger.error(
+                "[管理员服务] 更新卡密最大设备数失败: "
+                f"card_id={card_id}, max_device_count={max_device_count}, error={e}"
+            )
+            return False, f"更新卡密最大设备数失败: {str(e)}"
     
     def update_card_permissions(
         self,

@@ -14,11 +14,21 @@
             <span class="info-label">卡密：</span>
             <span class="info-value">{{ card.card_key }}</span>
           </div>
-          <div class="info-item">
+          <div class="info-item info-item-limit">
             <span class="info-label">设备限制：</span>
             <el-tag type="info" size="small">
-              {{ deviceList.length }} / {{ card.max_device_count }}
+              {{ activeDeviceCount }} / {{ card.max_device_count }}
             </el-tag>
+            <el-button
+              size="small"
+              type="primary"
+              plain
+              :icon="Edit"
+              :loading="maxDeviceCountSubmitting"
+              @click="openMaxDeviceCountDialog"
+            >
+              修改限制
+            </el-button>
           </div>
         </div>
       </div>
@@ -107,6 +117,61 @@
       </div>
     </template>
   </el-dialog>
+
+  <el-dialog
+    v-model="maxDeviceCountDialogVisible"
+    title="修改设备限制"
+    width="420px"
+    :close-on-click-modal="false"
+    @closed="resetMaxDeviceCountDialog"
+  >
+    <div class="limit-dialog-body">
+      <p class="limit-dialog-desc">
+        当前卡密的最大设备数会直接影响后续新设备绑定校验。
+        为保证数据一致性，新的设备上限不能小于当前已绑定设备数。
+      </p>
+
+      <div class="limit-summary">
+        <div class="limit-summary-item">
+          <span class="limit-summary-label">当前卡密</span>
+          <span class="limit-summary-value">{{ card?.card_key || '-' }}</span>
+        </div>
+        <div class="limit-summary-item">
+          <span class="limit-summary-label">已绑设备</span>
+          <span class="limit-summary-value">{{ activeDeviceCount }}</span>
+        </div>
+      </div>
+
+      <el-form label-position="top">
+        <el-form-item label="最大设备数">
+          <el-input-number
+            v-model="maxDeviceCountForm.max_device_count"
+            :min="Math.max(activeDeviceCount, 1)"
+            :max="100"
+            :step="1"
+            controls-position="right"
+            class="limit-input"
+          />
+          <div class="form-tip">
+            输入范围 1-100，且不能小于当前已绑定设备数 {{ activeDeviceCount }}。
+          </div>
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="maxDeviceCountDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="maxDeviceCountSubmitting"
+          @click="handleMaxDeviceCountSubmit"
+        >
+          保存
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -116,8 +181,8 @@
  */
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Connection, CircleCheck, CircleClose, Refresh } from '@element-plus/icons-vue'
-import { getDeviceList, updateDeviceStatus } from '@/api/admin'
+import { Connection, CircleCheck, CircleClose, Refresh, Edit } from '@element-plus/icons-vue'
+import { getDeviceList, updateCardMaxDeviceCount, updateDeviceStatus } from '@/api/admin'
 import type { Card, Device } from '@/types'
 
 /**
@@ -135,6 +200,7 @@ const props = defineProps<Props>()
  */
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
+  success: [card: Card]
 }>()
 
 /**
@@ -150,6 +216,19 @@ const dialogVisible = computed({
  */
 const loading = ref(false)                              // 加载状态
 const deviceList = ref<Device[]>([])                    // 设备列表
+const maxDeviceCountDialogVisible = ref(false)          // 修改设备限制弹窗显示状态
+const maxDeviceCountSubmitting = ref(false)             // 修改设备限制提交状态
+const maxDeviceCountForm = ref({
+  max_device_count: 1
+})
+
+/**
+ * 当前活跃设备数量
+ * @description 这里统一复用当前设备列表中的状态，前端展示和提交校验保持同一口径。
+ */
+const activeDeviceCount = computed(() => {
+  return deviceList.value.filter(device => device.status === 'active').length
+})
 
 /**
  * 格式化日期时间
@@ -213,13 +292,127 @@ const handleStatusChange = async (device: Device) => {
       }
     )
     
+    console.info('[设备弹窗] 开始更新设备状态', {
+      cardId: props.card?.id,
+      cardKey: props.card?.card_key,
+      deviceId: device.id,
+      deviceCode: device.device_id,
+      oldStatus: device.status,
+      newStatus
+    })
+
     await updateDeviceStatus(device.id, newStatus)
+    console.info('[设备弹窗] 设备状态更新成功，准备刷新设备列表', {
+      cardId: props.card?.id,
+      deviceId: device.id,
+      newStatus
+    })
     ElMessage.success(`${action}成功`)
     loadDeviceList()
   } catch (error: any) {
     if (error !== 'cancel') {
+      console.error('[设备弹窗] 设备状态更新失败', {
+        cardId: props.card?.id,
+        deviceId: device.id,
+        targetStatus: newStatus,
+        error
+      })
       ElMessage.error(`${action}失败`)
     }
+  }
+}
+
+/**
+ * 打开修改最大设备数弹窗
+ * @description 将当前卡密的设备上限作为初始值，避免管理员重复输入。
+ */
+const openMaxDeviceCountDialog = () => {
+  if (!props.card) {
+    ElMessage.warning('当前卡密信息不存在')
+    return
+  }
+
+  maxDeviceCountForm.value.max_device_count = props.card.max_device_count
+  console.info('[设备弹窗] 打开修改设备限制弹窗', {
+    cardId: props.card.id,
+    cardKey: props.card.card_key,
+    currentMaxDeviceCount: props.card.max_device_count,
+    activeDeviceCount: activeDeviceCount.value
+  })
+  maxDeviceCountDialogVisible.value = true
+}
+
+/**
+ * 重置修改设备限制弹窗状态
+ */
+const resetMaxDeviceCountDialog = () => {
+  maxDeviceCountSubmitting.value = false
+  maxDeviceCountForm.value.max_device_count = props.card?.max_device_count || 1
+  console.info('[设备弹窗] 重置修改设备限制弹窗状态', {
+    cardId: props.card?.id,
+    cardKey: props.card?.card_key,
+    resetValue: maxDeviceCountForm.value.max_device_count
+  })
+}
+
+/**
+ * 提交修改最大设备数
+ * @description 这里除了基础范围校验外，还会校验不能小于当前活跃设备数，
+ * 避免前端先提交一个一定会被后端拒绝的无效请求。
+ */
+const handleMaxDeviceCountSubmit = async () => {
+  if (!props.card) {
+    ElMessage.warning('当前卡密信息不存在')
+    return
+  }
+
+  const targetMaxDeviceCount = Number(maxDeviceCountForm.value.max_device_count)
+  if (!Number.isInteger(targetMaxDeviceCount) || targetMaxDeviceCount < 1 || targetMaxDeviceCount > 100) {
+    ElMessage.warning('最大设备数范围必须在 1-100 之间')
+    return
+  }
+
+  if (targetMaxDeviceCount < activeDeviceCount.value) {
+    ElMessage.warning(`新的设备上限不能小于当前已绑定设备数（${activeDeviceCount.value}台）`)
+    return
+  }
+
+  maxDeviceCountSubmitting.value = true
+  try {
+    console.info('[设备弹窗] 开始提交新的设备限制', {
+      cardId: props.card.id,
+      cardKey: props.card.card_key,
+      oldMaxDeviceCount: props.card.max_device_count,
+      newMaxDeviceCount: targetMaxDeviceCount,
+      activeDeviceCount: activeDeviceCount.value
+    })
+
+    await updateCardMaxDeviceCount(props.card.id, targetMaxDeviceCount)
+
+    const updatedCard: Card = {
+      ...props.card,
+      max_device_count: targetMaxDeviceCount
+    }
+
+    console.info('[设备弹窗] 设备限制更新成功', {
+      cardId: updatedCard.id,
+      cardKey: updatedCard.card_key,
+      newMaxDeviceCount: updatedCard.max_device_count
+    })
+
+    ElMessage.success('设备限制更新成功')
+    emit('success', updatedCard)
+    maxDeviceCountDialogVisible.value = false
+  } catch (error) {
+    console.error('[设备弹窗] 设备限制更新失败', {
+      cardId: props.card.id,
+      cardKey: props.card.card_key,
+      targetMaxDeviceCount,
+      error
+    })
+    ElMessage.error('设备限制更新失败')
+  } finally {
+    maxDeviceCountSubmitting.value = false
   }
 }
 
@@ -231,15 +424,24 @@ const loadDeviceList = async () => {
   
   loading.value = true
   try {
+    console.info('[设备弹窗] 开始加载设备列表', {
+      cardId: props.card.id,
+      cardKey: props.card.card_key
+    })
     const data = await getDeviceList({
       page: 1,
       size: 100,
       card_id: props.card.id
     })
     deviceList.value = data.devices
+    console.info('[设备弹窗] 设备列表加载成功', {
+      cardId: props.card.id,
+      totalDevices: data.devices.length,
+      activeDeviceCount: data.devices.filter(device => device.status === 'active').length
+    })
   } catch (error) {
     ElMessage.error('加载设备列表失败')
-    console.error('加载设备列表失败:', error)
+    console.error('[设备弹窗] 加载设备列表失败:', error)
   } finally {
     loading.value = false
   }
@@ -249,6 +451,10 @@ const loadDeviceList = async () => {
  * 处理关闭弹窗
  */
 const handleClose = () => {
+  console.info('[设备弹窗] 关闭设备查看弹窗', {
+    cardId: props.card?.id,
+    cardKey: props.card?.card_key
+  })
   dialogVisible.value = false
 }
 
@@ -257,6 +463,11 @@ const handleClose = () => {
  */
 watch(dialogVisible, (newVal) => {
   if (newVal && props.card) {
+    console.info('[设备弹窗] 弹窗已打开，准备加载数据', {
+      cardId: props.card.id,
+      cardKey: props.card.card_key,
+      maxDeviceCount: props.card.max_device_count
+    })
     loadDeviceList()
   }
 })
@@ -279,6 +490,10 @@ watch(dialogVisible, (newVal) => {
 
 .info-item {
   @apply flex items-center gap-2;
+}
+
+.info-item-limit {
+  @apply flex-wrap;
 }
 
 .info-label {
@@ -313,6 +528,42 @@ watch(dialogVisible, (newVal) => {
 
 .inactive-icon {
   @apply text-gray-400;
+}
+
+.limit-dialog-body {
+  @apply pt-2;
+}
+
+.limit-dialog-desc {
+  @apply text-sm text-gray-600 leading-6 mb-4;
+}
+
+.limit-summary {
+  @apply rounded-lg bg-gray-50 border border-gray-200 p-3 mb-4;
+}
+
+.limit-summary-item {
+  @apply flex items-center justify-between gap-4 text-sm;
+}
+
+.limit-summary-item + .limit-summary-item {
+  @apply mt-2;
+}
+
+.limit-summary-label {
+  @apply text-gray-500;
+}
+
+.limit-summary-value {
+  @apply font-medium text-gray-900 break-all;
+}
+
+.limit-input {
+  width: 100%;
+}
+
+.form-tip {
+  @apply text-xs text-gray-500 mt-2 leading-5;
 }
 
 .dialog-footer {

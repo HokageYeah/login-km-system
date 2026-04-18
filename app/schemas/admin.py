@@ -73,6 +73,11 @@ class UpdateCardExpireTimeRequest(BaseModel):
     expire_time: datetime = Field(..., description="新的过期时间")
 
 
+class UpdateCardMaxDeviceCountRequest(BaseModel):
+    """更新卡密最大设备数请求"""
+    max_device_count: int = Field(..., ge=1, le=100, description="新的最大设备数，1-100")
+
+
 class UpdateCardPermissionsRequest(BaseModel):
     """更新卡密权限请求"""
     permissions: Union[List[str], Dict] = Field(..., description="权限配置")

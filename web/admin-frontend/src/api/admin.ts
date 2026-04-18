@@ -132,6 +132,19 @@ export const updateCardExpireTime = (cardId: number, expireTime: string) => {
 }
 
 /**
+ * 更新卡密最大设备数
+ * @description 管理员修改卡密当前允许绑定的最大设备数量
+ * @param cardId 卡密ID
+ * @param maxDeviceCount 新的最大设备数
+ * @returns Promise 更新结果
+ */
+export const updateCardMaxDeviceCount = (cardId: number, maxDeviceCount: number) => {
+  return request.post(`/admin/card/${cardId}/max-device-count`, {
+    max_device_count: maxDeviceCount
+  })
+}
+
+/**
  * 更新卡密权限
  * @description 实时修改卡密的权限配置（需要管理员权限）
  * @param cardId 卡密ID

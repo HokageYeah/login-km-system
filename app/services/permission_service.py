@@ -17,6 +17,7 @@ from app.core.logging_uru import logger
 
 
 CURRENT_CARD_PERMISSION_DENIED_MESSAGE = "当前卡密没有该系统权限，请切换卡密或联系管理员开通权限"
+DEVICE_LIMIT_EXCEEDED_MESSAGE_TEMPLATE = "当前卡密绑定设备数量已达上限（{max_device_count}台），请先解绑其他设备后再使用当前登录设备"
 
 
 class PermissionService:
@@ -161,6 +162,18 @@ class PermissionService:
         )
         return []
 
+    def _count_active_devices(self, card_id: int) -> int:
+        """
+        统计卡密当前活跃设备数。
+
+        设备上限判断、管理员修改设备上限、卡密绑定校验都应该遵循同一个“active 设备数”口径，
+        避免各条链路对 disabled 设备是否计入产生分歧。
+        """
+        return self.db.query(CardDevice).filter(
+            CardDevice.card_id == card_id,
+            CardDevice.status == CardDeviceStatus.ACTIVE
+        ).count()
+
     def _get_configured_permission_keys(
         self,
         user_id: int,
@@ -252,6 +265,7 @@ class PermissionService:
         
         has_available_card_after_expire_check = False
         has_expired_card = False
+        device_limit_exceeded_message: Optional[str] = None
 
         # 遍历用户的所有卡密，寻找有效的卡密
         for user_card, card in user_cards:
@@ -260,10 +274,6 @@ class PermissionService:
                 logger.debug(f"跳过禁用的卡密: card_id={card.id}")
                 continue
 
-            print(f'卡密过期时间：{card.expire_time}')
-            print(f'当前时间：{datetime.now()}')
-            print(f'是否过期：{card.expire_time < datetime.now()}')
-            
             # 步骤 5: 验证卡密是否过期
             if card.expire_time < datetime.now():
                 has_expired_card = True
@@ -271,28 +281,10 @@ class PermissionService:
                 continue
 
             has_available_card_after_expire_check = True
-            
-            # 步骤 6: 验证设备绑定
-            device_binding = self.db.query(CardDevice).filter(
-                and_(
-                    CardDevice.card_id == card.id,
-                    CardDevice.device_id == device_id
-                )
-            ).first()
-            
-            if not device_binding:
-                logger.debug(f"跳过未绑定此设备的卡密: card_id={card.id}, device_id={device_id}")
-                continue
-            
-            # 步骤 7: 验证设备状态
-            if device_binding.status == CardDeviceStatus.DISABLED:
-                logger.warning(
-                    f"权限校验失败: 设备已被禁用 "
-                    f"(user_id={user_id}, card_id={card.id}, device_id={device_id})"
-                )
-                return False, "设备已被禁用", None
-            
-            # 步骤 8: 验证权限配置
+
+            # 步骤 6: 先验证权限配置。
+            # 只有在卡密本身具备目标权限时，才有必要继续判断“当前设备为什么不能用这张卡”，
+            # 否则会把本质上的“权限不匹配”误报成“设备超限”。
             if not self._card_has_permission(card, permission):
                 logger.debug(
                     f"权限不在当前卡密权限配置中: "
@@ -306,6 +298,46 @@ class PermissionService:
                     )
                     return False, CURRENT_CARD_PERMISSION_DENIED_MESSAGE, None
                 continue
+
+            # 步骤 7: 验证设备绑定
+            device_binding = self.db.query(CardDevice).filter(
+                and_(
+                    CardDevice.card_id == card.id,
+                    CardDevice.device_id == device_id
+                )
+            ).first()
+
+            if not device_binding:
+                active_device_count = self._count_active_devices(card.id)
+
+                # 当前登录设备不在绑定列表里，同时卡密活跃设备数已经达到或超过上限时，
+                # 直接给出精准错误，帮助客户端和管理员快速定位为“设备数超限”问题。
+                if active_device_count >= card.max_device_count:
+                    device_limit_exceeded_message = DEVICE_LIMIT_EXCEEDED_MESSAGE_TEMPLATE.format(
+                        max_device_count=card.max_device_count
+                    )
+                    logger.warning(
+                        f"权限校验失败: 当前登录设备未绑定且卡密设备数已达上限 "
+                        f"(user_id={user_id}, card_id={card.id}, device_id={device_id}, "
+                        f"active_device_count={active_device_count}, max_device_count={card.max_device_count}, "
+                        f"permission={permission})"
+                    )
+                    if card_id is not None:
+                        return False, device_limit_exceeded_message, None
+                else:
+                    logger.debug(
+                        f"跳过未绑定此设备的卡密: card_id={card.id}, device_id={device_id}, "
+                        f"active_device_count={active_device_count}, max_device_count={card.max_device_count}"
+                    )
+                continue
+
+            # 步骤 8: 验证设备状态
+            if device_binding.status == CardDeviceStatus.DISABLED:
+                logger.warning(
+                    f"权限校验失败: 设备已被禁用 "
+                    f"(user_id={user_id}, card_id={card.id}, device_id={device_id})"
+                )
+                return False, "设备已被禁用", None
             
             # 如果执行到这里，说明所有验证都通过了
             
@@ -328,6 +360,14 @@ class PermissionService:
                 f"(user_id={user_id}, device_id={device_id}, permission={permission})"
             )
             return False, "卡密已过期，请绑定新卡密", None
+
+        if device_limit_exceeded_message:
+            logger.warning(
+                f"权限校验失败: 当前登录设备触发卡密设备上限 "
+                f"(user_id={user_id}, device_id={device_id}, permission={permission}, "
+                f"message={device_limit_exceeded_message})"
+            )
+            return False, device_limit_exceeded_message, None
 
         # 如果所有卡密都不满足条件
         logger.warning(

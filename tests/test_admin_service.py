@@ -111,6 +111,77 @@ def test_update_card_expire_time_keeps_bound_card_used(db_session):
     assert card.status == CardStatus.USED
 
 
+def test_update_card_max_device_count_rejects_value_below_active_devices(db_session):
+    """设备上限不能被改成小于当前活跃绑定设备数。"""
+    from datetime import datetime
+    from app.models.card_device import CardDevice, CardDeviceStatus
+    from app.models.card import CardStatus
+    from app.services.admin_service import AdminService
+
+    card = _create_bound_card(
+        db_session,
+        card_key="SYNC-MAXD-CARD-0001",
+        status=CardStatus.USED
+    )
+    card.max_device_count = 2
+    db_session.add(
+        CardDevice(
+            card_id=card.id,
+            device_id="device_sync_maxd_second",
+            device_name="第二台测试设备",
+            bind_time=datetime.now(),
+            last_active_at=datetime.now(),
+            status=CardDeviceStatus.ACTIVE
+        )
+    )
+    db_session.commit()
+
+    success, error = AdminService(db_session).update_card_max_device_count(card.id, 1)
+    db_session.refresh(card)
+
+    assert success is False
+    assert error == "新的设备上限不能小于当前已绑定设备数（2台）"
+    assert card.max_device_count == 2
+
+
+def test_update_card_max_device_count_success(db_session):
+    """设备上限修改成功后应写回卡密配置。"""
+    from app.models.card import CardStatus
+    from app.services.admin_service import AdminService
+
+    card = _create_bound_card(
+        db_session,
+        card_key="SYNC-MAXD-CARD-0002",
+        status=CardStatus.USED
+    )
+
+    success, error = AdminService(db_session).update_card_max_device_count(card.id, 2)
+    db_session.refresh(card)
+
+    assert success is True
+    assert error is None
+    assert card.max_device_count == 2
+
+
+def test_update_card_max_device_count_rejects_out_of_range_value(db_session):
+    """设备上限仍要受统一的 1-100 范围约束。"""
+    from app.models.card import CardStatus
+    from app.services.admin_service import AdminService
+
+    card = _create_bound_card(
+        db_session,
+        card_key="SYNC-MAXD-CARD-0003",
+        status=CardStatus.USED
+    )
+
+    success, error = AdminService(db_session).update_card_max_device_count(card.id, 0)
+    db_session.refresh(card)
+
+    assert success is False
+    assert error == "最大设备数范围必须在 1-100 之间"
+    assert card.max_device_count == 1
+
+
 def test_reenable_disabled_bound_card_restores_used_status(db_session):
     """禁用后重新启用时，有有效绑定的卡密不能回到 unused。"""
     from app.models.card import CardStatus

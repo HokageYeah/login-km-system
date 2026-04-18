@@ -16,6 +16,7 @@ from app.schemas.admin import (
     AdminCardInfo,
     UpdateCardStatusRequest,
     UpdateCardExpireTimeRequest,
+    UpdateCardMaxDeviceCountRequest,
     UpdateCardPermissionsRequest,
     UpdateCardResponse,
     AdminDeviceListResponse,
@@ -257,6 +258,50 @@ async def update_card_expire_time(
     return UpdateCardResponse(
         success=True,
         message="卡密过期时间更新成功"
+    ).model_dump(mode='json', exclude_none=True)
+
+
+@router.post("/card/{card_id}/max-device-count", response_model=ApiResponseData)
+async def update_card_max_device_count(
+    card_id: int,
+    request: UpdateCardMaxDeviceCountRequest,
+    admin: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    更新卡密最大设备数（管理员）
+
+    这是卡密核心配置的一部分，修改后对后续设备绑定校验立即生效。
+    为避免系统进入“不一致状态”，新的设备上限不能小于当前活跃绑定设备数。
+    """
+    logger.info(
+        "[管理员接口] 收到更新卡密最大设备数请求: "
+        f"admin_id={admin.get('user_id')}, card_id={card_id}, "
+        f"target_max_device_count={request.max_device_count}"
+    )
+
+    admin_service = AdminService(db)
+
+    success, error = admin_service.update_card_max_device_count(
+        card_id,
+        request.max_device_count
+    )
+
+    if error:
+        logger.error(
+            "[管理员接口] 更新卡密最大设备数失败: "
+            f"card_id={card_id}, target_max_device_count={request.max_device_count}, error={error}"
+        )
+        raise HTTPException(status_code=400, detail=error)
+
+    logger.info(
+        "[管理员接口] 更新卡密最大设备数成功: "
+        f"card_id={card_id}, new_max_device_count={request.max_device_count}"
+    )
+
+    return UpdateCardResponse(
+        success=True,
+        message="卡密最大设备数更新成功"
     ).model_dump(mode='json', exclude_none=True)
 
 

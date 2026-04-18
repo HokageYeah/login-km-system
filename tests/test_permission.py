@@ -283,6 +283,59 @@ class TestPermissionService:
         assert has_permission is True
         assert permissions == ["wechatpublic", "ximalaya"]
 
+    def test_permission_check_returns_device_limit_message_for_unbound_login_device(
+        self,
+        db_session,
+        test_user,
+        test_app
+    ):
+        """测试当前登录设备未绑定且卡密设备数已满时，返回准确的设备上限提示。"""
+        from app.services.permission_service import PermissionService
+        from app.models.card import Card, CardStatus
+        from app.models.user_card import UserCard, UserCardStatus
+        from app.models.card_device import CardDevice, CardDeviceStatus
+
+        card = Card(
+            app_id=test_app.id,
+            card_key="TEST-DEVICE-LIMIT-1234",
+            status=CardStatus.USED,
+            expire_time=datetime.now() + timedelta(days=30),
+            max_device_count=1,
+            permissions=["test_permission"]
+        )
+        db_session.add(card)
+        db_session.commit()
+        db_session.refresh(card)
+
+        db_session.add_all([
+            UserCard(
+                user_id=test_user.id,
+                card_id=card.id,
+                bind_time=datetime.now(),
+                status=UserCardStatus.ACTIVE
+            ),
+            CardDevice(
+                card_id=card.id,
+                device_id="already_bound_device",
+                bind_time=datetime.now(),
+                status=CardDeviceStatus.ACTIVE
+            )
+        ])
+        db_session.commit()
+
+        permission_service = PermissionService(db_session)
+
+        allowed, message, expire_time = permission_service.check_permission(
+            user_id=test_user.id,
+            device_id="current_login_device",
+            permission="test_permission",
+            card_id=card.id
+        )
+
+        assert allowed is False
+        assert message == "当前卡密绑定设备数量已达上限（1台），请先解绑其他设备后再使用当前登录设备"
+        assert expire_time is None
+
     def test_get_user_permissions_returns_check_permission_message_for_unbound_card(
         self,
         db_session,

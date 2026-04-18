@@ -508,6 +508,7 @@
     <DeviceDialog
       v-model="deviceDialogVisible"
       :card="currentCard"
+      @success="handleDeviceLimitSuccess"
     />
   </div>
 </template>
@@ -1115,6 +1116,27 @@ const handleGenerateSuccess = () => {
  * 修改权限成功回调
  */
 const handlePermissionSuccess = () => {
+  loadCardList()
+}
+
+/**
+ * 设备限制修改成功回调
+ * @description 同步当前编辑卡密与列表数据，随后再刷新列表，确保页面展示及时一致。
+ */
+const handleDeviceLimitSuccess = (updatedCard: Card) => {
+  console.info('[卡密管理] 收到设备限制更新成功回调', {
+    cardId: updatedCard.id,
+    cardKey: updatedCard.card_key,
+    maxDeviceCount: updatedCard.max_device_count
+  })
+
+  currentCard.value = updatedCard
+
+  const listIndex = cardList.value.findIndex(card => card.id === updatedCard.id)
+  if (listIndex !== -1) {
+    cardList.value[listIndex] = updatedCard
+  }
+
   loadCardList()
 }
 

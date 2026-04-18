@@ -69,6 +69,7 @@
 | GET | `/api/v1/admin/cards` | 查询所有卡密（支持 `username` 筛选，并返回关联用户名） | 🔑 管理员 |
 | POST | `/api/v1/admin/card/{card_id}/status` | 修改卡密状态 | 🔑 管理员 |
 | POST | `/api/v1/admin/card/{card_id}/expire-time` | 修改卡密过期时间（按时间动态判断是否过期） | 🔑 管理员 |
+| POST | `/api/v1/admin/card/{card_id}/max-device-count` | 修改卡密最大设备数（不能小于当前活跃设备数） | 🔑 管理员 |
 | POST | `/api/v1/admin/card/{card_id}/permissions` | 修改卡密权限 | 🔑 管理员 |
 
 ### 用户管理
@@ -167,4 +168,4 @@ http://localhost:8003/docs
 
 ---
 
-**最后更新**: 2026-04-14
+**最后更新**: 2026-04-18
