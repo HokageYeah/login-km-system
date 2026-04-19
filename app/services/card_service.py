@@ -3,7 +3,7 @@
 处理卡密相关的业务逻辑
 """
 from datetime import datetime
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
@@ -24,6 +24,31 @@ class CardService:
     def _is_card_expired(card: Card) -> bool:
         """按过期时间动态判断卡密是否已过期，不写回数据库状态。"""
         return bool(card.expire_time and card.expire_time < datetime.now())
+
+    def _get_active_device_ids_by_card_ids(self, card_ids: List[int]) -> Dict[int, List[str]]:
+        """
+        批量查询卡密绑定的活跃设备ID列表。
+
+        这里按卡密ID批量查，而不是在循环中逐个查设备列表，避免用户绑定多张卡密时产生额外的 N+1 查询。
+        """
+        if not card_ids:
+            return {}
+
+        device_rows = self.db.query(
+            CardDevice.card_id,
+            CardDevice.device_id
+        ).filter(
+            and_(
+                CardDevice.card_id.in_(card_ids),
+                CardDevice.status == CardDeviceStatus.ACTIVE
+            )
+        ).order_by(CardDevice.bind_time.asc()).all()
+
+        devices_map: Dict[int, List[str]] = {card_id: [] for card_id in card_ids}
+        for card_id, device_id in device_rows:
+            devices_map.setdefault(card_id, []).append(device_id)
+
+        return devices_map
     
     def get_user_cards(self, user_id: int) -> List[dict]:
         """
@@ -47,15 +72,13 @@ class CardService:
             )
         ).all()
         
+        card_ids = [card.id for _, card, _ in user_cards]
+        devices_map = self._get_active_device_ids_by_card_ids(card_ids)
+
         result = []
         for user_card, card, app in user_cards:
-            # 统计已绑定设备数
-            device_count = self.db.query(CardDevice).filter(
-                and_(
-                    CardDevice.card_id == card.id,
-                    CardDevice.status == CardDeviceStatus.ACTIVE
-                )
-            ).count()
+            # 设备ID列表与已绑定设备数量使用同一份查询结果，避免数量和列表来源不一致。
+            device_ids = devices_map.get(card.id, [])
             
             result.append({
                 "card_id": card.id,
@@ -68,7 +91,8 @@ class CardService:
                 "expire_time": card.expire_time,
                 "is_expired": self._is_card_expired(card),
                 "permissions": card.permissions,
-                "bind_devices": device_count,
+                "bind_devices": len(device_ids),
+                "devices": device_ids,
                 "max_device_count": card.max_device_count,
                 "status": card.status.value,
                 "remark": card.remark

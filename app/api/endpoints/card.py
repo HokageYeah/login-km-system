@@ -43,6 +43,7 @@ async def get_my_cards(
     - 是否已过期（按过期时间动态判断，不改变原状态字段）
     - 权限配置
     - 已绑定设备数
+    - 已绑定设备ID列表
     - 最大设备数
     """
     card_service = CardService(db)
@@ -63,6 +64,7 @@ async def get_my_cards(
             app_created_at=card["app_created_at"],
             permissions=card["permissions"],
             bind_devices=card["bind_devices"],
+            devices=card["devices"],
             max_device_count=card["max_device_count"],
             status=card["status"],
             remark=card["remark"],
@@ -141,6 +143,7 @@ async def bind_card(
             is_expired=False,
             permissions=card_info["permissions"],
             bind_devices=1,  # 刚绑定，显示1
+            devices=[request.device_id],  # 刚绑定成功时返回本次绑定的设备ID，保持 CardInfo 字段语义一致
             max_device_count=card_info["max_device_count"],
             status="used",
             remark=card_info["remark"],

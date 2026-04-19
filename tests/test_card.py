@@ -177,6 +177,85 @@ class TestCardService:
         assert cards[0]["status"] == CardStatus.USED.value
         assert cards[0]["is_expired"] is True
 
+    def test_get_user_cards_returns_active_device_ids(self, db_session):
+        """测试查询我的卡密时返回每张卡密绑定的活跃设备ID列表"""
+        from app.services.card_service import CardService
+        from app.models.card import Card, CardStatus
+        from app.models.user_card import UserCard, UserCardStatus
+        from app.models.card_device import CardDevice, CardDeviceStatus
+        from app.models.app import App, AppStatus
+        from app.models.user import User, UserStatus, UserRole
+        from app.utils.security import hash_password
+
+        app = App(
+            app_key="card_device_list_app",
+            app_name="卡密设备列表测试应用",
+            status=AppStatus.NORMAL
+        )
+        user = User(
+            username="card_device_list_user",
+            password_hash=hash_password("testpass123"),
+            status=UserStatus.NORMAL,
+            role=UserRole.USER
+        )
+        db_session.add_all([app, user])
+        db_session.commit()
+        db_session.refresh(app)
+        db_session.refresh(user)
+
+        card = Card(
+            app_id=app.id,
+            card_key="DVID-CARD-KEY1-2345",
+            status=CardStatus.USED,
+            expire_time=datetime.now() + timedelta(days=30),
+            max_device_count=3,
+            permissions=["test_permission"]
+        )
+        db_session.add(card)
+        db_session.commit()
+        db_session.refresh(card)
+
+        db_session.add_all([
+            UserCard(
+                user_id=user.id,
+                card_id=card.id,
+                bind_time=datetime.now() - timedelta(days=2),
+                status=UserCardStatus.ACTIVE
+            ),
+            CardDevice(
+                card_id=card.id,
+                device_id="active_device_001",
+                device_name="活跃设备1",
+                bind_time=datetime.now() - timedelta(days=2),
+                last_active_at=datetime.now() - timedelta(hours=1),
+                status=CardDeviceStatus.ACTIVE
+            ),
+            CardDevice(
+                card_id=card.id,
+                device_id="active_device_002",
+                device_name="活跃设备2",
+                bind_time=datetime.now() - timedelta(days=1),
+                last_active_at=datetime.now(),
+                status=CardDeviceStatus.ACTIVE
+            ),
+            CardDevice(
+                card_id=card.id,
+                device_id="disabled_device_001",
+                device_name="禁用设备",
+                bind_time=datetime.now() - timedelta(days=1),
+                last_active_at=datetime.now(),
+                status=CardDeviceStatus.DISABLED
+            )
+        ])
+        db_session.commit()
+
+        card_service = CardService(db_session)
+        cards = card_service.get_user_cards(user.id)
+
+        assert len(cards) == 1
+        assert cards[0]["bind_devices"] == 2
+        assert cards[0]["devices"] == ["active_device_001", "active_device_002"]
+
     def test_bind_card_reactivates_unbound_user_card(self, db_session):
         """测试解绑后重绑复用历史用户卡密记录，避免唯一索引冲突"""
         from app.services.card_service import CardService

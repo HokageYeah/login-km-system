@@ -27,7 +27,7 @@
 
 | 方法 | 路径 | 说明 | 请求体 | 权限 |
 |------|------|------|--------|------|
-| GET | `/api/v1/card/my` | 查询我的卡密 | - | 🔒 登录 |
+| GET | `/api/v1/card/my` | 查询我的卡密，返回每张卡密的 `devices: string[]` 设备ID列表 | - | 🔒 登录 |
 | POST | `/api/v1/card/bind` | 绑定卡密 | `{card_key, device_id, device_name?}` | 🔒 登录 |
 | POST | `/api/v1/card/unbind-device` | 解绑设备 | `{card_id, device_id}` | 🔒 登录 |
 | GET | `/api/v1/card/{card_id}` | 查询卡密详情 | - | 🔒 登录 |
