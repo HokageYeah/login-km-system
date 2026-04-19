@@ -34,6 +34,37 @@ class TestAuth:
         
         # 应该返回错误
         assert response.status_code in [400, 422]
+
+    def test_register_username_too_short_returns_chinese_validation_error(self, client):
+        """测试注册用户名过短时返回清晰的中文校验提示"""
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "yy",
+                "password": "password123"
+            }
+        )
+
+        assert response.status_code == 422
+        data = response.json()
+        assert data["ret"][0].startswith("ERROR::请求参数校验失败")
+        assert "用户名长度不能少于 3 个字符" in data["ret"][0]
+        assert data["data"]["errors"][0]["field"] == "username"
+
+    def test_register_username_invalid_character_returns_chinese_validation_error(self, client):
+        """测试注册用户名包含非法字符时返回清晰的中文校验提示"""
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "abc-123",
+                "password": "password123"
+            }
+        )
+
+        assert response.status_code == 422
+        data = response.json()
+        assert "用户名只能包含字母、数字和下划线" in data["ret"][0]
+        assert data["data"]["errors"][0]["field"] == "username"
     
     def test_login_success(self, client, test_user, test_app):
         """测试用户登录成功"""

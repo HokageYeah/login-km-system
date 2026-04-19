@@ -8,10 +8,19 @@ class UserRegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="用户名，3-50个字符")
     password: str = Field(..., min_length=6, max_length=72, description="密码，6-72个字符（bcrypt限制）")
 
+    @field_validator('username', mode='before')
+    @classmethod
+    def strip_username(cls, v: str) -> str:
+        """注册时统一去掉用户名首尾空格，避免用户误输入导致重复账号或校验误判。"""
+        if isinstance(v, str):
+            return v.strip()
+        return v
+
     @field_validator('username')
     @classmethod
     def validate_username(cls, v: str) -> str:
-        if not v.isalnum() and '_' not in v:
+        # 用户名只允许字母、数字、下划线；逐字符判断可以避免 "ab-c_" 这类包含下划线但也包含非法字符的值漏过。
+        if not all(char.isalnum() or char == '_' for char in v):
             raise ValueError('用户名只能包含字母、数字和下划线')
         return v
 

@@ -14,6 +14,22 @@ import httpx
 from datetime import datetime, timedelta
 from loguru import logger
 
+# 常见请求字段中文名映射。
+# 这里放在全局异常处理层，是为了让所有接口的参数校验错误都能复用同一套中文提示，
+# 避免只在某一个接口里单点写死提示文案。
+FIELD_CN_NAME_MAP = {
+    "username": "用户名",
+    "password": "密码",
+    "app_key": "应用标识",
+    "device_id": "设备标识",
+    "card_key": "卡密",
+    "card_id": "卡密ID",
+    "permission": "权限标识",
+    "permissions": "权限列表",
+    "page": "页码",
+    "size": "每页数量",
+}
+
 # 创建一个简单的内存锁，用于防止重复调用n8n
 n8n_workflow_lock = {
     "is_running": False,
@@ -36,6 +52,91 @@ platform_mapping = {
 def _get_platform(path: str) -> PlatformEnum:
     """根据请求路径获取统一响应平台标识。"""
     return next((v for k, v in platform_mapping.items() if k in path), PlatformEnum.UNKNOWN)
+
+
+def _get_field_cn_name(field_name: str) -> str:
+    """获取字段中文名；没有配置映射时保留原始字段名，便于排查。"""
+    return FIELD_CN_NAME_MAP.get(field_name, field_name)
+
+
+def _format_validation_location(error: dict) -> tuple[str, str, str]:
+    """
+    将 Pydantic 的 loc 转换为统一的中文位置描述。
+
+    Returns:
+        (参数来源, 字段路径, 中文位置描述)
+    """
+    loc = error.get("loc") or ()
+    source = str(loc[0]) if loc else "unknown"
+
+    if source == "query":
+        field_path = ".".join(str(item) for item in loc[1:]) if len(loc) > 1 else ""
+        return source, field_path, f"查询参数:{field_path or '未知字段'}"
+
+    if source == "body":
+        field_path = ".".join(str(item) for item in loc[1:]) if len(loc) > 1 else ""
+        return source, field_path, f"请求体:{field_path or '请求体'}"
+
+    if source == "path":
+        field_path = ".".join(str(item) for item in loc[1:]) if len(loc) > 1 else ""
+        return source, field_path, f"路径参数:{field_path or '未知字段'}"
+
+    if source == "header":
+        field_path = ".".join(str(item) for item in loc[1:]) if len(loc) > 1 else ""
+        return source, field_path, f"请求头:{field_path or '未知字段'}"
+
+    field_path = ".".join(str(item) for item in loc) if loc else "unknown"
+    return source, field_path, field_path
+
+
+def _translate_validation_error(error: dict) -> str:
+    """
+    将 Pydantic 原始错误翻译为面向调用方的中文提示。
+    不同接口共享这套规则，后续新增 Schema 校验时无需在接口层重复处理。
+    """
+    _, field_path, location_text = _format_validation_location(error)
+    field_name = field_path.split(".")[-1] if field_path else ""
+    field_cn_name = _get_field_cn_name(field_name)
+    error_type = error.get("type", "")
+    ctx = error.get("ctx") or {}
+
+    if error_type == "missing":
+        return f"{location_text}，{field_cn_name}不能为空"
+
+    if error_type == "string_too_short":
+        min_length = ctx.get("min_length")
+        if min_length is not None:
+            return f"{location_text}，{field_cn_name}长度不能少于 {min_length} 个字符"
+        return f"{location_text}，{field_cn_name}长度过短"
+
+    if error_type == "string_too_long":
+        max_length = ctx.get("max_length")
+        if max_length is not None:
+            return f"{location_text}，{field_cn_name}长度不能超过 {max_length} 个字符"
+        return f"{location_text}，{field_cn_name}长度过长"
+
+    if error_type == "value_error":
+        raw_message = str(error.get("msg", "参数值不合法"))
+        # Pydantic 对 ValueError 会生成类似 "Value error, xxx" 的文案，这里裁剪为更自然的中文提示。
+        message = raw_message.replace("Value error, ", "", 1)
+        return f"{location_text}，{message}"
+
+    if error_type.endswith("_type"):
+        return f"{location_text}，{field_cn_name}类型不正确"
+
+    return f"{location_text}，{error.get('msg', '参数格式错误')}"
+
+
+def _build_validation_error_detail(error: dict) -> dict:
+    """构建结构化校验错误详情，方便日志和接口调用方定位具体字段。"""
+    source, field_path, location_text = _format_validation_location(error)
+    return {
+        "source": source,
+        "field": field_path,
+        "location": location_text,
+        "type": error.get("type"),
+        "message": _translate_validation_error(error),
+    }
 
 
 def _build_error_content(request: Request, message: str, data: dict | None = None):
@@ -149,54 +250,33 @@ async def request_validation_error_handler(request: Request, exc: RequestValidat
     统一处理请求参数异常，转换为指定格式
     支持query参数和body参数的异常处理
     """
-    print('request_validation_error_handler----exc----', exc)
-    # 提示缺少哪个参数
-    missing_fields = exc.errors()
-    print('missing_fields----', missing_fields)
-    
-    # 处理不同类型的参数错误
-    missing_field_names = []
-    for error in missing_fields:
-        # 检查错误位置类型
-        if error['loc'][0] == 'query':
-            # 查询参数错误
-            missing_field_names.append(f"查询参数:{error['loc'][1]}")
-        elif error['loc'][0] == 'body':
-            # 请求体错误
-            if len(error['loc']) > 1:
-                # 如果是嵌套的body参数
-                field_path = '.'.join(str(loc) for loc in error['loc'][1:])
-                missing_field_names.append(f"请求体:{field_path}")
-            else:
-                missing_field_names.append("请求体")
-        else:
-            # 其他类型错误（如path, header等）
-            if len(error['loc']) > 1:
-                field_path = '.'.join(str(loc) for loc in error['loc'])
-                missing_field_names.append(field_path)
-            else:
-                missing_field_names.append(error['loc'][0])
-    
-    missing_field_names_str = ', '.join(missing_field_names)
-    print('missing_field_names_str----', missing_field_names_str)
-    
     # 获取请求信息
     request_method = request.method
     request_url = request.url.path
-    
-    # 根据路径判断平台
-    # platform = "WX_MINI"
-    # if "wx/public" in request_url:
-    #     platform = "WX_PUBLIC"
-
     platform = _get_platform(request_url)
+    raw_errors = exc.errors()
+
+    # 将 Pydantic 原始错误翻译为统一中文提示，并保留结构化详情，方便前端展示和后端排查。
+    error_details = [_build_validation_error_detail(error) for error in raw_errors]
+    error_messages = [detail["message"] for detail in error_details]
+    error_message = "；".join(error_messages) if error_messages else "请求参数格式错误"
+
+    logger.warning(
+        "请求参数校验失败: method={}, path={}, errors={}",
+        request_method,
+        request_url,
+        error_details
+    )
     
     return JSONResponse(
         status_code=422,
         content={
             "platform": platform,
-            "ret": [f"ERROR::缺少必需的参数或参数格式错误: {missing_field_names_str}"],
-            "data": {request_method: request_method},
+            "ret": [f"ERROR::请求参数校验失败: {error_message}"],
+            "data": {
+                "request_method": request_method,
+                "errors": error_details,
+            },
             "v": settings.VERSION,
             "api": request_url.strip("/")
         }
