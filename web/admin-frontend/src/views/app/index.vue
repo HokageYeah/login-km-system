@@ -142,58 +142,10 @@
     </div>
 
     <!-- 创建应用弹窗 -->
-    <el-dialog
+    <CreateAppDialog
       v-model="createDialogVisible"
-      title="创建应用"
-      width="500px"
-      :close-on-click-modal="false"
-      @close="handleDialogClose"
-    >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="100px"
-        class="create-form"
-      >
-        <el-form-item label="应用名称" prop="app_name">
-          <el-input
-            v-model="form.app_name"
-            placeholder="请输入应用名称"
-            maxlength="50"
-            show-word-limit
-          />
-        </el-form-item>
-
-        <el-form-item label="AppKey" prop="app_key">
-          <el-input
-            v-model="form.app_key"
-            placeholder="留空则自动生成"
-            maxlength="50"
-          >
-            <template #append>
-              <el-button :icon="Refresh" @click="generateAppKey">
-                生成
-              </el-button>
-            </template>
-          </el-input>
-          <div class="form-tip">AppKey 用于应用接入，建议使用自动生成</div>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="createDialogVisible = false">取消</el-button>
-          <el-button
-            type="primary"
-            :loading="submitting"
-            @click="handleCreate"
-          >
-            创建
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
+      @success="loadAppList"
+    />
   </div>
 </template>
 
@@ -202,9 +154,9 @@
  * 应用管理页面
  * @description 管理员管理系统中的所有应用
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus,
   Grid,
@@ -212,44 +164,24 @@ import {
   CopyDocument,
   CircleCheck,
   CircleClose,
-  Refresh,
   Delete,
   InfoFilled
 } from '@element-plus/icons-vue'
 import type { ElTable } from 'element-plus'
-import { getAppList, createApp, updateAppStatus, batchDeleteApps } from '@/api/app'
+import { getAppList, updateAppStatus, batchDeleteApps } from '@/api/app'
 import type { App } from '@/types'
+import CreateAppDialog from './components/CreateAppDialog.vue'
 
 const router = useRouter()
 
 /**
  * 状态定义
  */
-const loading = ref(false)                              // 加载状态
-const submitting = ref(false)                           // 提交状态
-const appList = ref<App[]>([])                          // 应用列表
-const createDialogVisible = ref(false)                  // 创建弹窗显示状态
-const formRef = ref<FormInstance>()                     // 表单引用
-const selectedApps = ref<App[]>([])                     // 选中的应用
-const tableRef = ref<InstanceType<typeof ElTable>>()    // 表格引用
-
-/**
- * 表单数据
- */
-const form = reactive({
-  app_name: '',
-  app_key: ''
-})
-
-/**
- * 表单验证规则
- */
-const rules: FormRules = {
-  app_name: [
-    { required: true, message: '请输入应用名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-  ]
-}
+const loading = ref(false)
+const appList = ref<App[]>([])
+const createDialogVisible = ref(false)
+const selectedApps = ref<App[]>([])
+const tableRef = ref<InstanceType<typeof ElTable>>()
 
 /**
  * 格式化日期时间
@@ -436,55 +368,10 @@ const goToPermissionList = (app: App) => {
 }
 
 /**
- * 生成随机 AppKey
- */
-const generateAppKey = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let appKey = ''
-  for (let i = 0; i < 32; i++) {
-    appKey += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  form.app_key = appKey
-}
-
-/**
  * 显示创建弹窗
  */
 const showCreateDialog = () => {
   createDialogVisible.value = true
-}
-
-/**
- * 处理创建应用
- */
-const handleCreate = async () => {
-  if (!formRef.value) return
-  
-  try {
-    // 验证表单
-    await formRef.value.validate()
-    
-    submitting.value = true
-    
-    // 调用创建 API
-    const data = await createApp({
-      app_name: form.app_name,
-      app_key: form.app_key || undefined
-    })
-    
-    ElMessage.success('创建成功')
-    createDialogVisible.value = false
-    loadAppList()
-  } catch (error: any) {
-    console.error('创建应用失败:', error)
-    if (error.response?.data?.detail) {
-      ElMessage.error(error.response.data.detail)
-    } else {
-      ElMessage.error('创建失败，请重试')
-    }
-  } finally {
-    submitting.value = false
-  }
 }
 
 /**
@@ -524,17 +411,6 @@ const handleStatusChange = async (app: App) => {
       ElMessage.error(`${action}失败`)
     }
   }
-}
-
-/**
- * 处理弹窗关闭
- */
-const handleDialogClose = () => {
-  if (formRef.value) {
-    formRef.value.resetFields()
-  }
-  form.app_name = ''
-  form.app_key = ''
 }
 
 /**
@@ -668,19 +544,6 @@ onMounted(() => {
 
 .action-buttons {
   @apply flex gap-2;
-}
-
-/* 创建表单 */
-.create-form {
-  @apply py-4;
-}
-
-.form-tip {
-  @apply text-xs text-gray-500 mt-1;
-}
-
-.dialog-footer {
-  @apply flex justify-end gap-3;
 }
 
 /* 响应式调整 */

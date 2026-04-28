@@ -96,6 +96,7 @@ export interface Card {
   expire_time: string           // 过期时间（ISO 8601格式）
   max_device_count: number      // 最大可绑定设备数
   permissions: string[]         // 权限列表
+  price: number | string        // 卡密售卖价格
   bind_devices?: number         // 已绑定设备数（可选）
   bind_device_count?: number    // 当前绑定设备数（管理员列表）
   bind_user_count?: number      // 已绑定用户数（可选）
@@ -115,6 +116,7 @@ export interface UserActiveCardDetail {
   max_device_count: number      // 最大设备数
   bind_device_count: number     // 当前绑定设备数
   permissions: string[] | Record<string, boolean> | string | null // 权限配置
+  price: number | string        // 卡密售卖价格
   remark?: string               // 备注
   bind_time?: string            // 用户绑定时间
 }
@@ -129,6 +131,7 @@ export interface Device {
   id: number                    // 设备记录ID
   card_id: number               // 关联的卡密ID
   card_key: string              // 关联的卡密字符串
+  price?: number | string       // 关联卡密售卖价格
   user_id?: number              // 关联的用户ID（可选）
   username?: string             // 关联的用户名（可选）
   related_user_ids?: number[]   // 关联用户ID列表（管理员设备列表）
@@ -156,7 +159,12 @@ export interface Statistics {
   cards: CardStatistics          // 卡密统计
   devices: DeviceStatistics      // 设备统计
   apps: AppStatistics            // 应用统计
+  revenue: RevenueStatistics     // 收入统计
+  revenue_range: RevenueRange    // 收入统计日期范围
+  trend_range: TrendRange        // 趋势统计日期范围
   trends: StatisticsTrends       // 趋势统计
+  sales_trend: SalesTrend        // 销售趋势
+  permission_revenue: PermissionRevenueItem[] // 权限收入归因
 }
 
 /**
@@ -200,6 +208,26 @@ export interface AppStatistics {
 }
 
 /**
+ * 收入统计接口
+ * @description 使用中和未使用卡密的价格收入汇总
+ */
+export interface RevenueStatistics {
+  total: number | string        // 总收入
+  used: number | string         // 使用中卡密收入
+  unused: number | string       // 未使用卡密收入
+}
+
+export interface RevenueRange {
+  start_date: string            // 收入统计开始日期
+  end_date: string              // 收入统计结束日期
+}
+
+export interface TrendRange {
+  start_date: string            // 趋势统计开始日期
+  end_date: string              // 趋势统计结束日期
+}
+
+/**
  * 趋势统计接口
  * @description 仪表盘最近 N 天的新增和累计趋势数据
  */
@@ -218,6 +246,30 @@ export interface StatisticsTrendSeries {
   devices: number[]
   cards: number[]
   apps: number[]
+}
+
+/**
+ * 销售趋势接口
+ * @description 最近 N 天按卡密生成日期聚合的销售额和订单数
+ */
+export interface SalesTrend {
+  labels: string[]
+  daily_orders: number[]
+  daily_revenue: Array<number | string>
+  average_order_value: Array<number | string>
+}
+
+/**
+ * 权限收入归因接口
+ * @description 将卡密最终价格按包含的权限均分后统计到权限维度
+ */
+export interface PermissionRevenueItem {
+  permission_key: string
+  permission_name: string
+  app_name: string
+  monthly_price: number | string
+  card_count: number
+  revenue: number | string
 }
 
 // ==================== 分页相关类型 ====================
@@ -276,6 +328,7 @@ export interface FeaturePermission {
   app_key?: string              // 所属应用唯一标识（可选）
   app_name?: string             // 所属应用名称（可选）
   description?: string            // 权限描述（可选）
+  price: number | string         // 权限售卖价格
   category?: string               // 权限分类（可选，如：数据抓取、媒体播放）
   icon?: string                  // 图标（可选）
   sort_order: number             // 排序，数字越小越靠前

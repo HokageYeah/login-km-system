@@ -2,6 +2,7 @@
 功能权限服务测试
 """
 from datetime import datetime
+from decimal import Decimal
 
 from app.models.app import App, AppStatus
 from app.models.feature_permission import FeaturePermission, FeaturePermissionStatus
@@ -27,6 +28,7 @@ def test_build_permissions_export_payload_groups_permissions_by_app(db_session):
             permission_name="微信抓取",
             app_id=app_a.id,
             category="旧分类",
+            price=Decimal("19.90"),
             sort_order=1,
             status=FeaturePermissionStatus.NORMAL.value
         ),
@@ -60,6 +62,7 @@ def test_build_permissions_export_payload_groups_permissions_by_app(db_session):
     assert payload["total"] == 2
     assert [item["permission_key"] for item in payload["permissions"]] == ["wechat", "ximalaya"]
     assert payload["permissions"][0]["app"]["app_key"] == "wechat_app"
+    assert Decimal(payload["permissions"][0]["price"]) == Decimal("19.90")
     assert payload["permissions"][0]["category"] == "微信应用"
     assert len(payload["app_groups"]) == 2
     assert payload["app_groups"][0]["total"] == 1
@@ -124,6 +127,7 @@ def test_import_permissions_from_payload_creates_apps_and_updates_records(db_ses
                     app_name="微信应用"
                 ),
                 description="更新后的描述",
+                price=Decimal("29.90"),
                 category="抓取",
                 icon="ChatDotRound",
                 sort_order=1,
@@ -137,6 +141,7 @@ def test_import_permissions_from_payload_creates_apps_and_updates_records(db_ses
                     app_name="音频应用"
                 ),
                 description="新增权限",
+                price=Decimal("39.90"),
                 category="音频",
                 icon="VideoPlay",
                 sort_order=2,
@@ -166,6 +171,7 @@ def test_import_permissions_from_payload_creates_apps_and_updates_records(db_ses
     assert wechat is not None
     assert wechat.permission_name == "微信抓取"
     assert wechat.description == "更新后的描述"
+    assert wechat.price == Decimal("29.90")
     assert wechat.category == "微信应用"
     assert wechat.icon == "ChatDotRound"
     assert wechat.sort_order == 1
@@ -175,6 +181,7 @@ def test_import_permissions_from_payload_creates_apps_and_updates_records(db_ses
     assert ximalaya is not None
     assert ximalaya.permission_name == "喜马拉雅播放"
     assert ximalaya.app_id == audio_app.id
+    assert ximalaya.price == Decimal("39.90")
     assert ximalaya.category == "音频应用"
 
 
@@ -221,7 +228,8 @@ def test_create_permission_requires_existing_app(db_session):
     permission, error = FeaturePermissionService(db_session).create_permission(
         permission_key="wechat",
         permission_name="微信抓取",
-        app_id=999
+        app_id=999,
+        price=Decimal("9.90")
     )
 
     assert permission is None

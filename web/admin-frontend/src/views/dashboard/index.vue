@@ -1,35 +1,16 @@
 <template>
   <div class="dashboard-container">
     <section class="dashboard-header">
-      <div class="header-copy">
-        <span class="header-badge">Comprehensive Operations Board</span>
-        <h1 class="dashboard-title">授权系统综合数据看板</h1>
-        <p class="dashboard-subtitle">
-          这一版继续聚焦综合快照，把用户、卡密、设备、应用与最近 7 日趋势统一放进一张经营总览图里，
-          让你既能看当前规模，也能看增长、库存、风险和资源协同情况。
-        </p>
-      </div>
-
+      <h1 class="dashboard-title">数据看板</h1>
       <div class="header-actions">
-        <div class="header-info-card">
-          <span>最近更新时间</span>
-          <strong>{{ lastUpdatedText }}</strong>
-        </div>
-        <div class="header-info-card">
-          <span>增长动量</span>
-          <strong>{{ growthMomentumRate }}%</strong>
-        </div>
-        <div class="header-info-card">
-          <span>健康评分</span>
-          <strong>{{ overallHealthScore }} 分</strong>
-        </div>
+        <span class="header-updated">{{ lastUpdatedText }}</span>
         <el-button
           :icon="RefreshRight"
           :loading="loading"
           @click="loadStatistics"
           class="refresh-btn"
         >
-          刷新数据
+          刷新
         </el-button>
       </div>
     </section>
@@ -42,40 +23,83 @@
       >
         <div class="overview-card-top">
           <div class="overview-icon" :class="item.iconClass">
-            <el-icon :size="20">
+            <el-icon :size="18">
               <component :is="item.icon" />
             </el-icon>
           </div>
           <span class="overview-tag">{{ item.tag }}</span>
         </div>
-
-        <div class="overview-main">
-          <span class="overview-label">{{ item.label }}</span>
-          <strong class="overview-value">{{ formatNumber(item.value) }}</strong>
-          <div class="overview-meta">
-            <span>{{ item.metaLabel }}</span>
-            <b>{{ item.metaValue }}</b>
-          </div>
-          <div class="overview-progress">
-            <div class="overview-progress-track">
-              <div class="overview-progress-bar" :style="{ width: `${item.rate}%` }" />
-            </div>
-            <span>{{ item.rate }}%</span>
-          </div>
-        </div>
+        <span class="overview-label">{{ item.label }}</span>
+        <strong class="overview-value">{{ formatNumber(item.value) }}</strong>
       </article>
+    </section>
+        <section class="revenue-panel" v-loading="loading">
+      <div class="revenue-toolbar">
+        <div>
+          <h3 class="panel-title">收入数据总览</h3>
+          <p class="revenue-range-text">{{ revenueRangeText }}</p>
+        </div>
+
+        <div class="revenue-controls">
+          <el-segmented
+            v-model="revenueRangeMode"
+            :options="revenueRangeModeOptions"
+            @change="handleRevenueRangeModeChange"
+          />
+
+          <el-date-picker
+            v-if="revenueRangeMode === 'day'"
+            v-model="selectedDay"
+            type="date"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            placeholder="选择日期"
+            :clearable="false"
+            @change="handleRevenueDateChange"
+          />
+
+          <el-date-picker
+            v-if="revenueRangeMode === 'month'"
+            v-model="selectedMonth"
+            type="month"
+            value-format="YYYY-MM"
+            format="YYYY年MM月"
+            placeholder="选择月份"
+            :clearable="false"
+            @change="handleRevenueDateChange"
+          />
+
+          <el-date-picker
+            v-if="revenueRangeMode === 'range'"
+            v-model="selectedRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            :clearable="false"
+            @change="handleRevenueDateChange"
+          />
+        </div>
+      </div>
+
+      <div class="revenue-chart-grid">
+        <article class="chart-card">
+          <h3 class="panel-title">收入结构</h3>
+          <div ref="revenuePieRef" class="chart-container"></div>
+        </article>
+
+        <article class="chart-card chart-span-2">
+          <h3 class="panel-title">权限收入分配</h3>
+          <div ref="permissionRevenueRef" class="chart-container chart-medium"></div>
+        </article>
+      </div>
     </section>
 
     <section class="highlight-grid">
       <article class="panel-card panel-summary">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Today Snapshot</p>
-            <h3 class="panel-title">当日增长摘要</h3>
-          </div>
-          <el-icon class="panel-icon"><TrendCharts /></el-icon>
-        </div>
-
+        <h3 class="panel-title">当日增长摘要</h3>
         <div class="summary-list">
           <div v-for="item in summaryItems" :key="item.label" class="summary-item">
             <span>{{ item.label }}</span>
@@ -86,14 +110,7 @@
       </article>
 
       <article class="panel-card panel-status">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">System Reading</p>
-            <h3 class="panel-title">综合运营观察</h3>
-          </div>
-          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
-        </div>
-
+        <h3 class="panel-title">综合运营观察</h3>
         <div class="focus-list">
           <div v-for="item in focusItems" :key="item.label" class="focus-item">
             <span class="focus-dot" :class="item.levelClass" />
@@ -104,142 +121,86 @@
           </div>
         </div>
       </article>
-
-      <article class="panel-card panel-gauge">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Health Score</p>
-            <h3 class="panel-title">系统健康度</h3>
-          </div>
-          <el-icon class="panel-icon"><Odometer /></el-icon>
-        </div>
-        <div ref="healthGaugeRef" class="mini-chart-container"></div>
-      </article>
     </section>
 
-    <section class="signal-grid">
-      <article
-        v-for="item in executiveMetrics"
-        :key="item.label"
-        class="signal-card"
-      >
-        <div class="signal-card-top">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
+    <section class="trend-panel" v-loading="loading">
+      <div class="trend-toolbar">
+        <div>
+          <h3 class="panel-title">核心资源增长趋势</h3>
+          <p class="trend-range-text">{{ trendRangeText }}</p>
         </div>
-        <p>{{ item.desc }}</p>
-      </article>
+
+        <div class="trend-controls">
+          <el-segmented
+            v-model="trendRangeMode"
+            :options="trendRangeModeOptions"
+            @change="handleTrendRangeModeChange"
+          />
+
+          <el-date-picker
+            v-if="trendRangeMode === 'day'"
+            v-model="selectedTrendDay"
+            type="date"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            placeholder="选择日期"
+            :clearable="false"
+            @change="handleTrendDateChange"
+          />
+
+          <el-date-picker
+            v-if="trendRangeMode === 'month'"
+            v-model="selectedTrendMonth"
+            type="month"
+            value-format="YYYY-MM"
+            format="YYYY年MM月"
+            placeholder="选择月份"
+            :clearable="false"
+            @change="handleTrendDateChange"
+          />
+
+          <el-date-picker
+            v-if="trendRangeMode === 'range'"
+            v-model="selectedTrendRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            :clearable="false"
+            @change="handleTrendDateChange"
+          />
+        </div>
+      </div>
+
+      <div class="trend-chart-grid">
+        <article class="chart-card">
+          <h3 class="panel-title">每日新增核心资源</h3>
+          <div ref="dailyCompareRef" class="chart-container chart-large"></div>
+        </article>
+
+        <article class="chart-card">
+          <h3 class="panel-title">资源新增矩阵</h3>
+          <div ref="growthHeatmapRef" class="chart-container chart-medium"></div>
+        </article>
+      </div>
     </section>
 
     <section class="charts-grid" v-loading="loading">
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Scale Compare</p>
-            <h3 class="panel-title">核心资源总量对比</h3>
-          </div>
-          <el-icon class="panel-icon"><Histogram /></el-icon>
-        </div>
-        <div ref="resourceCompareRef" class="chart-container chart-medium"></div>
-      </article>
-
       <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Card Mix</p>
-            <h3 class="panel-title">卡密状态分布</h3>
-          </div>
-          <el-icon class="panel-icon"><Ticket /></el-icon>
-        </div>
+        <h3 class="panel-title">卡密状态分布</h3>
         <div ref="cardDonutRef" class="chart-container"></div>
       </article>
 
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Status Line</p>
-            <h3 class="panel-title">核心状态占比走势</h3>
-          </div>
-          <el-icon class="panel-icon"><DataLine /></el-icon>
-        </div>
-        <div ref="statusTrendRef" class="chart-container chart-medium"></div>
-      </article>
-
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Daily Core Growth</p>
-            <h3 class="panel-title">每日新增核心资源趋势</h3>
-          </div>
-          <el-icon class="panel-icon"><TrendCharts /></el-icon>
-        </div>
-        <div ref="dailyCompareRef" class="chart-container chart-large"></div>
+      <article class="chart-card">
+        <h3 class="panel-title">核心状态占比走势</h3>
+        <div ref="statusTrendRef" class="chart-container"></div>
       </article>
 
       <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Status Board</p>
-            <h3 class="panel-title">设备与应用健康</h3>
-          </div>
-          <el-icon class="panel-icon"><Monitor /></el-icon>
-        </div>
+        <h3 class="panel-title">设备与应用健康</h3>
         <div ref="healthBarRef" class="chart-container"></div>
-      </article>
-
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Growth Matrix</p>
-            <h3 class="panel-title">近 7 日资源新增矩阵</h3>
-          </div>
-          <el-icon class="panel-icon"><Grid /></el-icon>
-        </div>
-        <div ref="growthHeatmapRef" class="chart-container chart-medium"></div>
-      </article>
-
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Cumulative Trend</p>
-            <h3 class="panel-title">近 7 日累计规模趋势</h3>
-          </div>
-          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
-        </div>
-        <div ref="growthLineRef" class="chart-container chart-large"></div>
-      </article>
-
-      <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Radar View</p>
-            <h3 class="panel-title">综合协同雷达</h3>
-          </div>
-          <el-icon class="panel-icon"><Memo /></el-icon>
-        </div>
-        <div ref="radarChartRef" class="chart-container"></div>
-      </article>
-
-      <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Quick Board</p>
-            <h3 class="panel-title">综合数据摘要</h3>
-          </div>
-          <el-icon class="panel-icon"><CollectionTag /></el-icon>
-        </div>
-
-        <div class="summary-board">
-          <div v-for="metric in summaryMetrics" :key="metric.label" class="summary-board-item">
-            <div class="summary-board-top">
-              <span>{{ metric.label }}</span>
-              <strong>{{ metric.value }}</strong>
-            </div>
-            <div class="summary-board-track">
-              <div class="summary-board-bar" :style="{ width: `${metric.rate}%` }" />
-            </div>
-          </div>
-        </div>
       </article>
     </section>
   </div>
@@ -250,7 +211,7 @@
  * 综合仪表盘页面
  * @description 这一版继续围绕“综合数据总览”增强：
  * 1. 统一复用公共统计派生 helper，保证多个仪表盘的指标口径一致；
- * 2. 增加资源总量对比、7 日资源新增矩阵、更多联动分析卡；
+ * 2. 增加资源总量对比、可切换日期范围的资源新增矩阵和趋势联动分析卡；
  * 3. 所有图表都严格基于 /admin/statistics 当前返回，不拼接虚假趋势数据。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -258,17 +219,10 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import type { ECharts, EChartsOption } from 'echarts'
 import {
-  CollectionTag,
-  DataAnalysis,
-  DataLine,
   Grid,
-  Histogram,
-  Memo,
   Monitor,
-  Odometer,
   RefreshRight,
   Ticket,
-  TrendCharts,
   User
 } from '@element-plus/icons-vue'
 import { getStatistics } from '@/api/admin'
@@ -281,35 +235,80 @@ import {
   getLastValue,
   getRate,
   getSeriesPeak,
-  getSeriesTotal
+  getSeriesTotal,
+  formatDashboardCurrency,
+  toDashboardAmount
 } from './dashboard-metrics'
 
 type ChartKey =
-  | 'healthGauge'
-  | 'resourceCompare'
   | 'statusTrend'
   | 'cardDonut'
   | 'dailyCompare'
-  | 'healthBar'
   | 'growthHeatmap'
-  | 'growthLine'
-  | 'radarChart'
+  | 'healthBar'
+  | 'revenuePie'
+  | 'permissionRevenue'
 
 const loading = ref(false)                              // 页面加载状态
 const statistics = ref<Statistics | null>(null)         // 仪表盘统计快照
 const lastUpdatedAt = ref<Date | null>(null)            // 最近刷新时间
 
-const healthGaugeRef = ref<HTMLDivElement>()
-const resourceCompareRef = ref<HTMLDivElement>()
 const statusTrendRef = ref<HTMLDivElement>()
 const cardDonutRef = ref<HTMLDivElement>()
 const dailyCompareRef = ref<HTMLDivElement>()
-const healthBarRef = ref<HTMLDivElement>()
 const growthHeatmapRef = ref<HTMLDivElement>()
-const growthLineRef = ref<HTMLDivElement>()
-const radarChartRef = ref<HTMLDivElement>()
+const healthBarRef = ref<HTMLDivElement>()
+const revenuePieRef = ref<HTMLDivElement>()
+const permissionRevenueRef = ref<HTMLDivElement>()
 
 const chartInstances: Partial<Record<ChartKey, ECharts>> = {}
+
+type RevenueRangeMode = 'today' | 'day' | 'month' | 'range'
+type TrendRangeMode = 'today' | 'day' | 'month' | 'range'
+
+const padDateUnit = (value: number) => String(value).padStart(2, '0')
+
+const getDateValue = (date: Date) => {
+  return `${date.getFullYear()}-${padDateUnit(date.getMonth() + 1)}-${padDateUnit(date.getDate())}`
+}
+
+const getMonthValue = (date: Date) => {
+  return `${date.getFullYear()}-${padDateUnit(date.getMonth() + 1)}`
+}
+
+const getShiftedDateValue = (offsetDays: number) => {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return getDateValue(date)
+}
+
+const formatDisplayDate = (value: string) => {
+  const [year, month, day] = value.split('-')
+  return `${year}年${month}月${day}日`
+}
+
+const todayValue = getDateValue(new Date())
+const createDefaultRangeValue = (): [string, string] => [getShiftedDateValue(-7), todayValue]
+const revenueRangeMode = ref<RevenueRangeMode>('today')
+const selectedDay = ref(todayValue)
+const selectedMonth = ref(getMonthValue(new Date()))
+const selectedRange = ref<[string, string]>(createDefaultRangeValue())
+const trendRangeMode = ref<TrendRangeMode>('today')
+const selectedTrendDay = ref(todayValue)
+const selectedTrendMonth = ref(getMonthValue(new Date()))
+const selectedTrendRange = ref<[string, string]>(createDefaultRangeValue())
+const revenueRangeModeOptions = [
+  { label: '今日', value: 'today' },
+  { label: '指定日期', value: 'day' },
+  { label: '指定月份', value: 'month' },
+  { label: '自定义范围', value: 'range' }
+]
+const trendRangeModeOptions = [
+  { label: '今日', value: 'today' },
+  { label: '指定日期', value: 'day' },
+  { label: '指定月份', value: 'month' },
+  { label: '自定义范围', value: 'range' }
+]
 
 /**
  * 统计数据兜底
@@ -320,6 +319,131 @@ const statisticsSnapshot = computed<Statistics>(() => {
 })
 
 const formatNumber = (num: number) => formatDashboardNumber(num)
+const formatCurrency = (value: number | string | null | undefined) => formatDashboardCurrency(value)
+const trendScopeLabel = computed(() => {
+  const range = statisticsSnapshot.value.trend_range
+  if (range.start_date === range.end_date) {
+    return '当日'
+  }
+  return '当前范围'
+})
+
+const getMonthRange = (monthValue: string): [string, string] => {
+  const [year = new Date().getFullYear(), month = new Date().getMonth() + 1] = monthValue.split('-').map(Number)
+  const firstDay = new Date(year, month - 1, 1)
+  const lastDay = new Date(year, month, 0)
+  return [getDateValue(firstDay), getDateValue(lastDay)]
+}
+
+const revenueQueryRange = computed(() => {
+  if (revenueRangeMode.value === 'day') {
+    return {
+      start_date: selectedDay.value,
+      end_date: selectedDay.value
+    }
+  }
+
+  if (revenueRangeMode.value === 'month') {
+    const [startDate, endDate] = getMonthRange(selectedMonth.value)
+    return {
+      start_date: startDate,
+      end_date: endDate
+    }
+  }
+
+  if (revenueRangeMode.value === 'range') {
+    return {
+      start_date: selectedRange.value[0],
+      end_date: selectedRange.value[1]
+    }
+  }
+
+  return {
+    start_date: todayValue,
+    end_date: todayValue
+  }
+})
+
+const revenueRangeText = computed(() => {
+  const range = statisticsSnapshot.value.revenue_range
+  if (range.start_date === range.end_date) {
+    return `当前查看 ${formatDisplayDate(range.start_date)} 的收入、销售与权限贡献。`
+  }
+  return `当前查看 ${formatDisplayDate(range.start_date)} 至 ${formatDisplayDate(range.end_date)} 的收入、销售与权限贡献。`
+})
+
+const trendQueryRange = computed(() => {
+  if (trendRangeMode.value === 'day') {
+    return {
+      trend_start_date: selectedTrendDay.value,
+      trend_end_date: selectedTrendDay.value
+    }
+  }
+
+  if (trendRangeMode.value === 'month') {
+    const [startDate, endDate] = getMonthRange(selectedTrendMonth.value)
+    return {
+      trend_start_date: startDate,
+      trend_end_date: endDate
+    }
+  }
+
+  if (trendRangeMode.value === 'range') {
+    return {
+      trend_start_date: selectedTrendRange.value[0],
+      trend_end_date: selectedTrendRange.value[1]
+    }
+  }
+
+  return {
+    trend_start_date: todayValue,
+    trend_end_date: todayValue
+  }
+})
+
+const trendRangeText = computed(() => {
+  const range = statisticsSnapshot.value.trend_range
+  if (range.start_date === range.end_date) {
+    return `当前查看 ${formatDisplayDate(range.start_date)} 的新增与累计变化。`
+  }
+  return `当前查看 ${formatDisplayDate(range.start_date)} 至 ${formatDisplayDate(range.end_date)} 的新增与累计变化。`
+})
+
+const handleRevenueRangeModeChange = () => {
+  if (revenueRangeMode.value === 'today') {
+    selectedDay.value = todayValue
+  }
+
+  if (revenueRangeMode.value === 'range') {
+    selectedRange.value = createDefaultRangeValue()
+  }
+
+  loadStatistics()
+}
+
+const handleRevenueDateChange = () => {
+  loadStatistics()
+}
+
+const handleTrendRangeModeChange = () => {
+  if (trendRangeMode.value === 'today') {
+    selectedTrendDay.value = todayValue
+  }
+
+  if (trendRangeMode.value === 'month') {
+    selectedTrendMonth.value = getMonthValue(new Date())
+  }
+
+  if (trendRangeMode.value === 'range') {
+    selectedTrendRange.value = createDefaultRangeValue()
+  }
+
+  loadStatistics()
+}
+
+const handleTrendDateChange = () => {
+  loadStatistics()
+}
 
 const lastUpdatedText = computed(() => {
   if (!lastUpdatedAt.value) return '尚未刷新'
@@ -347,11 +471,14 @@ const todayNewUsers = computed(() => getLastValue(statisticsSnapshot.value.trend
 const todayNewDevices = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.devices))
 const todayNewCards = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.cards))
 const todayNewApps = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.apps))
+const todayRevenue = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
+const todayOrders = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_orders))
 
 const averageDailyUsers = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.users))
 const averageDailyDevices = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.devices))
 const averageDailyCards = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.cards))
 const averageDailyApps = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.apps))
+const averageDailyRevenue = computed(() => getAverageValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
 
 const todayGrowthTotal = computed(() => {
   return todayNewUsers.value + todayNewDevices.value + todayNewCards.value + todayNewApps.value
@@ -368,22 +495,13 @@ const averageGrowthTotal = computed(() => {
 
 /**
  * 增长动量
- * @description 观察今日总新增相对近 7 日均值的强弱，用于综合版首页快速判断。
+ * @description 观察今日总新增相对当前趋势统计均值的强弱，用于综合版首页快速判断。
  */
 const growthMomentumRate = computed(() => {
   if (!averageGrowthTotal.value) {
     return todayGrowthTotal.value > 0 ? 100 : 0
   }
   return clampPercent((todayGrowthTotal.value / averageGrowthTotal.value) * 100)
-})
-
-/**
- * 库存支持天数
- * @description 用未使用卡密对比平均新增用户，帮助判断库存还能支撑多久。
- */
-const inventorySupportDays = computed(() => {
-  const averageUsers = Math.max(averageDailyUsers.value, 1)
-  return Math.round(statisticsSnapshot.value.cards.unused / averageUsers)
 })
 
 /**
@@ -423,17 +541,6 @@ const resourceSynergyScore = computed(() => {
   )
 })
 
-const overallHealthScore = computed(() => {
-  const score = (
-    userHealthRate.value * 0.24 +
-    cardReserveRate.value * 0.18 +
-    cardUsageRate.value * 0.14 +
-    deviceHealthRate.value * 0.2 +
-    appAvailabilityRate.value * 0.12 +
-    (100 - riskExposureRate.value) * 0.12
-  )
-  return Math.round(score)
-})
 
 const overviewCards = computed(() => {
   const snapshot = statisticsSnapshot.value
@@ -491,27 +598,27 @@ const summaryItems = computed(() => {
     {
       label: '今日新增用户',
       value: `${todayNewUsers.value}`,
-      desc: `7日均值 ${averageDailyUsers.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyUsers.value}`
     },
     {
       label: '今日新增设备',
       value: `${todayNewDevices.value}`,
-      desc: `7日均值 ${averageDailyDevices.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyDevices.value}`
     },
     {
       label: '今日新增卡密',
       value: `${todayNewCards.value}`,
-      desc: `7日均值 ${averageDailyCards.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyCards.value}`
     },
     {
       label: '今日新增应用',
       value: `${todayNewApps.value}`,
-      desc: `7日均值 ${averageDailyApps.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyApps.value}`
     },
     {
       label: '今日总新增',
       value: `${todayGrowthTotal.value}`,
-      desc: `近7日累计 ${weeklyGrowthTotal.value}`
+      desc: `${trendScopeLabel.value}累计 ${weeklyGrowthTotal.value}`
     },
     {
       label: '卡密使用率',
@@ -528,16 +635,9 @@ const focusItems = computed(() => {
     {
       label: '增长动能',
       text: growthMomentumRate.value >= 100
-        ? `今日总新增 ${todayGrowthTotal.value} 条，已经达到或超过近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}。`
-        : `今日总新增 ${todayGrowthTotal.value} 条，低于近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}，建议继续观察接入节奏。`,
+        ? `今日总新增 ${todayGrowthTotal.value} 条，已经达到或超过${trendScopeLabel.value}均值 ${averageGrowthTotal.value.toFixed(1)}。`
+        : `今日总新增 ${todayGrowthTotal.value} 条，低于${trendScopeLabel.value}均值 ${averageGrowthTotal.value.toFixed(1)}，建议继续观察接入节奏。`,
       levelClass: growthMomentumRate.value >= 100 ? 'level-success' : 'level-info'
-    },
-    {
-      label: '库存覆盖',
-      text: snapshot.cards.unused > 0
-        ? `当前仍有 ${snapshot.cards.unused} 个未使用卡密，按近 7 日平均新增用户估算可支撑约 ${inventorySupportDays.value} 天。`
-        : '未使用卡密已经耗尽，建议优先补充卡密库存，避免影响后续授权转化。',
-      levelClass: snapshot.cards.unused > 0 ? 'level-success' : 'level-danger'
     },
     {
       label: '用户与设备协同',
@@ -563,69 +663,11 @@ const focusItems = computed(() => {
   ]
 })
 
-const executiveMetrics = computed(() => {
-  const snapshot = statisticsSnapshot.value
 
-  return [
-    {
-      label: '增长动量',
-      value: `${growthMomentumRate.value}%`,
-      desc: `今日总新增 ${todayGrowthTotal.value}，对比近 7 日平均总新增 ${averageGrowthTotal.value.toFixed(1)}。`
-    },
-    {
-      label: '库存覆盖',
-      value: `${inventorySupportDays.value} 天`,
-      desc: `按近 7 日平均新增用户估算，当前 ${snapshot.cards.unused} 个库存还能支撑的大致天数。`
-    },
-    {
-      label: '风险暴露率',
-      value: `${riskExposureRate.value}%`,
-      desc: `异常用户、禁用卡密、禁用设备和异常应用合并观察，更适合看综合风险面。`
-    },
-    {
-      label: '资源协同分',
-      value: `${resourceSynergyScore.value} 分`,
-      desc: '重点衡量用户增长、设备跟随、卡密库存和应用可用是否同步支撑整体业务。'
-    }
-  ]
+const topPermissionRevenue = computed(() => {
+  return statisticsSnapshot.value.permission_revenue.slice(0, 8)
 })
 
-const summaryMetrics = computed(() => {
-  const snapshot = statisticsSnapshot.value
-
-  return [
-    {
-      label: '正常用户 / 总用户',
-      value: `${snapshot.users.normal} / ${snapshot.users.total}`,
-      rate: userHealthRate.value
-    },
-    {
-      label: '已使用卡密 / 总卡密',
-      value: `${snapshot.cards.used} / ${snapshot.cards.total}`,
-      rate: cardUsageRate.value
-    },
-    {
-      label: '活跃设备 / 总设备',
-      value: `${snapshot.devices.active} / ${snapshot.devices.total}`,
-      rate: deviceHealthRate.value
-    },
-    {
-      label: '可用应用 / 总应用',
-      value: `${snapshot.apps.active} / ${snapshot.apps.total}`,
-      rate: appAvailabilityRate.value
-    },
-    {
-      label: '今日总新增 / 7日均值',
-      value: `${todayGrowthTotal.value} / ${averageGrowthTotal.value.toFixed(1)}`,
-      rate: growthMomentumRate.value
-    },
-    {
-      label: '资源协同分 / 100',
-      value: `${resourceSynergyScore.value} / 100`,
-      rate: resourceSynergyScore.value
-    }
-  ]
-})
 
 const statusTrendIndicators = computed(() => {
   return [
@@ -664,15 +706,13 @@ const heatmapMaxValue = computed(() => {
 
 const getChartElement = (chartKey: ChartKey) => {
   const elementMap: Record<ChartKey, HTMLDivElement | undefined> = {
-    healthGauge: healthGaugeRef.value,
-    resourceCompare: resourceCompareRef.value,
     statusTrend: statusTrendRef.value,
     cardDonut: cardDonutRef.value,
     dailyCompare: dailyCompareRef.value,
-    healthBar: healthBarRef.value,
     growthHeatmap: growthHeatmapRef.value,
-    growthLine: growthLineRef.value,
-    radarChart: radarChartRef.value
+    healthBar: healthBarRef.value,
+    revenuePie: revenuePieRef.value,
+    permissionRevenue: permissionRevenueRef.value
   }
 
   return elementMap[chartKey]
@@ -690,119 +730,7 @@ const ensureChartInstance = (chartKey: ChartKey) => {
   return createdInstance
 }
 
-const renderHealthGauge = () => {
-  const instance = ensureChartInstance('healthGauge')
-  if (!instance) return
 
-  const option: EChartsOption = {
-    series: [
-      {
-        type: 'gauge',
-        startAngle: 210,
-        endAngle: -30,
-        min: 0,
-        max: 100,
-        progress: {
-          show: true,
-          roundCap: true,
-          width: 12,
-          itemStyle: {
-            color: overallHealthScore.value >= 80 ? '#14b8a6' : overallHealthScore.value >= 60 ? '#f59e0b' : '#fb7185'
-          }
-        },
-        axisLine: {
-          roundCap: true,
-          lineStyle: {
-            width: 12,
-            color: [[1, '#e2e8f0']]
-          }
-        },
-        pointer: { show: false },
-        anchor: { show: false },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        axisLabel: { show: false },
-        detail: {
-          formatter: '{value}',
-          valueAnimation: true,
-          color: '#0f172a',
-          fontSize: 26,
-          fontWeight: 'bold',
-          offsetCenter: [0, '6%']
-        },
-        title: {
-          color: '#64748b',
-          fontSize: 12,
-          offsetCenter: [0, '64%']
-        },
-        data: [
-          {
-            value: overallHealthScore.value,
-            name: '综合健康度'
-          }
-        ]
-      }
-    ]
-  }
-
-  instance.setOption(option)
-}
-
-const renderResourceCompareChart = () => {
-  const instance = ensureChartInstance('resourceCompare')
-  if (!instance) return
-
-  const snapshot = statisticsSnapshot.value
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' }
-    },
-    grid: {
-      left: '4%',
-      right: '4%',
-      bottom: '6%',
-      top: '12%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: ['用户', '卡密', '设备', '应用'],
-      axisTick: { show: false },
-      axisLine: { lineStyle: { color: '#d7dee8' } },
-      axisLabel: { color: '#475569' }
-    },
-    yAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { color: '#edf2f7' } },
-      axisLabel: { color: '#64748b' }
-    },
-    series: [
-      {
-        type: 'bar',
-        barWidth: '42%',
-        data: [
-          { value: snapshot.users.total, itemStyle: { color: '#38bdf8' } },
-          { value: snapshot.cards.total, itemStyle: { color: '#f59e0b' } },
-          { value: snapshot.devices.total, itemStyle: { color: '#14b8a6' } },
-          { value: snapshot.apps.total, itemStyle: { color: '#8b5cf6' } }
-        ],
-        label: {
-          show: true,
-          position: 'top',
-          color: '#0f172a',
-          fontWeight: 600
-        },
-        itemStyle: {
-          borderRadius: [10, 10, 0, 0]
-        }
-      }
-    ]
-  }
-
-  instance.setOption(option)
-}
 
 const renderStatusTrendChart = () => {
   const instance = ensureChartInstance('statusTrend')
@@ -987,63 +915,6 @@ const renderDailyCompareChart = () => {
   instance.setOption(option)
 }
 
-const renderHealthBarChart = () => {
-  const instance = ensureChartInstance('healthBar')
-  if (!instance) return
-
-  const snapshot = statisticsSnapshot.value
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' }
-    },
-    legend: {
-      bottom: 0,
-      textStyle: { color: '#475569' }
-    },
-    grid: {
-      left: '4%',
-      right: '4%',
-      bottom: '14%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { color: '#edf2f7' } },
-      axisLabel: { color: '#64748b' }
-    },
-    yAxis: {
-      type: 'category',
-      data: ['设备', '应用'],
-      axisTick: { show: false },
-      axisLine: { show: false },
-      axisLabel: { color: '#334155', fontWeight: 600 }
-    },
-    series: [
-      {
-        name: '正常 / 活跃',
-        type: 'bar',
-        stack: 'total',
-        itemStyle: { color: '#5eead4', borderRadius: [0, 8, 8, 0] },
-        label: { show: true, color: '#0f172a' },
-        data: [snapshot.devices.active, snapshot.apps.active]
-      },
-      {
-        name: '异常 / 禁用',
-        type: 'bar',
-        stack: 'total',
-        itemStyle: { color: '#fda4af', borderRadius: [0, 8, 8, 0] },
-        label: { show: true, color: '#0f172a' },
-        data: [snapshot.devices.disabled, abnormalAppCount.value]
-      }
-    ]
-  }
-
-  instance.setOption(option)
-}
-
 const renderGrowthHeatmap = () => {
   const instance = ensureChartInstance('growthHeatmap')
   if (!instance) return
@@ -1101,7 +972,7 @@ const renderGrowthHeatmap = () => {
           fontWeight: 600
         },
         itemStyle: {
-          borderRadius: 10,
+          borderRadius: 8,
           borderColor: 'rgba(255,255,255,0.8)',
           borderWidth: 2
         }
@@ -1112,75 +983,56 @@ const renderGrowthHeatmap = () => {
   instance.setOption(option)
 }
 
-const renderGrowthLineChart = () => {
-  const instance = ensureChartInstance('growthLine')
+const renderHealthBarChart = () => {
+  const instance = ensureChartInstance('healthBar')
   if (!instance) return
 
-  const trends = statisticsSnapshot.value.trends
+  const snapshot = statisticsSnapshot.value
 
   const option: EChartsOption = {
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
     },
     legend: {
-      top: 0,
+      bottom: 0,
       textStyle: { color: '#475569' }
     },
     grid: {
       left: '4%',
       right: '4%',
-      bottom: '5%',
-      top: '14%',
+      bottom: '14%',
+      top: '10%',
       containLabel: true
     },
     xAxis: {
-      type: 'category',
-      data: trends.labels,
-      axisTick: { show: false },
-      axisLine: { lineStyle: { color: '#d7dee8' } },
-      axisLabel: { color: '#64748b' }
-    },
-    yAxis: {
       type: 'value',
       splitLine: { lineStyle: { color: '#edf2f7' } },
       axisLabel: { color: '#64748b' }
     },
+    yAxis: {
+      type: 'category',
+      data: ['设备', '应用'],
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: { color: '#334155', fontWeight: 600 }
+    },
     series: [
       {
-        name: '累计用户',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#14b8a6' },
-        itemStyle: { color: '#14b8a6' },
-        data: trends.cumulative.users
+        name: '正常 / 活跃',
+        type: 'bar',
+        stack: 'total',
+        itemStyle: { color: '#5eead4', borderRadius: [0, 8, 8, 0] },
+        label: { show: true, color: '#0f172a' },
+        data: [snapshot.devices.active, snapshot.apps.active]
       },
       {
-        name: '累计设备',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#60a5fa' },
-        itemStyle: { color: '#60a5fa' },
-        data: trends.cumulative.devices
-      },
-      {
-        name: '累计卡密',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#f59e0b' },
-        itemStyle: { color: '#f59e0b' },
-        data: trends.cumulative.cards
-      },
-      {
-        name: '累计应用',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#8b5cf6' },
-        itemStyle: { color: '#8b5cf6' },
-        data: trends.cumulative.apps
+        name: '异常 / 禁用',
+        type: 'bar',
+        stack: 'total',
+        itemStyle: { color: '#fda4af', borderRadius: [0, 8, 8, 0] },
+        label: { show: true, color: '#0f172a' },
+        data: [snapshot.devices.disabled, abnormalAppCount.value]
       }
     ]
   }
@@ -1188,56 +1040,124 @@ const renderGrowthLineChart = () => {
   instance.setOption(option)
 }
 
-const renderRadarChart = () => {
-  const instance = ensureChartInstance('radarChart')
+
+
+
+const renderRevenuePieChart = () => {
+  const instance = ensureChartInstance('revenuePie')
   if (!instance) return
 
+  const revenue = statisticsSnapshot.value.revenue
+  const totalRevenue = toDashboardAmount(revenue.total)
   const option: EChartsOption = {
-    color: ['#38bdf8'],
-    radar: {
-      radius: '64%',
-      splitNumber: 5,
-      axisName: {
-        color: '#334155',
-        fontWeight: 600
+    color: ['#14b8a6', '#f59e0b'],
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        return `${params.name}<br/>金额：${formatCurrency(params.value)} (${params.percent}%)`
+      }
+    },
+    title: {
+      text: formatCurrency(totalRevenue),
+      subtext: '总收入',
+      left: 'center',
+      top: '36%',
+      textStyle: {
+        color: '#0f172a',
+        fontSize: 22,
+        fontWeight: 700
       },
-      splitLine: {
-        lineStyle: { color: 'rgba(203, 213, 225, 0.7)' }
-      },
-      splitArea: {
-        areaStyle: {
-          color: ['rgba(248,250,252,0.4)', 'rgba(241,245,249,0.9)']
-        }
-      },
-      indicator: [
-        { name: '用户健康', max: 100 },
-        { name: '卡密库存', max: 100 },
-        { name: '卡密使用', max: 100 },
-        { name: '设备活跃', max: 100 },
-        { name: '资源协同', max: 100 }
-      ]
+      subtextStyle: {
+        color: '#64748b',
+        fontSize: 12
+      }
+    },
+    legend: {
+      bottom: 0,
+      icon: 'circle',
+      textStyle: { color: '#475569' }
     },
     series: [
       {
-        type: 'radar',
-        areaStyle: {
-          color: 'rgba(56, 189, 248, 0.18)'
+        name: '收入结构',
+        type: 'pie',
+        radius: ['48%', '72%'],
+        center: ['50%', '42%'],
+        label: {
+          formatter: (params: any) => `${params.name}\n${formatCurrency(params.value)}`
         },
-        lineStyle: {
-          width: 3
+        itemStyle: {
+          borderColor: '#fff',
+          borderWidth: 4,
+          borderRadius: 10
         },
-        symbolSize: 8,
         data: [
-          {
-            value: [
-              userHealthRate.value,
-              cardReserveRate.value,
-              cardUsageRate.value,
-              deviceHealthRate.value,
-              resourceSynergyScore.value
-            ]
-          }
+          { value: toDashboardAmount(revenue.used), name: '使用中收入' },
+          { value: toDashboardAmount(revenue.unused), name: '未使用库存金额' }
         ]
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderPermissionRevenueChart = () => {
+  const instance = ensureChartInstance('permissionRevenue')
+  if (!instance) return
+
+  const data = topPermissionRevenue.value
+  const option: EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        const item = data[params[0].dataIndex]
+        if (!item) return ''
+        return `${item.permission_name}<br/>归因收入：${formatCurrency(item.revenue)}<br/>卡密数：${item.card_count}<br/>月价：${formatCurrency(item.monthly_price)}`
+      }
+    },
+    grid: {
+      left: '4%',
+      right: '6%',
+      bottom: '6%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: {
+        color: '#64748b',
+        formatter: (value: number) => formatCurrency(value)
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: data.map(item => item.permission_name),
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: { color: '#334155', fontWeight: 600 }
+    },
+    series: [
+      {
+        name: '权限收入',
+        type: 'bar',
+        barWidth: 16,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+            { offset: 0, color: '#0ea5e9' },
+            { offset: 1, color: '#14b8a6' }
+          ]),
+          borderRadius: [0, 8, 8, 0]
+        },
+        label: {
+          show: true,
+          position: 'right',
+          color: '#0f172a',
+          formatter: (params: any) => formatCurrency(params.value)
+        },
+        data: data.map(item => toDashboardAmount(item.revenue))
       }
     ]
   }
@@ -1258,23 +1178,27 @@ const renderAllCharts = async () => {
     trends: statistics.value.trends
   })
 
-  renderHealthGauge()
-  renderResourceCompareChart()
   renderStatusTrendChart()
   renderCardDonut()
   renderDailyCompareChart()
-  renderHealthBarChart()
   renderGrowthHeatmap()
-  renderGrowthLineChart()
-  renderRadarChart()
+  renderHealthBarChart()
+  renderRevenuePieChart()
+  renderPermissionRevenueChart()
 }
 
 const loadStatistics = async () => {
   loading.value = true
-  console.info('[综合仪表盘] 开始加载统计数据')
+  const revenueRange = revenueQueryRange.value
+  const trendRange = trendQueryRange.value
+  const query = {
+    ...revenueRange,
+    ...trendRange
+  }
+  console.info('[综合仪表盘] 开始加载统计数据', query)
 
   try {
-    const data = await getStatistics()
+    const data = await getStatistics(query)
     statistics.value = data
     lastUpdatedAt.value = new Date()
 
@@ -1283,6 +1207,9 @@ const loadStatistics = async () => {
       cards: data.cards,
       devices: data.devices,
       apps: data.apps,
+      revenue: data.revenue,
+      revenueRange: data.revenue_range,
+      trendRange: data.trend_range,
       trendLabels: data.trends.labels
     })
     ElMessage.success('综合数据看板已刷新')
@@ -1304,15 +1231,13 @@ const handleResize = () => {
 
 const disposeCharts = () => {
   const chartKeys: ChartKey[] = [
-    'healthGauge',
-    'resourceCompare',
     'statusTrend',
     'cardDonut',
     'dailyCompare',
-    'healthBar',
     'growthHeatmap',
-    'growthLine',
-    'radarChart'
+    'healthBar',
+    'revenuePie',
+    'permissionRevenue'
   ]
 
   chartKeys.forEach((chartKey) => {
@@ -1337,249 +1262,197 @@ onBeforeUnmount(() => {
 <style scoped>
 @reference "../../styles/index.css";
 
+@keyframes dash-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== 页面容器 ========== */
 .dashboard-container {
-  @apply min-h-full px-6 py-6 lg:px-8;
-  background:
-    radial-gradient(circle at top left, rgba(125, 211, 252, 0.18), transparent 24%),
-    radial-gradient(circle at top right, rgba(129, 140, 248, 0.1), transparent 22%),
-    linear-gradient(180deg, #f8fbfd 0%, #f4f8fb 52%, #f8fafc 100%);
+  @apply min-h-full px-6 py-8 lg:px-10;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
+/* ========== 页头 ========== */
 .dashboard-header {
-  @apply flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between mb-6;
-}
-
-.header-copy {
-  @apply max-w-3xl;
-}
-
-.header-badge {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs tracking-[0.18em] uppercase;
-  @apply bg-sky-100 text-sky-700 border border-sky-200;
+  @apply flex items-center justify-between mb-10;
+  animation: dash-fade-up 0.4s ease-out both;
 }
 
 .dashboard-title {
-  @apply mt-4 text-3xl lg:text-4xl font-semibold text-slate-900;
-}
-
-.dashboard-subtitle {
-  @apply mt-3 text-sm lg:text-base leading-7 text-slate-500;
+  @apply text-2xl font-bold text-slate-800;
 }
 
 .header-actions {
-  @apply flex flex-col sm:flex-row sm:flex-wrap gap-3 xl:items-center xl:justify-end;
+  @apply flex items-center gap-4;
 }
 
-.header-info-card {
-  @apply min-w-[168px] rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm;
-}
-
-.header-info-card span {
-  @apply block text-xs text-slate-400 mb-1;
-}
-
-.header-info-card strong {
-  @apply text-sm font-semibold text-slate-900;
+.header-updated {
+  @apply text-sm text-slate-400 tabular-nums;
 }
 
 .refresh-btn {
-  @apply rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 font-medium;
-  @apply shadow-sm hover:bg-sky-100 hover:text-sky-800;
+  @apply rounded-xl border border-slate-200 bg-white text-slate-600 font-medium;
+  @apply shadow-sm;
+  transition: all 0.2s ease;
 }
 
+.refresh-btn:hover {
+  @apply border-sky-300 text-sky-700 bg-sky-50;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.12);
+}
+
+/* ========== 总览卡片 ========== */
 .overview-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
-}
-
-.overview-card,
-.panel-card,
-.chart-card,
-.signal-card {
-  @apply rounded-[28px] border border-slate-200/80 bg-white/88 shadow-sm;
-  @apply backdrop-blur-sm;
+  @apply grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8;
 }
 
 .overview-card {
-  @apply p-5;
+  @apply rounded-2xl border border-slate-200/80 bg-white px-5 py-4;
+  @apply flex items-center gap-4;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: dash-fade-up 0.4s ease-out both;
+}
+
+.overview-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
 }
 
 .overview-card-top {
-  @apply flex items-center justify-between mb-5;
+  @apply flex items-center justify-between;
 }
 
 .overview-icon {
-  @apply flex items-center justify-center w-11 h-11 rounded-2xl;
+  @apply flex items-center justify-center w-10 h-10 rounded-xl shrink-0;
 }
 
-.icon-user {
-  @apply bg-sky-100 text-sky-700;
-}
-
-.icon-card {
-  @apply bg-amber-100 text-amber-700;
-}
-
-.icon-device {
-  @apply bg-teal-100 text-teal-700;
-}
-
-.icon-app {
-  @apply bg-violet-100 text-violet-700;
-}
+.icon-user { @apply bg-sky-50 text-sky-600; }
+.icon-card { @apply bg-amber-50 text-amber-600; }
+.icon-device { @apply bg-teal-50 text-teal-600; }
+.icon-app { @apply bg-violet-50 text-violet-600; }
 
 .overview-tag {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-slate-500 bg-slate-100;
+  @apply text-xs font-medium text-slate-400;
 }
 
 .overview-label {
-  @apply block text-sm text-slate-500;
+  @apply block text-xs text-slate-400;
 }
 
 .overview-value {
-  @apply block mt-2 text-3xl font-semibold text-slate-900;
+  @apply block text-2xl font-bold text-slate-900 tabular-nums mt-0.5;
 }
 
-.overview-meta {
-  @apply mt-4 flex items-center justify-between text-sm;
-}
-
-.overview-meta span {
-  @apply text-slate-400;
-}
-
-.overview-meta b {
-  @apply text-slate-700 font-semibold;
-}
-
-.overview-progress {
-  @apply mt-4 flex items-center gap-3;
-}
-
-.overview-progress-track {
-  @apply flex-1 h-2 rounded-full bg-slate-100 overflow-hidden;
-}
-
-.overview-progress-bar {
-  @apply h-full rounded-full;
-  background: linear-gradient(90deg, #38bdf8 0%, #22c55e 100%);
-}
-
-.overview-progress span {
-  @apply text-xs font-semibold text-slate-500;
-}
-
-.highlight-grid {
-  @apply grid grid-cols-1 xl:grid-cols-[1.1fr_1.2fr_0.82fr] gap-4 mb-4;
-}
-
-.panel-card,
-.chart-card {
-  @apply p-5 lg:p-6;
-}
-
-.panel-head {
-  @apply flex items-start justify-between gap-4 mb-5;
-}
-
-.panel-eyebrow {
-  @apply text-xs uppercase tracking-[0.2em] text-slate-400;
-}
-
+/* ========== 面板标题 ========== */
 .panel-title {
-  @apply mt-1 text-xl font-semibold text-slate-900;
+  @apply text-base font-semibold text-slate-800 mb-1;
 }
 
-.panel-icon {
-  @apply flex items-center justify-center w-11 h-11 rounded-2xl bg-slate-100 text-slate-600;
+.panel-card {
+  @apply rounded-2xl border border-slate-200/80 bg-white p-5;
+  animation: dash-fade-up 0.5s ease-out both;
 }
 
+/* ========== 收入面板 ========== */
+.revenue-panel {
+  @apply mb-8 rounded-2xl border border-emerald-200/60 bg-white p-6 shadow-sm;
+  animation: dash-fade-up 0.5s ease-out both;
+}
+
+.revenue-toolbar {
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5 border-b border-slate-100;
+}
+
+.revenue-range-text {
+  @apply text-sm text-slate-400;
+}
+
+.revenue-controls {
+  @apply flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center xl:justify-end;
+}
+
+.revenue-chart-grid {
+  @apply grid grid-cols-1 xl:grid-cols-3 gap-5;
+}
+
+/* ========== 高亮面板 ========== */
+.highlight-grid {
+  @apply grid grid-cols-1 xl:grid-cols-2 gap-5 mb-8;
+}
+
+/* ========== 摘要列表 ========== */
 .summary-list {
-  @apply grid grid-cols-2 gap-3;
+  @apply grid grid-cols-2 xl:grid-cols-3 gap-3 mt-4;
 }
 
 .summary-item {
-  @apply rounded-2xl bg-slate-50 px-4 py-4;
+  @apply rounded-xl bg-slate-50 px-4 py-3;
 }
 
 .summary-item span {
-  @apply block text-xs text-slate-400 mb-2;
+  @apply block text-xs text-slate-400 mb-1;
 }
 
 .summary-item strong {
-  @apply block text-2xl font-semibold text-slate-900;
+  @apply block text-xl font-bold text-slate-900 tabular-nums;
 }
 
 .summary-item em {
-  @apply mt-2 block text-xs leading-5 text-slate-500 not-italic;
+  @apply block text-xs text-slate-400 not-italic mt-1;
 }
 
+/* ========== 焦点列表 ========== */
 .focus-list {
-  @apply space-y-4;
+  @apply space-y-3 mt-4;
 }
 
 .focus-item {
-  @apply flex items-start gap-3;
+  @apply flex items-start gap-3 p-2;
 }
 
 .focus-dot {
-  @apply mt-2 w-2.5 h-2.5 rounded-full shrink-0;
+  @apply mt-1.5 w-2 h-2 rounded-full shrink-0;
 }
 
 .focus-body strong {
-  @apply block text-sm font-semibold text-slate-900;
+  @apply block text-sm font-semibold text-slate-800;
 }
 
 .focus-body p {
-  @apply mt-1 text-sm leading-6 text-slate-500;
+  @apply mt-0.5 text-[13px] leading-5 text-slate-500;
 }
 
-.signal-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
+/* ========== 趋势面板 ========== */
+.trend-panel {
+  @apply mb-8 rounded-2xl border border-sky-200/60 bg-white p-6 shadow-sm;
+  animation: dash-fade-up 0.5s ease-out 0.05s both;
 }
 
-.signal-card {
-  @apply p-4 lg:p-5;
+.trend-toolbar {
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5 border-b border-slate-100;
 }
 
-.signal-card-top {
-  @apply flex items-start justify-between gap-4;
+.trend-range-text {
+  @apply text-sm text-slate-400;
 }
 
-.signal-card-top span {
-  @apply text-sm text-slate-500;
+.trend-controls {
+  @apply flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center xl:justify-end;
 }
 
-.signal-card-top strong {
-  @apply text-2xl font-semibold text-slate-900;
+.trend-chart-grid {
+  @apply flex flex-col gap-5 mt-6;
 }
 
-.signal-card p {
-  @apply mt-3 text-sm leading-6 text-slate-500;
-}
-
-.level-success {
-  @apply bg-emerald-500;
-}
-
-.level-info {
-  @apply bg-sky-500;
-}
-
-.level-warning {
-  @apply bg-amber-500;
-}
-
-.level-danger {
-  @apply bg-rose-500;
-}
-
-.mini-chart-container {
-  width: 100%;
-  height: 220px;
-}
-
+/* ========== 图表区 ========== */
 .charts-grid {
-  @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
+  @apply grid grid-cols-1 md:grid-cols-3 gap-5 mb-8;
+}
+
+.chart-card {
+  @apply rounded-2xl border border-slate-200/80 bg-white p-5;
+  animation: dash-fade-up 0.5s ease-out both;
 }
 
 .chart-span-2 {
@@ -1599,67 +1472,38 @@ onBeforeUnmount(() => {
   height: 360px;
 }
 
-.summary-board {
-  @apply space-y-4;
-}
+/* ========== 状态色 ========== */
+.level-success { background: #10b981; color: #10b981; }
+.level-info { background: #0ea5e9; color: #0ea5e9; }
+.level-warning { background: #f59e0b; color: #f59e0b; }
+.level-danger { background: #f43f5e; color: #f43f5e; }
 
-.summary-board-item {
-  @apply rounded-2xl bg-slate-50 px-4 py-4;
-}
-
-.summary-board-top {
-  @apply flex items-center justify-between gap-4 mb-3;
-}
-
-.summary-board-top span {
-  @apply text-sm text-slate-500;
-}
-
-.summary-board-top strong {
-  @apply text-sm font-semibold text-slate-900;
-}
-
-.summary-board-track {
-  @apply h-2 rounded-full bg-slate-200 overflow-hidden;
-}
-
-.summary-board-bar {
-  @apply h-full rounded-full;
-  background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
-}
-
+/* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .dashboard-container {
-    @apply px-4 py-4;
+    @apply px-4 py-5;
   }
 
   .dashboard-title {
-    @apply text-3xl;
+    @apply text-xl;
   }
 
   .summary-list {
     @apply grid-cols-1;
   }
 
-  .header-actions {
-    @apply flex-col;
-  }
-
   .overview-card,
   .panel-card,
   .chart-card,
-  .signal-card {
-    @apply rounded-3xl;
-  }
-
-  .mini-chart-container {
-    height: 190px;
+  .revenue-panel,
+  .trend-panel {
+    @apply rounded-xl;
   }
 
   .chart-container,
   .chart-medium,
   .chart-large {
-    height: 300px;
+    height: 260px;
   }
 }
 </style>

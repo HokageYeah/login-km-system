@@ -59,6 +59,7 @@ export const getPermissionCategories = () => {
  * @param data.permission_key 权限标识（如：wechat, ximalaya），必须唯一
  * @param data.permission_name 权限名称（如：微信抓取、喜马拉雅播放）
  * @param data.description 权限描述（可选）
+ * @param data.price 权限售卖价格
  * @param data.category 权限分类（可选，如：数据抓取、媒体播放）
  * @param data.icon 图标（可选）
  * @param data.sort_order 排序，数字越小越靠前
@@ -69,6 +70,7 @@ export const createFeaturePermission = (data: {
   permission_name: string
   app_id: number
   description?: string
+  price?: number
   category?: string
   icon?: string
   sort_order?: number
@@ -94,6 +96,7 @@ export const updateFeaturePermission = (
     permission_name?: string
     app_id?: number
     description?: string
+    price?: number
     category?: string
     icon?: string
     sort_order?: number
@@ -182,6 +185,7 @@ export const updateCardFeaturePermissions = (cardId: number, permissionKeys: str
     success: boolean
     message: string
     permissions: string[]
+    price?: number | string
   }>(`/admin/feature-permissions/card/${cardId}/update-permissions`, {
     permission_keys: permissionKeys
   })

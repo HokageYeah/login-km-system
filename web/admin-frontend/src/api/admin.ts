@@ -10,6 +10,7 @@ import type { User, Card, Device, Statistics, UserActiveCardDetail } from '@/typ
  * @param data.expire_time 过期时间（ISO 8601格式）
  * @param data.max_device_count 最大可绑定设备数
  * @param data.permissions 权限列表
+ * @param data.price 卡密售卖价格
  * @param data.remark 备注信息（可选）
  * @returns Promise 返回生成的卡密列表
  */
@@ -19,6 +20,7 @@ export const generateCards = (data: {
   expire_time: string
   max_device_count: number
   permissions: string[]
+  price: number
   remark?: string
 }) => {
   return request.post<{
@@ -128,7 +130,11 @@ export const updateCardStatus = (cardId: number, status: string) => {
  * @returns Promise 更新结果
  */
 export const updateCardExpireTime = (cardId: number, expireTime: string) => {
-  return request.post(`/admin/card/${cardId}/expire-time`, { expire_time: expireTime })
+  return request.post<{
+    success: boolean
+    message: string
+    price?: number | string
+  }>(`/admin/card/${cardId}/expire-time`, { expire_time: expireTime })
 }
 
 /**
@@ -139,7 +145,11 @@ export const updateCardExpireTime = (cardId: number, expireTime: string) => {
  * @returns Promise 更新结果
  */
 export const updateCardMaxDeviceCount = (cardId: number, maxDeviceCount: number) => {
-  return request.post(`/admin/card/${cardId}/max-device-count`, {
+  return request.post<{
+    success: boolean
+    message: string
+    price?: number | string
+  }>(`/admin/card/${cardId}/max-device-count`, {
     max_device_count: maxDeviceCount
   })
 }
@@ -152,7 +162,11 @@ export const updateCardMaxDeviceCount = (cardId: number, maxDeviceCount: number)
  * @returns Promise 更新结果
  */
 export const updateCardPermissions = (cardId: number, permissions: string[]) => {
-  return request.post(`/admin/card/${cardId}/permissions`, { permissions })
+  return request.post<{
+    success: boolean
+    message: string
+    price?: number | string
+  }>(`/admin/card/${cardId}/permissions`, { permissions })
 }
 
 /**
@@ -199,8 +213,17 @@ export const updateDeviceStatus = (deviceId: number, status: string) => {
 /**
  * 获取统计数据
  * @description 获取系统各项数据的统计信息（需要管理员权限）
+ * @param params.start_date 收入统计开始日期（YYYY-MM-DD，可选）
+ * @param params.end_date 收入统计结束日期（YYYY-MM-DD，可选）
+ * @param params.trend_start_date 趋势统计开始日期（YYYY-MM-DD，可选）
+ * @param params.trend_end_date 趋势统计结束日期（YYYY-MM-DD，可选）
  * @returns Promise<Statistics> 返回统计数据
  */
-export const getStatistics = () => {
-  return request.get<Statistics>('/admin/statistics')
+export const getStatistics = (params?: {
+  start_date?: string
+  end_date?: string
+  trend_start_date?: string
+  trend_end_date?: string
+}) => {
+  return request.get<Statistics>('/admin/statistics', { params })
 }

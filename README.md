@@ -577,9 +577,18 @@ Content-Type: application/json
   "expire_time": "2027-01-01T00:00:00",
   "max_device_count": 2,
   "permissions": ["wechat", "ximalaya"],
+  "price": 19.90,
   "remark": "高级套餐"
 }
 ```
+
+说明：
+
+- `price` 是本次生成后写入 `cards.price` 的最终售卖价格；
+- 管理后台默认建议价按“权限月价按有效天数折算 + 超出 3 台后的设备固定加价”自动计算；
+- 超出 3 台后，每增加 1 台设备固定加价 `¥0.50`，不参与按天均摊；
+- 最终价格最低为 `¥0.50`；
+- 管理员可以在生成前手动调整价格，但后续如果修改卡密权限、过期时间或最大设备数，服务端会重新按统一规则计算并回写价格。
 
 #### 查询用户列表
 ```http
@@ -627,11 +636,15 @@ GET /api/v1/admin/devices?card_key=AP4H-JJFQ-8UCB-BRD4&username=testuser&page=1&
 Authorization: Bearer <admin_token>
 ```
 
+说明：设备列表返回的每条记录都会附带当前绑定卡密的 `price`，便于后台直接查看设备对应的卡密售价。
+
 #### 获取统计数据
 ```http
-GET /api/v1/admin/statistics
+GET /api/v1/admin/statistics?start_date=2026-04-28&end_date=2026-04-28&trend_start_date=2026-04-21&trend_end_date=2026-04-28
 Authorization: Bearer <admin_token>
 ```
+
+说明：统计响应除了用户、卡密、设备、应用和最近趋势外，还会返回 `revenue`、`revenue_range`、`trend_range`、`sales_trend`、`permission_revenue`，用于管理后台展示总收入、每日销售额/订单数、权限收入归因和资源趋势。`start_date`、`end_date` 用于筛选收入区间，不传时默认统计当天；`trend_start_date`、`trend_end_date` 用于筛选综合看板趋势区，不传时默认统计当天，前端在“指定月份”模式下会自动换算为该月第一天到最后一天。
 
 ### 功能权限管理接口（需要管理员权限）
 
@@ -656,6 +669,7 @@ Content-Type: application/json
   "permission_name": "微信抓取",
   "app_id": 1,
   "description": "微信相关抓取能力",
+  "price": 19.90,
   "icon": "ChatDotRound",
   "sort_order": 1
 }
@@ -685,7 +699,7 @@ Content-Type: multipart/form-data
 
 导入规则：
 
-1. 按 `permission_key` 幂等更新
+1. 按 `permission_key` 幂等更新名称、描述、价格、图标、排序和状态
 2. 应用不存在时自动创建
 3. 不会删除目标库已有的额外权限
 

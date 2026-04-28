@@ -50,6 +50,7 @@ def _build_feature_permission_info(permission) -> FeaturePermissionInfo:
         app_key=permission.app.app_key if permission.app else None,
         app_name=permission.app.app_name if permission.app else None,
         description=permission.description,
+        price=permission.price,
         category=permission.category,
         icon=permission.icon,
         sort_order=permission.sort_order,
@@ -324,6 +325,7 @@ async def create_feature_permission(
         permission_name=request.permission_name,
         app_id=request.app_id,
         description=request.description,
+        price=request.price,
         category=request.category,
         icon=request.icon,
         sort_order=request.sort_order
@@ -376,6 +378,7 @@ async def update_feature_permission(
         permission_name=request.permission_name,
         app_id=request.app_id,
         description=request.description,
+        price=request.price,
         category=request.category,
         icon=request.icon,
         sort_order=request.sort_order,
@@ -579,9 +582,12 @@ async def update_card_feature_permissions(
         f"管理员 {current_admin['username']} 更新卡密功能权限成功: "
         f"卡密ID {card_id}, 权限数 {len(request.permission_keys)}"
     )
+
+    card = db.query(Card).filter(Card.id == card_id).first()
     
     return UpdateCardFeaturePermissionsResponse(
         success=True,
         message="卡密功能权限更新成功",
-        permissions=request.permission_keys
+        permissions=request.permission_keys,
+        price=card.price if card else None
     ).model_dump(mode='json', exclude_none=True)

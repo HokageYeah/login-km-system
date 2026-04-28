@@ -91,6 +91,12 @@
             </div>
           </template>
         </el-table-column>
+
+        <el-table-column prop="price" label="卡密价格" width="120" align="right">
+          <template #default="{ row }">
+            <span class="price-cell">{{ formatPrice(row.price) }}</span>
+          </template>
+        </el-table-column>
         
         <el-table-column label="关联用户" min-width="220">
           <template #default="{ row }">
@@ -233,6 +239,12 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const formatPrice = (price: number | string | null | undefined) => {
+  const parsedPrice = Number(price ?? 0)
+  if (Number.isNaN(parsedPrice)) return '¥0.00'
+  return `¥${parsedPrice.toFixed(2)}`
 }
 
 /**
@@ -484,6 +496,10 @@ onMounted(() => {
 
 .card-key-text {
   @apply font-mono text-sm font-medium text-gray-900;
+}
+
+.price-cell {
+  @apply font-semibold text-gray-900 tabular-nums;
 }
 
 .copy-btn {

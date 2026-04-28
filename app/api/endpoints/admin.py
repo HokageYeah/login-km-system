@@ -3,10 +3,12 @@
 提供管理后台的各种接口
 """
 from typing import Optional
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from loguru import logger
 
+from app.models.card import Card
 from app.utils.dependencies import get_current_admin, get_db
 from app.services.admin_service import AdminService
 from app.schemas.admin import (
@@ -54,6 +56,7 @@ async def generate_cards(
         expire_time=request.expire_time,
         max_device_count=request.max_device_count,
         permissions=request.permissions,
+        price=request.price,
         remark=request.remark
     )
     
@@ -255,9 +258,12 @@ async def update_card_expire_time(
     if error:
         raise HTTPException(status_code=400, detail=error)
 
+    card = db.query(Card).filter(Card.id == card_id).first()
+
     return UpdateCardResponse(
         success=True,
-        message="卡密过期时间更新成功"
+        message="卡密过期时间更新成功",
+        price=card.price if card else None
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -299,9 +305,12 @@ async def update_card_max_device_count(
         f"card_id={card_id}, new_max_device_count={request.max_device_count}"
     )
 
+    card = db.query(Card).filter(Card.id == card_id).first()
+
     return UpdateCardResponse(
         success=True,
-        message="卡密最大设备数更新成功"
+        message="卡密最大设备数更新成功",
+        price=card.price if card else None
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -323,10 +332,13 @@ async def update_card_permissions(
     
     if error:
         raise HTTPException(status_code=400, detail=error)
+
+    card = db.query(Card).filter(Card.id == card_id).first()
     
     return UpdateCardResponse(
         success=True,
-        message="卡密权限更新成功"
+        message="卡密权限更新成功",
+        price=card.price if card else None
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -400,6 +412,10 @@ async def update_device_status(
 
 @router.get("/statistics", response_model=ApiResponseData)
 async def get_statistics(
+    start_date: Optional[date] = Query(None, description="收入统计开始日期，格式 YYYY-MM-DD"),
+    end_date: Optional[date] = Query(None, description="收入统计结束日期，格式 YYYY-MM-DD"),
+    trend_start_date: Optional[date] = Query(None, description="趋势统计开始日期，格式 YYYY-MM-DD"),
+    trend_end_date: Optional[date] = Query(None, description="趋势统计结束日期，格式 YYYY-MM-DD"),
     admin: dict = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
@@ -410,10 +426,17 @@ async def get_statistics(
     """
     admin_service = AdminService(db)
     logger.info(
-        f"[管理员接口] 开始获取统计数据：admin_id={admin.get('user_id')}，username={admin.get('username')}"
+        f"[管理员接口] 开始获取统计数据：admin_id={admin.get('user_id')}，"
+        f"username={admin.get('username')}，start_date={start_date}，end_date={end_date}，"
+        f"trend_start_date={trend_start_date}，trend_end_date={trend_end_date}"
     )
     
-    statistics, error = admin_service.get_statistics()
+    statistics, error = admin_service.get_statistics(
+        start_date=start_date,
+        end_date=end_date,
+        trend_start_date=trend_start_date,
+        trend_end_date=trend_end_date
+    )
     
     if error:
         logger.error(f"[管理员接口] 获取统计数据失败：{error}")

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
+from decimal import Decimal
 
 
 class FeaturePermissionAppInfo(BaseModel):
@@ -16,6 +17,7 @@ class FeaturePermissionCreateRequest(BaseModel):
     permission_name: str = Field(..., min_length=1, max_length=100, description="权限名称（如：微信抓取、喜马拉雅播放）")
     app_id: int = Field(..., ge=1, description="所属应用ID")
     description: Optional[str] = Field(None, max_length=500, description="权限描述")
+    price: Decimal = Field(Decimal("0.00"), ge=0, max_digits=10, decimal_places=2, description="权限售卖价格")
     category: Optional[str] = Field(None, max_length=50, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, max_length=100, description="图标")
     sort_order: int = Field(0, description="排序，数字越小越靠前")
@@ -36,6 +38,7 @@ class FeaturePermissionUpdateRequest(BaseModel):
     permission_name: Optional[str] = Field(None, min_length=1, max_length=100, description="权限名称")
     app_id: Optional[int] = Field(None, ge=1, description="所属应用ID")
     description: Optional[str] = Field(None, max_length=500, description="权限描述")
+    price: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2, description="权限售卖价格")
     category: Optional[str] = Field(None, max_length=50, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, max_length=100, description="图标")
     sort_order: Optional[int] = Field(None, description="排序")
@@ -60,6 +63,7 @@ class FeaturePermissionInfo(BaseModel):
     app_key: Optional[str] = Field(None, description="所属应用唯一标识")
     app_name: Optional[str] = Field(None, description="所属应用名称")
     description: Optional[str] = Field(None, description="权限描述")
+    price: Decimal = Field(Decimal("0.00"), description="权限售卖价格")
     category: Optional[str] = Field(None, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, description="图标")
     sort_order: int = Field(..., description="排序")
@@ -104,6 +108,7 @@ class UpdateCardFeaturePermissionsResponse(BaseModel):
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="提示信息")
     permissions: List[str] = Field(..., description="更新后的权限标识列表")
+    price: Optional[Decimal] = Field(None, description="按当前配置重新计算后的卡密价格")
 
 
 class GetCardFeaturePermissionsResponse(BaseModel):
@@ -140,6 +145,7 @@ class FeaturePermissionSnapshotItem(BaseModel):
     permission_name: str = Field(..., min_length=1, max_length=100, description="权限名称")
     app: Optional[FeaturePermissionAppInfo] = Field(None, description="所属应用信息")
     description: Optional[str] = Field(None, max_length=500, description="权限描述")
+    price: Decimal = Field(Decimal("0.00"), ge=0, max_digits=10, decimal_places=2, description="权限售卖价格")
     category: Optional[str] = Field(None, max_length=50, description="历史兼容分类字段")
     icon: Optional[str] = Field(None, max_length=100, description="图标")
     sort_order: int = Field(0, description="排序")

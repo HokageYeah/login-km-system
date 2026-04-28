@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Union, Dict
 from datetime import datetime
+from decimal import Decimal
 
 
 class CardGenerateRequest(BaseModel):
@@ -10,6 +11,7 @@ class CardGenerateRequest(BaseModel):
     expire_time: datetime = Field(..., description="过期时间")
     max_device_count: int = Field(1, ge=1, le=100, description="最大设备数，1-100")
     permissions: Union[List[str], Dict] = Field(..., description="权限配置")
+    price: Decimal = Field(Decimal("0.50"), ge=Decimal("0.50"), max_digits=10, decimal_places=2, description="卡密售卖价格")
     remark: Optional[str] = Field(None, max_length=255, description="备注（套餐名称等）")
 
     @field_validator('expire_time')
@@ -48,6 +50,7 @@ class AdminCardInfo(BaseModel):
     expire_time: Optional[datetime] = Field(None, description="过期时间")
     max_device_count: int = Field(..., description="最大设备数")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
+    price: Decimal = Field(Decimal("0.00"), description="卡密售卖价格")
     remark: Optional[str] = Field(None, description="备注")
     bind_user_count: int = Field(..., description="绑定用户数")
     related_usernames: List[str] = Field(default_factory=list, description="关联用户名列表")
@@ -87,6 +90,7 @@ class UpdateCardResponse(BaseModel):
     """更新卡密响应"""
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="提示信息")
+    price: Optional[Decimal] = Field(None, description="按当前配置重新计算后的卡密价格")
 
 
 class AdminDeviceListRequest(BaseModel):
@@ -104,6 +108,7 @@ class AdminDeviceInfo(BaseModel):
     id: int = Field(..., description="设备绑定ID")
     card_id: int = Field(..., description="卡密ID")
     card_key: str = Field(..., description="卡密字符串")
+    price: Decimal = Field(Decimal("0.00"), description="关联卡密售卖价格")
     device_id: str = Field(..., description="设备ID")
     device_name: Optional[str] = Field(None, description="设备名称")
     related_user_ids: List[int] = Field(default_factory=list, description="关联用户ID列表")
@@ -156,6 +161,7 @@ class AdminUserActiveCardInfo(BaseModel):
     max_device_count: int = Field(..., description="最大设备数")
     bind_device_count: int = Field(..., description="绑定设备数")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
+    price: Decimal = Field(Decimal("0.00"), description="卡密售卖价格")
     remark: Optional[str] = Field(None, description="备注")
     bind_time: Optional[datetime] = Field(None, description="用户绑定时间")
 
@@ -204,6 +210,25 @@ class AppStatisticsResponse(BaseModel):
     active: int = Field(..., description="正常应用数")
 
 
+class RevenueStatisticsResponse(BaseModel):
+    """收入统计数据响应"""
+    total: Decimal = Field(Decimal("0.00"), description="使用中与未使用卡密的总收入")
+    used: Decimal = Field(Decimal("0.00"), description="使用中卡密收入")
+    unused: Decimal = Field(Decimal("0.00"), description="未使用卡密收入")
+
+
+class RevenueRangeResponse(BaseModel):
+    """收入统计日期范围响应"""
+    start_date: str = Field(..., description="收入统计开始日期")
+    end_date: str = Field(..., description="收入统计结束日期")
+
+
+class TrendRangeResponse(BaseModel):
+    """趋势统计日期范围响应"""
+    start_date: str = Field(..., description="趋势统计开始日期")
+    end_date: str = Field(..., description="趋势统计结束日期")
+
+
 class StatisticsTrendSeriesResponse(BaseModel):
     """统计趋势序列响应"""
     users: List[int] = Field(..., description="用户趋势序列")
@@ -219,10 +244,33 @@ class StatisticsTrendsResponse(BaseModel):
     cumulative: StatisticsTrendSeriesResponse = Field(..., description="累计规模趋势")
 
 
+class SalesTrendResponse(BaseModel):
+    """销售趋势响应"""
+    labels: List[str] = Field(..., description="趋势日期标签")
+    daily_orders: List[int] = Field(..., description="每日卡密订单数")
+    daily_revenue: List[Decimal] = Field(..., description="每日卡密销售额")
+    average_order_value: List[Decimal] = Field(..., description="每日平均卡密单价")
+
+
+class PermissionRevenueResponse(BaseModel):
+    """权限收入归因响应"""
+    permission_key: str = Field(..., description="权限唯一标识")
+    permission_name: str = Field(..., description="权限显示名称")
+    app_name: str = Field(..., description="所属应用名称")
+    monthly_price: Decimal = Field(Decimal("0.00"), description="权限月价")
+    card_count: int = Field(0, description="包含该权限的卡密数")
+    revenue: Decimal = Field(Decimal("0.00"), description="按卡密最终价格归因的收入")
+
+
 class StatisticsResponse(BaseModel):
     """统计数据响应"""
     users: UserStatisticsResponse = Field(..., description="用户统计")
     cards: CardStatisticsResponse = Field(..., description="卡密统计")
     devices: DeviceStatisticsResponse = Field(..., description="设备统计")
     apps: AppStatisticsResponse = Field(..., description="应用统计")
+    revenue: RevenueStatisticsResponse = Field(..., description="收入统计")
+    revenue_range: RevenueRangeResponse = Field(..., description="收入统计日期范围")
+    trend_range: TrendRangeResponse = Field(..., description="趋势统计日期范围")
     trends: StatisticsTrendsResponse = Field(..., description="统计趋势数据")
+    sales_trend: SalesTrendResponse = Field(..., description="销售趋势数据")
+    permission_revenue: List[PermissionRevenueResponse] = Field(default_factory=list, description="权限收入归因")

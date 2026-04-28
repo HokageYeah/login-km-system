@@ -1,36 +1,51 @@
-```html
 <template>
   <el-dialog
     v-model="dialogVisible"
-    title="修改卡密权限"
-    width="600px"
+    width="620px"
     :close-on-click-modal="false"
+    :show-close="false"
+    class="permission-dialog-root"
     @close="handleClose"
   >
-    <div v-if="card" class="permission-dialog">
-      <!-- 卡密信息 -->
-      <div class="card-info">
-        <div class="info-item">
-          <span class="info-label">卡密：</span>
-          <span class="info-value">{{ card.card_key }}</span>
+    <!-- 自定义头部 -->
+    <template #header>
+      <div class="dialog-hero">
+        <div class="dialog-hero-bg" />
+        <div class="dialog-hero-content">
+          <p class="dialog-eyebrow">Permission Config</p>
+          <h2 class="dialog-title">修改卡密权限</h2>
+          <p class="dialog-desc" v-if="card">
+            {{ card.card_key }}
+            <el-tag :type="getStatusType(card.status)" size="small" effect="dark" class="ml-2" round>
+              {{ getStatusText(card.status) }}
+            </el-tag>
+          </p>
         </div>
-        <div class="info-item">
-          <span class="info-label">状态：</span>
-          <el-tag :type="getStatusType(card.status)" size="small">
-            {{ getStatusText(card.status) }}
-          </el-tag>
-        </div>
+        <el-button
+          :icon="Close"
+          circle
+          class="dialog-close-btn"
+          @click="handleClose"
+        />
       </div>
+    </template>
 
+    <div v-if="card" class="permission-dialog-body">
       <!-- 权限选择 -->
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
-        label-width="100px"
+        label-position="top"
         class="permission-form"
       >
-        <el-form-item label="权限配置" prop="permissions">
+        <el-form-item prop="permissions">
+          <template #label>
+            <div class="form-label-bar">
+              <span class="form-label-text">权限配置</span>
+              <span class="form-label-count">已选 {{ form.permissions.length }} 项</span>
+            </div>
+          </template>
           <div v-loading="loadingPermissions" class="permission-container">
             <el-checkbox-group v-model="form.permissions" class="permission-group">
               <template v-if="availablePermissions.length > 0">
@@ -50,27 +65,39 @@
                   >
                     <div class="checkbox-content">
                       <div class="checkbox-header">
-                        <el-icon v-if="permission.icon" class="checkbox-icon">
-                          <component :is="getIconComponent(permission.icon)" />
-                        </el-icon>
-                        <span class="checkbox-label">{{ permission.permission_key }}</span>
-                        <span class="checkbox-label">{{ `(${permission.permission_name})` }}</span>
-                        <el-tag v-if="permission.category" size="small" type="info" class="category-tag">
+                        <span class="checkbox-key">{{ permission.permission_key }}</span>
+                        <span class="checkbox-name">{{ permission.permission_name }}</span>
+                        <span class="checkbox-price" v-if="permission.price">{{ formatPrice(permission.price) }}/月</span>
+                        <el-tag v-if="permission.category" size="small" type="info" class="category-tag" round>
                           {{ permission.category }}
                         </el-tag>
                       </div>
-                      <!-- <span class="checkbox-desc">{{ permission.description || '暂无描述' }}</span> -->
                     </div>
                   </el-checkbox>
                 </div>
               </template>
-              <el-empty v-else description="暂无可用权限" />
+              <el-empty v-else description="暂无可用权限" :image-size="80" />
             </el-checkbox-group>
           </div>
         </el-form-item>
       </el-form>
 
-      <!-- 提示信息 -->
+      <!-- 定价面板 -->
+      <div class="pricing-panel">
+        <div class="pricing-row">
+          <span>预计价格</span>
+          <strong>{{ formatPrice(pricingBreakdown.finalPrice) }}</strong>
+        </div>
+        <p>
+          权限月价 {{ formatPrice(pricingBreakdown.monthlyPermissionPrice) }}
+          ，有效 {{ pricingBreakdown.durationDays }} 天；
+          折算 {{ formatPrice(pricingBreakdown.proratedPermissionPrice) }}
+          + 设备加价 {{ formatPrice(pricingBreakdown.extraDevicePrice) }}
+          = {{ formatPrice(pricingBreakdown.finalPrice) }}。
+        </p>
+      </div>
+
+      <!-- 提示 -->
       <el-alert
         title="权限修改将立即生效"
         type="warning"
@@ -79,18 +106,19 @@
         class="mt-4"
       >
         <template #default>
-          修改权限后，使用该卡密的用户将立即获得或失去相应权限
+          修改权限后，使用该卡密的用户将立即获得或失去相应权限，卡密价格也会按当前设备数和有效时间重新计算
         </template>
       </el-alert>
     </div>
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="handleClose">取消</el-button>
+        <el-button @click="handleClose" class="footer-btn-cancel">取消</el-button>
         <el-button
           type="primary"
           :loading="loading"
           @click="handleSubmit"
+          class="footer-btn-primary"
         >
           确定修改
         </el-button>
@@ -106,7 +134,12 @@
  */
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { Close } from '@element-plus/icons-vue'
 import { getCardFeaturePermissions, updateCardFeaturePermissions } from '@/api/feature-permission'
+import {
+  calculateCardPricingBreakdown,
+  formatPrice
+} from '@/utils/card-pricing'
 import type { Card, FeaturePermission } from '@/types'
 
 /**
@@ -125,7 +158,7 @@ const props = defineProps<Props>()
  */
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'success': []
+  success: [card?: Card]
 }>()
 
 /**
@@ -139,10 +172,10 @@ const dialogVisible = computed({
 /**
  * 状态定义
  */
-const loading = ref(false)                              // 提交加载状态
-const loadingPermissions = ref(false)                    // 加载权限列表状态
-const formRef = ref<FormInstance>()                     // 表单引用
-const availablePermissions = ref<FeaturePermission[]>([])  // 可用权限列表
+const loading = ref(false)
+const loadingPermissions = ref(false)
+const formRef = ref<FormInstance>()
+const availablePermissions = ref<FeaturePermission[]>([])
 
 /**
  * 表单数据
@@ -160,10 +193,15 @@ const rules: FormRules = {
   ]
 }
 
+const pricingBreakdown = computed(() => calculateCardPricingBreakdown({
+  permissions: form.permissions,
+  availablePermissions: availablePermissions.value,
+  expireTime: props.card?.expire_time || '',
+  maxDeviceCount: props.card?.max_device_count || 1
+}))
+
 /**
  * 获取状态标签类型
- * @param status 卡密状态
- * @returns Element Plus Tag 类型
  */
 const getStatusType = (status: string) => {
   const typeMap: Record<string, any> = {
@@ -176,8 +214,6 @@ const getStatusType = (status: string) => {
 
 /**
  * 获取状态文本
- * @param status 卡密状态
- * @returns 状态中文文本
  */
 const getStatusText = (status: string) => {
   const textMap: Record<string, string> = {
@@ -189,36 +225,6 @@ const getStatusText = (status: string) => {
 }
 
 /**
- * 获取图标组件
- * @param iconName 图标名称
- * @returns 图标组件
- */
-const getIconComponent = (iconName: string) => {
-  // 这里可以根据实际的图标名称返回对应的组件
-  // 暂时返回 null，如果需要可以添加实际的图标映射
-  return null
-}
-
-/**
- * 处理卡片点击
- * @param permissionKey 权限标识
- * @param status 权限状态
- */
-const handleCardClick = (permissionKey: string, status: string) => {
-  // 如果权限被禁用，不允许切换
-  if (status === 'disabled') return
-
-  const index = form.permissions.indexOf(permissionKey)
-  if (index > -1) {
-    // 已选中，取消选中
-    form.permissions.splice(index, 1)
-  } else {
-    // 未选中，添加选中
-    form.permissions.push(permissionKey)
-  }
-}
-
-/**
  * 加载卡密权限数据
  */
 const loadCardPermissions = async () => {
@@ -227,17 +233,14 @@ const loadCardPermissions = async () => {
   loadingPermissions.value = true
   try {
     const response = await getCardFeaturePermissions(props.card.id)
-    // 设置可用权限列表
     availablePermissions.value = response.available_permissions || []
-    
-    // 优先使用 props 传入的权限，其次使用 API 返回的权限
+
     if (props.permissions && props.permissions.length > 0) {
       form.permissions = [...props.permissions]
     } else {
       form.permissions = response.permission_keys || []
     }
   } catch (error: any) {
-    console.error('加载卡密权限失败:', error)
     if (error.response?.data?.detail) {
       ElMessage.error(error.response.data.detail)
     } else {
@@ -255,19 +258,20 @@ const handleSubmit = async () => {
   if (!formRef.value || !props.card) return
 
   try {
-    // 验证表单
     await formRef.value.validate()
-
     loading.value = true
 
-    // 调用更新权限 API
-    await updateCardFeaturePermissions(props.card.id, form.permissions)
+    const result = await updateCardFeaturePermissions(props.card.id, form.permissions)
+    const updatedCard: Card = {
+      ...props.card,
+      permissions: [...form.permissions],
+      price: result.price ?? props.card.price
+    }
 
-    ElMessage.success('权限修改成功')
-    emit('success')
+    ElMessage.success('权限修改成功，卡密价格已重新计算')
+    emit('success', updatedCard)
     handleClose()
   } catch (error: any) {
-    console.error('修改权限失败:', error)
     if (error.response?.data?.detail) {
       ElMessage.error(error.response.data.detail)
     } else {
@@ -278,24 +282,14 @@ const handleSubmit = async () => {
   }
 }
 
-/**
- * 处理关闭弹窗
- */
 const handleClose = () => {
   dialogVisible.value = false
 }
 
-/**
- * 监听弹窗打开，加载权限列表
- * NOTE: 只在弹窗打开时加载，避免重复调用接口
- */
 watch(dialogVisible, (newVal) => {
   if (newVal && props.card) {
-    // 弹窗打开时加载权限
     loadCardPermissions()
   }
-
-  // 监听弹窗关闭，重置表单
   if (!newVal && formRef.value) {
     setTimeout(() => {
       formRef.value?.resetFields()
@@ -306,190 +300,136 @@ watch(dialogVisible, (newVal) => {
 </script>
 
 <style scoped>
-.permission-dialog {
-  padding: 16px 0;
-}
+@reference "../../../styles/index.css";
 
-/* 卡密信息 */
-.card-info {
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
-  display: flex;
-  gap: 24px;
+/* 弹窗覆写 */
+:deep(.permission-dialog-root .el-dialog) {
+  @apply rounded-3xl overflow-hidden border-0;
+  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(148, 163, 184, 0.1);
 }
+:deep(.permission-dialog-root .el-dialog__header) { @apply p-0 m-0; }
+:deep(.permission-dialog-root .el-dialog__body) { @apply px-6 py-5; }
+:deep(.permission-dialog-root .el-dialog__footer) { @apply px-6 pb-5 pt-0; }
 
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* 头部 Hero */
+.dialog-hero {
+  @apply relative px-6 pt-6 pb-5 overflow-hidden;
+  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
 }
+.dialog-hero-bg {
+  @apply absolute rounded-full;
+  width: 200px; height: 200px; right: -60px; top: -80px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.dialog-hero-content { @apply relative z-10 pr-10; }
+.dialog-eyebrow { @apply text-xs font-semibold tracking-[0.18em] uppercase text-blue-100 mb-1.5; }
+.dialog-title { @apply text-xl font-bold text-white mb-1; }
+.dialog-desc { @apply text-sm text-blue-100 font-mono; }
+.dialog-close-btn {
+  @apply absolute top-4 right-4 z-20 border-white/30 text-white bg-white/10;
+}
+.dialog-close-btn:hover { @apply bg-white/20 text-white border-white/50; }
 
-.info-label {
-  font-size: 14px;
-  color: #666;
-}
+/* 表单 */
+.permission-dialog-body { @apply pt-1; }
+.permission-form { @apply mb-0; }
 
-.info-value {
-  font-size: 14px;
-  font-family: monospace;
-  font-weight: 500;
-  color: #333;
-}
-
-/* 权限表单 */
-.permission-form {
-  margin-bottom: 0;
-}
+.form-label-bar { @apply flex items-center gap-3; }
+.form-label-text { @apply text-sm font-semibold text-slate-900; }
+.form-label-count { @apply text-xs text-slate-400 font-medium; }
 
 .permission-container {
-  width: 100%;
-  min-height: 100px;
+  @apply w-full min-h-[100px];
 }
 
 .permission-group {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 400px;
+  @apply w-full flex flex-col gap-2;
+  max-height: 360px;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 4px;
 }
 
-/* 简洁权限卡片样式 */
+/* 权限卡片 */
 .permission-card {
-  width: 100%;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  @apply w-full rounded-xl border border-slate-200/80 bg-white/60;
+  @apply backdrop-blur-sm;
+  transition: all 0.15s ease;
   cursor: pointer;
 }
 
 .permission-card:hover {
-  border-color: #409eff;
-  background-color: #f0f7ff;
+  @apply border-violet-300 bg-violet-50/60;
 }
 
-/* 选中状态 */
 .permission-card-checked {
-  border-color: #409eff;
-  background-color: #ecf5ff;
+  @apply border-violet-400 bg-violet-50/80;
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.15);
 }
 
-/* 禁用状态 */
+.permission-card-checked .checkbox-key,
+.permission-card-checked .checkbox-name {
+  @apply text-violet-700;
+}
+
 .permission-card-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background-color: #fafafa;
+  @apply opacity-50 cursor-not-allowed bg-slate-50/60;
 }
-
 .permission-card-disabled:hover {
-  border-color: #e0e0e0;
-  background-color: #fafafa;
+  @apply border-slate-200/80 bg-slate-50/60;
 }
 
-/* 复选框样式 */
 .permission-checkbox {
-  width: 100%;
-  padding: 12px 16px;
-  margin: 0;
+  @apply w-full py-3 px-4 m-0;
 }
-
-:deep(.el-checkbox__label) {
-  width: 100%;
+:deep(.el-checkbox__label) { @apply w-full; }
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background-color: #8B5CF6;
+  border-color: #8B5CF6;
+}
+:deep(.el-checkbox__input:hover .el-checkbox__inner) {
+  border-color: #8B5CF6;
+}
+:deep(.el-checkbox__inner) {
+  @apply w-4 h-4 rounded;
 }
 
 /* 复选框内容 */
-.checkbox-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.checkbox-content { @apply flex flex-col; }
+.checkbox-header { @apply flex items-center gap-2 flex-wrap; }
+.checkbox-key { @apply text-sm font-semibold text-slate-800; }
+.checkbox-name { @apply text-sm text-slate-500; }
+.checkbox-price { @apply text-xs font-semibold text-emerald-600 tabular-nums ml-auto; }
+.category-tag { @apply text-xs; }
+
+/* 定价面板 */
+.pricing-panel {
+  @apply mt-3 rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50/80 to-blue-50/80 p-4;
+}
+.pricing-row {
+  @apply flex items-center justify-between mb-2;
+}
+.pricing-row span { @apply text-sm text-slate-500; }
+.pricing-row strong { @apply text-lg font-bold text-violet-700 tabular-nums; }
+.pricing-panel p { @apply text-xs leading-5 text-slate-600; }
+
+/* 滚动条 */
+.permission-group::-webkit-scrollbar { @apply w-1.5; }
+.permission-group::-webkit-scrollbar-track { @apply bg-transparent; }
+.permission-group::-webkit-scrollbar-thumb { @apply bg-slate-200 rounded-full; }
+.permission-group::-webkit-scrollbar-thumb:hover { @apply bg-slate-300; }
+
+/* 底部按钮 */
+.dialog-footer { @apply flex justify-end gap-3; }
+.footer-btn-cancel { @apply rounded-xl; }
+.footer-btn-primary {
+  @apply rounded-xl border-0 text-white font-medium;
+  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+.footer-btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
 }
 
-.checkbox-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.checkbox-icon {
-  color: #409eff;
-  font-size: 18px;
-}
-
-.checkbox-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.permission-card-checked .checkbox-label {
-  color: #409eff;
-}
-
-.category-tag {
-  font-size: 12px;
-}
-
-.checkbox-desc {
-  font-size: 13px;
-  color: #999;
-  line-height: 1.5;
-  margin-top: 4px;
-}
-
-/* 滚动条样式 */
-.permission-group::-webkit-scrollbar {
-  width: 6px;
-}
-
-.permission-group::-webkit-scrollbar-track {
-  background-color: #f0f0f0;
-  border-radius: 3px;
-}
-
-.permission-group::-webkit-scrollbar-thumb {
-  background-color: #d0d0d0;
-  border-radius: 3px;
-}
-
-.permission-group::-webkit-scrollbar-thumb:hover {
-  background-color: #b0b0b0;
-}
-
-/* 对话框底部按钮 */
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-/* 优化复选框原始样式 */
-:deep(.el-checkbox__input) {
-  transition: all 0.2s;
-}
-
-:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
-  background-color: #409eff;
-  border-color: #409eff;
-}
-
-:deep(.el-checkbox__inner) {
-  width: 16px;
-  height: 16px;
-}
-
-:deep(.el-checkbox__input:hover .el-checkbox__inner) {
-  border-color: #409eff;
-}
-
-/* Empty 状态 */
-:deep(.el-empty) {
-  padding: 32px 0;
-}
+:deep(.el-empty) { @apply py-8; }
 </style>
-```

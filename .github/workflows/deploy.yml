@@ -51,6 +51,9 @@ jobs:
             echo "开始更新容器..."
             docker compose --env-file .env.docker up -d
 
+            echo "执行数据库迁移..."
+            docker compose --env-file .env.docker exec -T backend alembic upgrade head
+
             echo "清理无用镜像..."
             docker image prune -f
 
