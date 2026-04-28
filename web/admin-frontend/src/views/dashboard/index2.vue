@@ -10,43 +10,47 @@
         刷新水墨看板
       </el-button>
 
-      <div class="ink-hero-copy">
-        <span class="ink-badge">Ink Style Analytics</span>
-        <h1 class="ink-title">墨韵增长分析仪表盘</h1>
-        <p class="ink-subtitle">
-          这张看板不再强调“总量”，而是更集中地分析用户增长、异常用户、卡密使用和封禁数量，
-          帮你判断系统是否形成了真正的增长与使用闭环。
-        </p>
-      </div>
-
-      <div class="ink-hero-body">
-        <div class="ink-hero-actions">
-          <div class="ink-status-card">
-            <span>最近刷新</span>
-            <strong>{{ lastUpdatedText }}</strong>
+      <!-- 总收入核心区 -->
+      <div class="ink-revenue-center">
+        <div class="ink-revenue-stamp">
+          <span class="ink-revenue-stamp-text">收入总盘</span>
+        </div>
+        <div class="ink-revenue-main">
+          <span class="ink-revenue-prefix">¥</span>
+          <strong class="ink-revenue-amount">{{ formatCurrency(totalRevenue).replace('¥', '') }}</strong>
+        </div>
+        <div class="ink-revenue-breakdown">
+          <div class="ink-revenue-chip ink-chip-active">
+            <span class="ink-chip-dot" />
+            <span>使用中 {{ formatCurrency(statisticsSnapshot.revenue.used) }}</span>
           </div>
-          <div class="ink-status-card">
-            <span>活跃信号分</span>
-            <strong>{{ activitySignalScore }} 分</strong>
-          </div>
-          <div class="ink-status-card">
-            <span>增长质量分</span>
-            <strong>{{ currentGrowthQuality }} 分</strong>
-          </div>
-          <div class="ink-status-card">
-            <span>最新进账</span>
-            <strong>{{ formatCurrency(todayRevenue) }}</strong>
+          <div class="ink-revenue-chip ink-chip-stock">
+            <span class="ink-chip-dot" />
+            <span>未使用 {{ formatCurrency(statisticsSnapshot.revenue.unused) }}</span>
           </div>
         </div>
+      </div>
 
-        <div class="ink-revenue-hero">
-          <span class="ink-revenue-label">总收入</span>
-          <strong class="ink-revenue-value">{{ formatCurrency(totalRevenue) }}</strong>
-          <div class="ink-revenue-meta">
-            <span>使用中收入 {{ formatCurrency(statisticsSnapshot.revenue.used) }}</span>
-            <span>未使用库存 {{ formatCurrency(statisticsSnapshot.revenue.unused) }}</span>
-          </div>
-          <p class="ink-revenue-desc">经营最终还是要回到收入本身，这里展示当前统计口径下的累计收入盘面。</p>
+      <!-- 指标横条 -->
+      <div class="ink-hero-metrics">
+        <div class="ink-metric-pill">
+          <span class="ink-metric-pill-label">最近刷新</span>
+          <strong class="ink-metric-pill-value">{{ lastUpdatedText }}</strong>
+        </div>
+        <div class="ink-metric-divider" />
+        <div class="ink-metric-pill">
+          <span class="ink-metric-pill-label">最新进账</span>
+          <strong class="ink-metric-pill-value ink-value-revenue">{{ formatCurrency(todayRevenue) }}</strong>
+        </div>
+        <div class="ink-metric-divider" />
+        <div class="ink-metric-pill">
+          <span class="ink-metric-pill-label">活跃信号</span>
+          <strong class="ink-metric-pill-value">{{ activitySignalScore }}<small> 分</small></strong>
+        </div>
+        <div class="ink-metric-divider" />
+        <div class="ink-metric-pill">
+          <span class="ink-metric-pill-label">增长质量</span>
+          <strong class="ink-metric-pill-value">{{ currentGrowthQuality }}<small> 分</small></strong>
         </div>
       </div>
     </section>
@@ -327,7 +331,7 @@
 <script setup lang="ts">
 /**
  * 水墨风格仪表盘
- * @description 这一页聚焦“增长、异常、卡密使用、封禁数量”的经营分析。
+ * @description 这一页聚焦"增长、异常、卡密使用、封禁数量"的经营分析。
  * 相比综合版，它更强调：
  * 1. 用户增长是否真实发生；
  * 2. 新增用户是否有设备跟随和卡密使用支撑；
@@ -583,7 +587,7 @@ const inventorySupportDays = computed(() => {
 
 /**
  * 系统采纳率
- * @description 作为“新用户进入后是否被使用”的粗略经营信号。
+ * @description 作为"新用户进入后是否被使用"的粗略经营信号。
  */
 const systemAdoptionRate = computed(() => {
   const growthSignal = clampPercent((todayNewUsers.value / Math.max(statisticsSnapshot.value.users.total, 1)) * 100)
@@ -593,7 +597,7 @@ const systemAdoptionRate = computed(() => {
 /**
  * 日增长质量序列
  * @description 用近 7 日新增用户、设备、卡密的相对强度构建一个趋势分数，
- * 方便从“量”进化到“质量”的观察。
+ * 方便从"量"进化到"质量"的观察。
  */
 const growthQualitySeries = computed<number[]>(() => {
   const trends = statisticsSnapshot.value.trends.daily_new
@@ -633,7 +637,7 @@ const strategicHeadline = computed(() => {
   const snapshot = statisticsSnapshot.value
 
   if (todayNewUsers.value > 0 && snapshot.cards.used > 0 && riskPressureRate.value <= 10) {
-    return '当前已经形成“新增用户进入 + 卡密持续使用”的良性活跃信号'
+    return '当前已经形成"新增用户进入 + 卡密持续使用"的良性活跃信号'
   }
 
   if (todayNewUsers.value > 0 && snapshot.cards.used > 0) {
@@ -1527,171 +1531,214 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+.ink-quote-strip > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ink-quote-tag {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em];
+  @apply border border-stone-300 bg-stone-100/90 text-stone-700;
+}
+
+.ink-panel-title {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+}
+
 .ink-hero {
-  @apply rounded-[34px] border border-stone-300/80 px-6 py-6 lg:px-8 lg:py-7 mb-5;
-  @apply shadow-sm;
+  @apply rounded-[34px] border border-stone-300/80 px-6 py-6 lg:px-10 lg:py-8 mb-5;
+  @apply shadow-sm flex flex-col items-center text-center;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(250, 248, 243, 0.84) 100%);
+    radial-gradient(circle at 50% 30%, rgba(17, 24, 39, 0.06), transparent 50%),
+    radial-gradient(circle at 80% 60%, rgba(180, 83, 9, 0.06), transparent 35%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(250, 248, 243, 0.88) 100%);
 }
 
 .ink-hero::before {
   content: '';
   position: absolute;
-  inset: -28% auto auto 62%;
-  width: 320px;
-  height: 320px;
+  inset: -20% auto auto 55%;
+  width: 280px;
+  height: 280px;
   border-radius: 9999px;
-  background: radial-gradient(circle, rgba(17, 24, 39, 0.12), transparent 68%);
+  background: radial-gradient(circle, rgba(17, 24, 39, 0.08), transparent 68%);
   filter: blur(18px);
 }
 
 .ink-hero::after {
   content: '';
   position: absolute;
-  left: -8%;
-  bottom: -68px;
-  width: 420px;
-  height: 160px;
-  background: radial-gradient(circle at center, rgba(120, 113, 108, 0.08), transparent 70%);
-  filter: blur(22px);
+  left: 50%;
+  bottom: -40px;
+  width: 60%;
+  height: 80px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgba(120, 113, 108, 0.06), transparent 72%);
+  filter: blur(16px);
 }
 
-.ink-hero-copy,
-.ink-hero-body,
-.ink-hero-actions,
-.ink-quote-strip > * {
-  position: relative;
-  z-index: 1;
-}
-
-.ink-hero-copy {
-  @apply max-w-3xl;
-}
-
-.ink-badge,
-.ink-quote-tag {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em];
-  @apply border border-stone-300 bg-stone-100/90 text-stone-700;
-}
-
-.ink-title,
-.ink-panel-title {
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
-}
-
-.ink-title {
-  @apply mt-4 text-3xl lg:text-4xl font-semibold text-stone-900;
-}
-
-.ink-subtitle {
-  @apply mt-4 text-sm lg:text-base leading-7 text-stone-600 max-w-3xl;
-}
-
-.ink-hero-body {
-  @apply mt-6 grid grid-cols-1 xl:grid-cols-[1.35fr_0.78fr] gap-4 items-stretch;
-}
-
-.ink-hero-actions {
-  @apply grid grid-cols-1 sm:grid-cols-2 gap-3;
-}
-
-.ink-status-card {
-  @apply min-w-[180px] rounded-2xl border border-stone-200 bg-white/82 px-4 py-3;
-}
-
-.ink-status-card span {
-  @apply block text-xs text-stone-400 mb-1;
-}
-
-.ink-status-card strong {
-  @apply text-sm font-semibold text-stone-900;
-}
-
-.ink-revenue-hero {
-  @apply rounded-[28px] border border-stone-300/80 px-5 py-5 lg:px-6 lg:py-6 shadow-sm;
-  background:
-    radial-gradient(circle at top right, rgba(180, 83, 9, 0.14), transparent 30%),
-    linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(247,244,239,0.94) 100%);
-}
-
-.ink-revenue-label {
-  @apply block text-xs uppercase tracking-[0.2em] text-stone-500;
-}
-
-.ink-revenue-value {
-  @apply mt-3 block text-3xl lg:text-4xl text-stone-900;
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
-}
-
-.ink-revenue-meta {
-  @apply mt-4 flex flex-col gap-2 text-sm text-stone-600;
-}
-
-.ink-revenue-meta span {
-  @apply inline-flex items-center rounded-full border border-stone-200 bg-white/80 px-3 py-1;
-}
-
-.ink-revenue-desc {
-  @apply mt-4 text-sm leading-6 text-stone-500;
-}
-
+/* 刷新按钮 */
 .ink-refresh-btn {
   @apply absolute right-6 top-6 z-10;
   @apply rounded-2xl border border-stone-700 bg-stone-900 text-white font-medium;
   @apply hover:bg-stone-800 hover:text-white;
 }
 
+/* 总收入核心区 */
+.ink-revenue-center {
+  @apply relative z-[1] flex flex-col items-center;
+}
+
+.ink-revenue-stamp {
+  @apply mb-3;
+}
+
+.ink-revenue-stamp-text {
+  @apply inline-flex items-center rounded-full px-4 py-1.5 text-xs uppercase tracking-[0.24em] font-medium;
+  @apply border border-stone-400/60 bg-stone-200/50 text-stone-600;
+  letter-spacing: 0.28em;
+}
+
+.ink-revenue-main {
+  @apply flex items-baseline gap-1;
+}
+
+.ink-revenue-prefix {
+  @apply text-2xl lg:text-3xl font-light text-stone-400;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+}
+
+.ink-revenue-amount {
+  @apply text-4xl sm:text-5xl lg:text-6xl font-bold text-stone-900 tracking-tight;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  line-height: 1.1;
+}
+
+.ink-revenue-breakdown {
+  @apply mt-4 flex flex-wrap justify-center gap-3;
+}
+
+.ink-revenue-chip {
+  @apply inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium;
+  @apply border border-stone-200/80 bg-white/70 backdrop-blur-sm;
+}
+
+.ink-chip-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.ink-chip-active .ink-chip-dot {
+  background: #111827;
+  box-shadow: 0 0 6px rgba(17, 24, 39, 0.3);
+}
+
+.ink-chip-stock .ink-chip-dot {
+  background: #a8a29e;
+}
+
+/* 指标横条 */
+.ink-hero-metrics {
+  @apply relative z-[1] mt-6 flex flex-wrap items-center justify-center gap-0;
+  @apply rounded-2xl border border-stone-200/80 bg-white/60 backdrop-blur-sm px-2 py-0;
+}
+
+.ink-metric-pill {
+  @apply flex flex-col items-center px-5 py-3;
+}
+
+.ink-metric-pill-label {
+  @apply text-xs text-stone-400 font-medium tracking-wide;
+}
+
+.ink-metric-pill-value {
+  @apply mt-1 text-sm font-semibold text-stone-900 tabular-nums;
+}
+
+.ink-metric-pill-value small {
+  @apply text-xs font-normal text-stone-500 ml-0.5;
+}
+
+.ink-value-revenue {
+  color: #92400e;
+}
+
+.ink-metric-divider {
+  @apply w-px h-8 bg-stone-200/80;
+}
+
 .ink-quote-strip {
-  @apply mb-6 rounded-[28px] border border-stone-300/80 px-5 py-5 lg:px-6 lg:py-5;
+  @apply mb-6 rounded-[28px] border border-stone-300/80 px-6 py-6 lg:px-8 lg:py-7;
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.76) 0%, rgba(245,243,238,0.84) 100%);
+    radial-gradient(circle at top left, rgba(17, 24, 39, 0.05), transparent 40%),
+    radial-gradient(circle at bottom right, rgba(180, 83, 9, 0.04), transparent 35%),
+    linear-gradient(135deg, rgba(255,255,255,0.80) 0%, rgba(248,245,240,0.88) 100%);
 }
 
 .ink-quote-strip::before {
   content: '';
   position: absolute;
-  inset: auto auto -16px -12px;
-  width: 220px;
-  height: 84px;
-  background: radial-gradient(circle, rgba(17, 24, 39, 0.08), transparent 72%);
-  filter: blur(18px);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(17, 24, 39, 0.6), rgba(180, 83, 9, 0.25), transparent);
+  border-radius: 9999px;
+}
+
+.ink-quote-strip::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  bottom: -30px;
+  width: 180px;
+  height: 180px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(120, 113, 108, 0.06), transparent 70%);
+  filter: blur(14px);
+  pointer-events: none;
 }
 
 .ink-quote-strip strong {
-  @apply mt-3 block text-xl font-semibold text-stone-900 leading-8;
+  @apply mt-3 block text-lg lg:text-xl font-semibold text-stone-900 leading-8;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
 }
 
 .ink-quote-strip p {
-  @apply mt-2 text-sm leading-6 text-stone-600;
+  @apply mt-2 text-sm leading-7 text-stone-600;
 }
 
 .ink-quote-meta {
-  @apply mt-4 flex flex-wrap gap-3;
+  @apply mt-5 pt-4 border-t border-stone-200/60 flex flex-wrap gap-2;
 }
 
 .ink-quote-meta span {
-  @apply inline-flex items-center rounded-full bg-stone-100/90 px-3 py-1 text-xs text-stone-600 border border-stone-200;
+  @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium;
+  @apply border border-stone-200/70 bg-white/60 text-stone-600;
 }
 
+/* ========== Suite 通用 ========== */
 .ink-growth-suite,
 .ink-risk-suite {
-  @apply mb-6 rounded-[28px] border border-stone-300/70 p-5 lg:p-6 shadow-sm;
+  @apply mb-6 rounded-[28px] border border-stone-300/70 p-5 lg:p-7 shadow-sm;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(247,244,239,0.88) 100%);
+    radial-gradient(circle at top left, rgba(17, 24, 39, 0.03), transparent 35%),
+    linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,245,240,0.90) 100%);
 }
 
 .ink-suite-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-4;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6;
+  @apply pb-5 border-b border-stone-200/50;
 }
 
 .ink-suite-text {
-  @apply mt-2 text-sm leading-6 text-stone-500;
+  @apply mt-2 text-sm leading-6 text-stone-500 max-w-xl;
 }
 
 .ink-suite-controls {
   @apply flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center xl:justify-end;
 }
 
+/* ========== 指标卡片网格 ========== */
 .ink-metric-grid {
   @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
 }
@@ -1699,9 +1746,15 @@ onBeforeUnmount(() => {
 .ink-metric-card,
 .ink-panel,
 .ink-chart-card {
-  @apply rounded-[28px] border border-stone-300/70 shadow-sm;
+  @apply rounded-[24px] border border-stone-300/60 shadow-sm;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(247,244,239,0.88) 100%);
+    linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(250,248,243,0.92) 100%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ink-metric-card:hover {
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
+  transform: translateY(-1px);
 }
 
 .ink-metric-card::before,
@@ -1711,50 +1764,56 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 0;
   left: 24px;
-  width: 64px;
+  width: 48px;
   height: 3px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, rgba(17,24,39,0.76), rgba(180,83,9,0.32));
+  background: linear-gradient(90deg, rgba(17,24,39,0.55), rgba(180,83,9,0.2));
 }
 
 .ink-metric-card {
-  @apply p-5;
+  @apply p-5 lg:p-6;
 }
 
 .ink-metric-head {
-  @apply flex items-center justify-between mb-5;
+  @apply flex items-center justify-between mb-4;
 }
 
 .ink-metric-icon {
-  @apply w-10 h-10 rounded-2xl flex items-center justify-center;
+  @apply w-11 h-11 rounded-xl flex items-center justify-center;
+  border: 1px solid rgba(0,0,0,0.04);
 }
 
 .ink-user {
-  @apply bg-slate-100 text-slate-800;
+  @apply bg-stone-100 text-stone-700;
 }
 
 .ink-warning {
-  @apply bg-amber-100 text-amber-800;
+  @apply bg-amber-50 text-amber-700;
+  border-color: rgba(217, 119, 6, 0.1);
 }
 
 .ink-ticket {
-  @apply bg-emerald-100 text-emerald-800;
+  @apply bg-emerald-50 text-emerald-700;
+  border-color: rgba(4, 120, 87, 0.1);
 }
 
 .ink-grid {
-  @apply bg-rose-100 text-rose-800;
+  @apply bg-rose-50 text-rose-700;
+  border-color: rgba(190, 18, 60, 0.1);
 }
 
 .ink-metric-tag {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-stone-600 bg-stone-100;
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+  @apply text-stone-500 bg-stone-50 border border-stone-200/60;
 }
 
 .ink-metric-label {
-  @apply block text-sm text-stone-500;
+  @apply block text-xs text-stone-400 font-medium tracking-wide uppercase;
 }
 
 .ink-metric-value {
-  @apply block mt-2 text-3xl font-semibold text-stone-900;
+  @apply block mt-2 text-3xl font-bold text-stone-900 tabular-nums;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
 }
 
 .ink-metric-progress {
@@ -1762,23 +1821,25 @@ onBeforeUnmount(() => {
 }
 
 .ink-metric-progress-track {
-  @apply flex-1 h-2 rounded-full bg-stone-100 overflow-hidden;
+  @apply flex-1 h-1.5 rounded-full overflow-hidden;
+  background: rgba(168, 162, 158, 0.15);
 }
 
 .ink-metric-progress-bar {
   @apply h-full rounded-full;
-  background: linear-gradient(90deg, #111827 0%, #a8a29e 100%);
+  background: linear-gradient(90deg, rgba(17, 24, 39, 0.7), rgba(168, 162, 158, 0.5));
 }
 
 .ink-metric-progress span {
-  @apply text-xs font-semibold text-stone-500;
+  @apply text-xs font-semibold text-stone-400 tabular-nums;
 }
 
 .ink-metric-desc {
   @apply mt-4 text-xs leading-6 text-stone-500;
-  min-height: 50px;
+  min-height: 48px;
 }
 
+/* ========== 分析面板网格 ========== */
 .ink-analysis-grid {
   @apply grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6;
 }
@@ -1789,57 +1850,72 @@ onBeforeUnmount(() => {
 }
 
 .ink-panel-head {
-  @apply flex items-start justify-between gap-4 mb-5;
+  @apply flex items-start justify-between gap-4 mb-5 pb-4 border-b border-stone-100;
 }
 
 .ink-panel-eyebrow {
-  @apply text-xs uppercase tracking-[0.2em] text-stone-400;
+  @apply text-[11px] uppercase tracking-[0.22em] text-stone-400 font-medium;
 }
 
 .ink-panel-title {
-  @apply mt-1 text-xl font-semibold text-stone-900;
+  @apply mt-1 text-lg font-semibold text-stone-900;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
 }
 
 .ink-panel-icon {
-  @apply flex items-center justify-center w-11 h-11 rounded-2xl bg-stone-100 text-stone-700;
+  @apply flex items-center justify-center w-10 h-10 rounded-xl;
+  @apply bg-stone-50 text-stone-600;
+  border: 1px solid rgba(0,0,0,0.04);
 }
 
 .ink-analysis-list {
-  @apply space-y-4;
+  @apply space-y-3;
 }
 
 .ink-analysis-item {
-  @apply flex items-start gap-3;
+  @apply flex items-start gap-3 rounded-xl p-3;
+  transition: background 0.15s ease;
+}
+
+.ink-analysis-item:hover {
+  background: rgba(245, 243, 238, 0.5);
 }
 
 .ink-analysis-dot {
-  @apply mt-2 w-2.5 h-2.5 rounded-full shrink-0;
+  @apply mt-1.5 w-2 h-2 rounded-full shrink-0;
+  box-shadow: 0 0 4px currentColor;
 }
 
 .ink-analysis-content strong {
-  @apply block text-sm font-semibold text-stone-900;
+  @apply block text-sm font-semibold text-stone-800;
 }
 
 .ink-analysis-content p {
-  @apply mt-1 text-sm leading-6 text-stone-500;
+  @apply mt-1 text-[13px] leading-6 text-stone-500;
 }
 
+/* 水墨色系：浓淡墨 + 赭石 */
 .level-success {
-  @apply bg-emerald-600;
+  background: #047857;
+  color: #047857;
 }
 
 .level-info {
-  @apply bg-slate-700;
+  background: #374151;
+  color: #374151;
 }
 
 .level-warning {
-  @apply bg-amber-600;
+  background: #b45309;
+  color: #b45309;
 }
 
 .level-danger {
-  @apply bg-rose-700;
+  background: #9f1239;
+  color: #9f1239;
 }
 
+/* ========== 图表网格 ========== */
 .ink-chart-grid {
   @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
 }
@@ -1869,13 +1945,10 @@ onBeforeUnmount(() => {
   height: 360px;
 }
 
+/* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .ink-dashboard {
     @apply px-4 py-4;
-  }
-
-  .ink-title {
-    @apply text-3xl;
   }
 
   .ink-hero,
@@ -1885,21 +1958,41 @@ onBeforeUnmount(() => {
   .ink-metric-card,
   .ink-panel,
   .ink-chart-card {
-    @apply rounded-3xl p-4;
-  }
-
-  .ink-hero-actions {
-    @apply grid-cols-1;
+    @apply rounded-2xl p-4;
   }
 
   .ink-refresh-btn {
-    @apply static self-start mt-4;
+    @apply static self-start mb-4;
+  }
+
+  .ink-revenue-amount {
+    @apply text-3xl;
+  }
+
+  .ink-hero-metrics {
+    @apply flex-col gap-0;
+  }
+
+  .ink-metric-divider {
+    @apply w-16 h-px;
+  }
+
+  .ink-metric-pill {
+    @apply py-2;
+  }
+
+  .ink-suite-toolbar {
+    @apply pb-4;
+  }
+
+  .ink-metric-value {
+    @apply text-2xl;
   }
 
   .ink-chart,
   .ink-chart-medium,
   .ink-chart-large {
-    height: 300px;
+    height: 280px;
   }
 }
 </style>

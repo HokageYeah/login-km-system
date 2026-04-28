@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx vite *)",
-      "Bash(npx vue-tsc *)"
+      "Bash(npx vue-tsc *)",
+      "Bash(python3 *)"
     ]
   }
 }
