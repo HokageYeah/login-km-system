@@ -65,73 +65,7 @@
         </div>
       </article>
     </section>
-
-    <section class="highlight-grid">
-      <article class="panel-card panel-summary">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Today Snapshot</p>
-            <h3 class="panel-title">当日增长摘要</h3>
-          </div>
-          <el-icon class="panel-icon"><TrendCharts /></el-icon>
-        </div>
-
-        <div class="summary-list">
-          <div v-for="item in summaryItems" :key="item.label" class="summary-item">
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-            <em>{{ item.desc }}</em>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel-card panel-status">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">System Reading</p>
-            <h3 class="panel-title">综合运营观察</h3>
-          </div>
-          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
-        </div>
-
-        <div class="focus-list">
-          <div v-for="item in focusItems" :key="item.label" class="focus-item">
-            <span class="focus-dot" :class="item.levelClass" />
-            <div class="focus-body">
-              <strong>{{ item.label }}</strong>
-              <p>{{ item.text }}</p>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel-card panel-gauge">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Health Score</p>
-            <h3 class="panel-title">系统健康度</h3>
-          </div>
-          <el-icon class="panel-icon"><Odometer /></el-icon>
-        </div>
-        <div ref="healthGaugeRef" class="mini-chart-container"></div>
-      </article>
-    </section>
-
-    <section class="signal-grid">
-      <article
-        v-for="item in executiveMetrics"
-        :key="item.label"
-        class="signal-card"
-      >
-        <div class="signal-card-top">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-        </div>
-        <p>{{ item.desc }}</p>
-      </article>
-    </section>
-
-    <section class="revenue-panel" v-loading="loading">
+        <section class="revenue-panel" v-loading="loading">
       <div class="revenue-toolbar">
         <div>
           <p class="panel-eyebrow">Revenue Scope</p>
@@ -206,6 +140,71 @@
           <div ref="permissionRevenueRef" class="chart-container chart-medium"></div>
         </article>
       </div>
+    </section>
+
+    <section class="highlight-grid">
+      <article class="panel-card panel-summary">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Today Snapshot</p>
+            <h3 class="panel-title">当日增长摘要</h3>
+          </div>
+          <el-icon class="panel-icon"><TrendCharts /></el-icon>
+        </div>
+
+        <div class="summary-list">
+          <div v-for="item in summaryItems" :key="item.label" class="summary-item">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <em>{{ item.desc }}</em>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel-card panel-status">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">System Reading</p>
+            <h3 class="panel-title">综合运营观察</h3>
+          </div>
+          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
+        </div>
+
+        <div class="focus-list">
+          <div v-for="item in focusItems" :key="item.label" class="focus-item">
+            <span class="focus-dot" :class="item.levelClass" />
+            <div class="focus-body">
+              <strong>{{ item.label }}</strong>
+              <p>{{ item.text }}</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel-card panel-gauge">
+        <div class="panel-head">
+          <div>
+            <p class="panel-eyebrow">Health Score</p>
+            <h3 class="panel-title">系统健康度</h3>
+          </div>
+          <el-icon class="panel-icon"><Odometer /></el-icon>
+        </div>
+        <div ref="healthGaugeRef" class="mini-chart-container"></div>
+      </article>
+    </section>
+
+    <section class="signal-grid">
+      <article
+        v-for="item in executiveMetrics"
+        :key="item.label"
+        class="signal-card"
+      >
+        <div class="signal-card-top">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </div>
+        <p>{{ item.desc }}</p>
+      </article>
     </section>
 
     <section class="trend-panel" v-loading="loading">

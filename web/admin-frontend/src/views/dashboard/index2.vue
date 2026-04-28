@@ -1,6 +1,15 @@
 <template>
   <div class="ink-dashboard">
     <section class="ink-hero">
+      <el-button
+        :icon="RefreshRight"
+        :loading="loading"
+        @click="loadStatistics"
+        class="ink-refresh-btn"
+      >
+        刷新水墨看板
+      </el-button>
+
       <div class="ink-hero-copy">
         <span class="ink-badge">Ink Style Analytics</span>
         <h1 class="ink-title">墨韵增长分析仪表盘</h1>
@@ -10,31 +19,35 @@
         </p>
       </div>
 
-      <div class="ink-hero-actions">
-        <div class="ink-status-card">
-          <span>最近刷新</span>
-          <strong>{{ lastUpdatedText }}</strong>
+      <div class="ink-hero-body">
+        <div class="ink-hero-actions">
+          <div class="ink-status-card">
+            <span>最近刷新</span>
+            <strong>{{ lastUpdatedText }}</strong>
+          </div>
+          <div class="ink-status-card">
+            <span>活跃信号分</span>
+            <strong>{{ activitySignalScore }} 分</strong>
+          </div>
+          <div class="ink-status-card">
+            <span>增长质量分</span>
+            <strong>{{ currentGrowthQuality }} 分</strong>
+          </div>
+          <div class="ink-status-card">
+            <span>最新进账</span>
+            <strong>{{ formatCurrency(todayRevenue) }}</strong>
+          </div>
         </div>
-        <div class="ink-status-card">
-          <span>活跃信号分</span>
-          <strong>{{ activitySignalScore }} 分</strong>
+
+        <div class="ink-revenue-hero">
+          <span class="ink-revenue-label">总收入</span>
+          <strong class="ink-revenue-value">{{ formatCurrency(totalRevenue) }}</strong>
+          <div class="ink-revenue-meta">
+            <span>使用中收入 {{ formatCurrency(statisticsSnapshot.revenue.used) }}</span>
+            <span>未使用库存 {{ formatCurrency(statisticsSnapshot.revenue.unused) }}</span>
+          </div>
+          <p class="ink-revenue-desc">经营最终还是要回到收入本身，这里展示当前统计口径下的累计收入盘面。</p>
         </div>
-        <div class="ink-status-card">
-          <span>增长质量分</span>
-          <strong>{{ currentGrowthQuality }} 分</strong>
-        </div>
-        <div class="ink-status-card">
-          <span>最新进账</span>
-          <strong>{{ formatCurrency(todayRevenue) }}</strong>
-        </div>
-        <el-button
-          :icon="RefreshRight"
-          :loading="loading"
-          @click="loadStatistics"
-          class="ink-refresh-btn"
-        >
-          刷新水墨看板
-        </el-button>
       </div>
     </section>
 
@@ -525,6 +538,7 @@ const todayNewDevices = computed(() => getLastValue(statisticsSnapshot.value.tre
 const todayNewCards = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.cards))
 const todayRevenue = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
 const todayOrders = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_orders))
+const totalRevenue = computed(() => toDashboardAmount(statisticsSnapshot.value.revenue.total))
 
 const averageDailyUsers = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.users))
 const averageDailyCards = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.cards))
@@ -1543,6 +1557,7 @@ onBeforeUnmount(() => {
 }
 
 .ink-hero-copy,
+.ink-hero-body,
 .ink-hero-actions,
 .ink-quote-strip > * {
   position: relative;
@@ -1572,8 +1587,12 @@ onBeforeUnmount(() => {
   @apply mt-4 text-sm lg:text-base leading-7 text-stone-600 max-w-3xl;
 }
 
+.ink-hero-body {
+  @apply mt-6 grid grid-cols-1 xl:grid-cols-[1.35fr_0.78fr] gap-4 items-stretch;
+}
+
 .ink-hero-actions {
-  @apply mt-6 flex flex-col sm:flex-row sm:flex-wrap gap-3;
+  @apply grid grid-cols-1 sm:grid-cols-2 gap-3;
 }
 
 .ink-status-card {
@@ -1588,7 +1607,36 @@ onBeforeUnmount(() => {
   @apply text-sm font-semibold text-stone-900;
 }
 
+.ink-revenue-hero {
+  @apply rounded-[28px] border border-stone-300/80 px-5 py-5 lg:px-6 lg:py-6 shadow-sm;
+  background:
+    radial-gradient(circle at top right, rgba(180, 83, 9, 0.14), transparent 30%),
+    linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(247,244,239,0.94) 100%);
+}
+
+.ink-revenue-label {
+  @apply block text-xs uppercase tracking-[0.2em] text-stone-500;
+}
+
+.ink-revenue-value {
+  @apply mt-3 block text-3xl lg:text-4xl text-stone-900;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+}
+
+.ink-revenue-meta {
+  @apply mt-4 flex flex-col gap-2 text-sm text-stone-600;
+}
+
+.ink-revenue-meta span {
+  @apply inline-flex items-center rounded-full border border-stone-200 bg-white/80 px-3 py-1;
+}
+
+.ink-revenue-desc {
+  @apply mt-4 text-sm leading-6 text-stone-500;
+}
+
 .ink-refresh-btn {
+  @apply absolute right-6 top-6 z-10;
   @apply rounded-2xl border border-stone-700 bg-stone-900 text-white font-medium;
   @apply hover:bg-stone-800 hover:text-white;
 }
@@ -1841,7 +1889,11 @@ onBeforeUnmount(() => {
   }
 
   .ink-hero-actions {
-    @apply flex-col;
+    @apply grid-cols-1;
+  }
+
+  .ink-refresh-btn {
+    @apply static self-start mt-4;
   }
 
   .ink-chart,
