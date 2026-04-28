@@ -195,7 +195,7 @@
               <span>卡密价格</span>
               <el-tooltip
                 placement="top"
-                effect="light"
+                effect="dark"
                 :show-after="150"
                 content="权限月价按当前有效天数折算，超出 3 台设备后每增加 1 台直接加价 ¥0.50；最终价格为折算后的权限价格 + 设备加价，最低 ¥0.50。"
               >
