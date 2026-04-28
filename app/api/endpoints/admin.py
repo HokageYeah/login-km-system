@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from loguru import logger
 
+from app.models.card import Card
 from app.utils.dependencies import get_current_admin, get_db
 from app.services.admin_service import AdminService
 from app.schemas.admin import (
@@ -54,6 +55,7 @@ async def generate_cards(
         expire_time=request.expire_time,
         max_device_count=request.max_device_count,
         permissions=request.permissions,
+        price=request.price,
         remark=request.remark
     )
     
@@ -255,9 +257,12 @@ async def update_card_expire_time(
     if error:
         raise HTTPException(status_code=400, detail=error)
 
+    card = db.query(Card).filter(Card.id == card_id).first()
+
     return UpdateCardResponse(
         success=True,
-        message="卡密过期时间更新成功"
+        message="卡密过期时间更新成功",
+        price=card.price if card else None
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -299,9 +304,12 @@ async def update_card_max_device_count(
         f"card_id={card_id}, new_max_device_count={request.max_device_count}"
     )
 
+    card = db.query(Card).filter(Card.id == card_id).first()
+
     return UpdateCardResponse(
         success=True,
-        message="卡密最大设备数更新成功"
+        message="卡密最大设备数更新成功",
+        price=card.price if card else None
     ).model_dump(mode='json', exclude_none=True)
 
 
@@ -323,10 +331,13 @@ async def update_card_permissions(
     
     if error:
         raise HTTPException(status_code=400, detail=error)
+
+    card = db.query(Card).filter(Card.id == card_id).first()
     
     return UpdateCardResponse(
         success=True,
-        message="卡密权限更新成功"
+        message="卡密权限更新成功",
+        price=card.price if card else None
     ).model_dump(mode='json', exclude_none=True)
 
 

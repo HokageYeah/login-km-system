@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON, Numeric
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -30,6 +30,7 @@ class Card(Base):
     expire_time = Column(DateTime, nullable=False, comment="过期时间")
     max_device_count = Column(Integer, default=1, nullable=False, comment="最大可绑定设备数")
     permissions = Column(JSON, nullable=True, comment="权限配置 JSON")
+    price = Column(Numeric(10, 2), default=0, nullable=False, comment="卡密售卖价格")
     remark = Column(String(255), nullable=True, comment="备注（套餐名称等）")
     created_at = Column(DateTime, default=func.now(), nullable=False, comment="创建时间")
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False, comment="更新时间")

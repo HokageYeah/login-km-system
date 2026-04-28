@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Numeric
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -29,6 +29,7 @@ class FeaturePermission(Base):
     # 历史数据仍可能为空，因此先允许为空，避免升级时把旧权限直接打坏。
     app_id = Column(Integer, ForeignKey("apps.id"), nullable=True, index=True, comment="所属应用ID")
     description = Column(String(500), nullable=True, comment="权限描述")
+    price = Column(Numeric(10, 2), default=0, nullable=False, comment="权限售卖价格")
     # category 保留为兼容历史导入导出和旧数据的展示字段，不再作为主分类依据。
     category = Column(String(50), nullable=True, comment="历史兼容分类字段")
     icon = Column(String(100), nullable=True, comment="图标")

@@ -3,6 +3,7 @@
 提供功能权限的增删改查以及卡密权限关联管理
 """
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.models.app import App, AppStatus
 from app.models.card import Card
 from app.models.feature_permission import FeaturePermission, FeaturePermissionStatus
+from app.services.card_pricing_service import calculate_card_price
 from app.schemas.feature_permission import (
     FeaturePermissionAppInfo,
     FeaturePermissionExportAppGroup,
@@ -33,6 +35,7 @@ class FeaturePermissionService:
         permission_name: str,
         app_id: int,
         description: Optional[str] = None,
+        price: Decimal = Decimal("0.00"),
         category: Optional[str] = None,
         icon: Optional[str] = None,
         sort_order: int = 0
@@ -63,6 +66,7 @@ class FeaturePermissionService:
                 permission_name=permission_name,
                 app_id=app.id,
                 description=description,
+                price=price,
                 category=self._build_legacy_category(app=app, category=category),
                 icon=icon,
                 sort_order=sort_order,
@@ -76,7 +80,7 @@ class FeaturePermissionService:
             logger.info(
                 "创建功能权限成功: "
                 f"permission_key={permission.permission_key}, permission_name={permission.permission_name}, "
-                f"app_id={app.id}, app_key={app.app_key}, app_name={app.app_name}"
+                f"app_id={app.id}, app_key={app.app_key}, app_name={app.app_name}, price={permission.price}"
             )
             return permission, None
 
@@ -94,6 +98,7 @@ class FeaturePermissionService:
         permission_name: Optional[str] = None,
         app_id: Optional[int] = None,
         description: Optional[str] = None,
+        price: Optional[Decimal] = None,
         category: Optional[str] = None,
         icon: Optional[str] = None,
         sort_order: Optional[int] = None,
@@ -130,6 +135,8 @@ class FeaturePermissionService:
                 permission.permission_name = permission_name
             if description is not None:
                 permission.description = description
+            if price is not None:
+                permission.price = price
             if category is not None or app_id is not None:
                 permission.category = self._build_legacy_category(app=target_app, category=category)
             if icon is not None:
@@ -148,7 +155,8 @@ class FeaturePermissionService:
             logger.info(
                 "更新功能权限成功: "
                 f"permission_id={permission.id}, permission_key={permission.permission_key}, "
-                f"app_id={permission.app_id}, app_name={permission.app.app_name if permission.app else '未绑定应用'}"
+                f"app_id={permission.app_id}, app_name={permission.app.app_name if permission.app else '未绑定应用'}, "
+                f"price={permission.price}"
             )
             return permission, None
 
@@ -398,6 +406,7 @@ class FeaturePermissionService:
                     existing_permission.permission_name = item.permission_name
                     existing_permission.app_id = resolved_app.id if resolved_app else None
                     existing_permission.description = item.description
+                    existing_permission.price = item.price
                     existing_permission.category = self._build_legacy_category(
                         app=resolved_app,
                         category=item.category
@@ -419,6 +428,7 @@ class FeaturePermissionService:
                         permission_name=item.permission_name,
                         app_id=resolved_app.id if resolved_app else None,
                         description=item.description,
+                        price=item.price,
                         category=self._build_legacy_category(app=resolved_app, category=item.category),
                         icon=item.icon,
                         sort_order=item.sort_order,
@@ -472,12 +482,21 @@ class FeaturePermissionService:
                 )
                 return False, f"以下权限标识不存在或不属于当前卡密应用: {invalid_keys_text}"
 
+            old_price = card.price
             card.permissions = permission_keys
+            card.price = calculate_card_price(
+                self.db,
+                app_id=card.app_id,
+                permissions=card.permissions,
+                expire_time=card.expire_time,
+                max_device_count=card.max_device_count
+            )
             self.db.commit()
 
             logger.info(
                 "更新卡密功能权限成功: "
-                f"card_id={card_id}, card_app_id={card.app_id}, permissions={permission_keys}"
+                f"card_id={card_id}, card_app_id={card.app_id}, permissions={permission_keys}, "
+                f"old_price={old_price}, new_price={card.price}"
             )
             return True, None
 
@@ -565,6 +584,7 @@ class FeaturePermissionService:
             permission_name=permission.permission_name,
             app=self._build_app_info(permission),
             description=permission.description,
+            price=permission.price,
             category=self._build_legacy_category(permission.app, permission.category),
             icon=permission.icon,
             sort_order=permission.sort_order,
@@ -637,6 +657,7 @@ class FeaturePermissionService:
                             permission_name=permission.permission_name,
                             app=group.app,
                             description=permission.description,
+                            price=permission.price,
                             category=permission.category,
                             icon=permission.icon,
                             sort_order=permission.sort_order,

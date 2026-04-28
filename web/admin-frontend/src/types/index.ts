@@ -96,6 +96,7 @@ export interface Card {
   expire_time: string           // 过期时间（ISO 8601格式）
   max_device_count: number      // 最大可绑定设备数
   permissions: string[]         // 权限列表
+  price: number | string        // 卡密售卖价格
   bind_devices?: number         // 已绑定设备数（可选）
   bind_device_count?: number    // 当前绑定设备数（管理员列表）
   bind_user_count?: number      // 已绑定用户数（可选）
@@ -115,6 +116,7 @@ export interface UserActiveCardDetail {
   max_device_count: number      // 最大设备数
   bind_device_count: number     // 当前绑定设备数
   permissions: string[] | Record<string, boolean> | string | null // 权限配置
+  price: number | string        // 卡密售卖价格
   remark?: string               // 备注
   bind_time?: string            // 用户绑定时间
 }
@@ -129,6 +131,7 @@ export interface Device {
   id: number                    // 设备记录ID
   card_id: number               // 关联的卡密ID
   card_key: string              // 关联的卡密字符串
+  price?: number | string       // 关联卡密售卖价格
   user_id?: number              // 关联的用户ID（可选）
   username?: string             // 关联的用户名（可选）
   related_user_ids?: number[]   // 关联用户ID列表（管理员设备列表）
@@ -276,6 +279,7 @@ export interface FeaturePermission {
   app_key?: string              // 所属应用唯一标识（可选）
   app_name?: string             // 所属应用名称（可选）
   description?: string            // 权限描述（可选）
+  price: number | string         // 权限售卖价格
   category?: string               // 权限分类（可选，如：数据抓取、媒体播放）
   icon?: string                  // 图标（可选）
   sort_order: number             // 排序，数字越小越靠前

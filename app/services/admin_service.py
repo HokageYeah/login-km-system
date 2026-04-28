@@ -4,6 +4,7 @@
 """
 from typing import List, Tuple, Optional, Dict, Union
 from datetime import datetime, timedelta
+from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
 from loguru import logger
@@ -13,6 +14,7 @@ from app.models.card import Card, CardStatus
 from app.models.card_device import CardDevice, CardDeviceStatus
 from app.models.user_card import UserCard, UserCardStatus
 from app.models.app import App
+from app.services.card_pricing_service import calculate_card_price
 from app.utils.card_generator import generate_batch_cards
 
 
@@ -129,6 +131,7 @@ class AdminService:
         expire_time: datetime,
         max_device_count: int,
         permissions: Union[List[str], Dict],
+        price: Decimal = Decimal("0.00"),
         remark: Optional[str] = None
     ) -> Tuple[List[str], Optional[str]]:
         """
@@ -140,6 +143,7 @@ class AdminService:
             expire_time: 过期时间
             max_device_count: 最大设备数
             permissions: 权限配置
+            price: 卡密售卖价格
             remark: 备注
             
         Returns:
@@ -155,7 +159,7 @@ class AdminService:
                 return [], "应用已禁用"
             
             # 生成卡密
-            logger.info(f"开始生成 {count} 个卡密，应用ID: {app_id}")
+            logger.info(f"开始生成 {count} 个卡密，应用ID: {app_id}, 单价: {price}")
             card_keys = generate_batch_cards(count, self.db)
             
             # 批量插入数据库
@@ -168,6 +172,7 @@ class AdminService:
                     expire_time=expire_time,
                     max_device_count=max_device_count,
                     permissions=permissions,
+                    price=price,
                     remark=remark
                 )
                 cards_to_insert.append(card)
@@ -307,6 +312,7 @@ class AdminService:
                     "max_device_count": card.max_device_count,
                     "bind_device_count": bind_device_count_map.get(card.id, 0),
                     "permissions": card.permissions,
+                    "price": card.price,
                     "remark": card.remark,
                     "bind_time": user_card.bind_time
                 })
@@ -465,6 +471,7 @@ class AdminService:
                     "expire_time": card.expire_time,
                     "max_device_count": card.max_device_count,
                     "permissions": card.permissions,
+                    "price": card.price,
                     "remark": card.remark,
                     "bind_user_count": len(related_usernames),
                     "related_usernames": related_usernames,
@@ -539,13 +546,22 @@ class AdminService:
                 return False, "卡密不存在"
 
             old_expire_time = card.expire_time
+            old_price = card.price
             card.expire_time = expire_time
+            card.price = calculate_card_price(
+                self.db,
+                app_id=card.app_id,
+                permissions=card.permissions,
+                expire_time=card.expire_time,
+                max_device_count=card.max_device_count
+            )
             self._sync_card_usage_statuses([card.id])
             self.db.commit()
 
             logger.info(
                 f"更新卡密过期时间成功: card_id={card_id}, "
-                f"old_expire_time={old_expire_time}, new_expire_time={expire_time}"
+                f"old_expire_time={old_expire_time}, new_expire_time={expire_time}, "
+                f"old_price={old_price}, new_price={card.price}"
             )
             return True, None
 
@@ -610,13 +626,22 @@ class AdminService:
                 return False, f"新的设备上限不能小于当前已绑定设备数（{active_device_count}台）"
 
             old_max_device_count = card.max_device_count
+            old_price = card.price
             card.max_device_count = max_device_count
+            card.price = calculate_card_price(
+                self.db,
+                app_id=card.app_id,
+                permissions=card.permissions,
+                expire_time=card.expire_time,
+                max_device_count=card.max_device_count
+            )
             self.db.commit()
 
             logger.info(
                 "[管理员服务] 更新卡密最大设备数成功: "
                 f"card_id={card_id}, old_max_device_count={old_max_device_count}, "
-                f"new_max_device_count={max_device_count}, active_device_count={active_device_count}"
+                f"new_max_device_count={max_device_count}, active_device_count={active_device_count}, "
+                f"old_price={old_price}, new_price={card.price}"
             )
             return True, None
 
@@ -649,10 +674,21 @@ class AdminService:
                 return False, "卡密不存在"
             
             old_permissions = card.permissions
+            old_price = card.price
             card.permissions = permissions
+            card.price = calculate_card_price(
+                self.db,
+                app_id=card.app_id,
+                permissions=card.permissions,
+                expire_time=card.expire_time,
+                max_device_count=card.max_device_count
+            )
             self.db.commit()
             
-            logger.info(f"更新卡密权限成功: card_id={card_id}, old={old_permissions}, new={permissions}")
+            logger.info(
+                f"更新卡密权限成功: card_id={card_id}, old={old_permissions}, new={permissions}, "
+                f"old_price={old_price}, new_price={card.price}"
+            )
             return True, None
             
         except Exception as e:
@@ -734,8 +770,14 @@ class AdminService:
             card_ids = list({device.card_id for device in devices})
 
             # 批量查询卡密，避免循环内 N+1。
-            cards = self.db.query(Card.id, Card.card_key).filter(Card.id.in_(card_ids)).all()
-            card_key_map = {card.id: card.card_key for card in cards}
+            cards = self.db.query(Card.id, Card.card_key, Card.price).filter(Card.id.in_(card_ids)).all()
+            card_meta_map = {
+                card.id: {
+                    "card_key": card.card_key,
+                    "price": card.price
+                }
+                for card in cards
+            }
 
             # 批量聚合同一卡密下的有效绑定用户，设备页需要按“多用户”语义展示。
             user_bindings = self.db.query(
@@ -765,7 +807,8 @@ class AdminService:
                 device_list.append({
                     "id": device.id,
                     "card_id": device.card_id,
-                    "card_key": card_key_map.get(device.card_id, "未知"),
+                    "card_key": card_meta_map.get(device.card_id, {}).get("card_key", "未知"),
+                    "price": card_meta_map.get(device.card_id, {}).get("price", 0),
                     "device_id": device.device_id,
                     "device_name": device.device_name,
                     "related_user_ids": related_user_ids,

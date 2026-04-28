@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Union, Dict
 from datetime import datetime
+from decimal import Decimal
 
 
 class CardGenerateRequest(BaseModel):
@@ -10,6 +11,7 @@ class CardGenerateRequest(BaseModel):
     expire_time: datetime = Field(..., description="过期时间")
     max_device_count: int = Field(1, ge=1, le=100, description="最大设备数，1-100")
     permissions: Union[List[str], Dict] = Field(..., description="权限配置")
+    price: Decimal = Field(Decimal("0.50"), ge=Decimal("0.50"), max_digits=10, decimal_places=2, description="卡密售卖价格")
     remark: Optional[str] = Field(None, max_length=255, description="备注（套餐名称等）")
 
     @field_validator('expire_time')
@@ -48,6 +50,7 @@ class AdminCardInfo(BaseModel):
     expire_time: Optional[datetime] = Field(None, description="过期时间")
     max_device_count: int = Field(..., description="最大设备数")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
+    price: Decimal = Field(Decimal("0.00"), description="卡密售卖价格")
     remark: Optional[str] = Field(None, description="备注")
     bind_user_count: int = Field(..., description="绑定用户数")
     related_usernames: List[str] = Field(default_factory=list, description="关联用户名列表")
@@ -87,6 +90,7 @@ class UpdateCardResponse(BaseModel):
     """更新卡密响应"""
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="提示信息")
+    price: Optional[Decimal] = Field(None, description="按当前配置重新计算后的卡密价格")
 
 
 class AdminDeviceListRequest(BaseModel):
@@ -104,6 +108,7 @@ class AdminDeviceInfo(BaseModel):
     id: int = Field(..., description="设备绑定ID")
     card_id: int = Field(..., description="卡密ID")
     card_key: str = Field(..., description="卡密字符串")
+    price: Decimal = Field(Decimal("0.00"), description="关联卡密售卖价格")
     device_id: str = Field(..., description="设备ID")
     device_name: Optional[str] = Field(None, description="设备名称")
     related_user_ids: List[int] = Field(default_factory=list, description="关联用户ID列表")
@@ -156,6 +161,7 @@ class AdminUserActiveCardInfo(BaseModel):
     max_device_count: int = Field(..., description="最大设备数")
     bind_device_count: int = Field(..., description="绑定设备数")
     permissions: Union[List[str], Dict, None] = Field(..., description="权限配置")
+    price: Decimal = Field(Decimal("0.00"), description="卡密售卖价格")
     remark: Optional[str] = Field(None, description="备注")
     bind_time: Optional[datetime] = Field(None, description="用户绑定时间")
 

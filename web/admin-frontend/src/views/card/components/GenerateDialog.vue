@@ -2,7 +2,7 @@
   <el-dialog
     v-model="dialogVisible"
     title="批量生成卡密"
-    width="600px"
+    width="720px"
     :close-on-click-modal="false"
     @close="handleClose"
   >
@@ -73,7 +73,7 @@
           placeholder="请输入最大设备数"
           class="w-full"
         />
-        <div class="form-tip">每个卡密最多可绑定的设备数量</div>
+        <div class="form-tip">默认 3 台，超过 3 台后每新增 1 台按月加价 0.5 元</div>
       </el-form-item>
 
       <el-form-item label="权限配置" prop="permissions">
@@ -94,6 +94,7 @@
             <div class="permission-option">
               <div class="option-main">
                 <span class="permission-key">{{ permission.permission_key }} - {{ permission.permission_name }}</span>
+                <span class="permission-price">{{ formatPrice(permission.price) }}/月</span>
                 <el-tag v-if="permission.category" size="small" type="info" class="ml-2">
                   {{ permission.category }}
                 </el-tag>
@@ -103,6 +104,43 @@
           </el-option>
         </el-select>
         <div class="form-tip">可多选，至少选择一项权限</div>
+      </el-form-item>
+
+      <el-form-item label="卡密价格" prop="price">
+        <div class="price-editor">
+          <el-input-number
+            v-model="form.price"
+            :min="MIN_CARD_PRICE"
+            :precision="2"
+            :step="0.5"
+            controls-position="right"
+            class="w-full"
+            @change="handleManualPriceChange"
+          />
+          <el-button plain @click="resetPriceToCalculated">按规则重算</el-button>
+        </div>
+        <div class="pricing-panel">
+          <div class="pricing-summary">
+            <div>
+              <span>规则建议价</span>
+              <strong>{{ formatPrice(calculatedPrice) }}</strong>
+            </div>
+            <div>
+              <span>当前单价</span>
+              <strong>{{ formatPrice(form.price) }}</strong>
+            </div>
+          </div>
+          <div class="pricing-formula">
+            <p>计算规则：权限月价按当前有效天数折算，超出 3 台设备后每增加 1 台直接加价 ¥0.50；最终价格为折算后的权限价格 + 设备加价，最低 {{ formatPrice(MIN_CARD_PRICE) }}。</p>
+            <p>
+              当前：权限月价 {{ formatPrice(monthlyPermissionPrice) }}
+              ，有效 {{ durationDays }} 天；
+              权限折算后 {{ formatPrice(proratedPermissionPrice) }}
+              + 设备加价 {{ formatPrice(extraDevicePrice) }}，
+              最终价格 {{ formatPrice(calculatedPrice) }}。
+            </p>
+          </div>
+        </div>
       </el-form-item>
 
       <el-form-item label="备注信息" prop="remark">
@@ -191,6 +229,12 @@ import {
   getExpireShortcutValue,
   type ExpireShortcutKey
 } from '@/utils/expire-shortcuts'
+import {
+  BASE_DEVICE_COUNT,
+  MIN_CARD_PRICE,
+  calculateCardPricingBreakdown,
+  formatPrice
+} from '@/utils/card-pricing'
 import type { App, FeaturePermission } from '@/types'
 
 /**
@@ -229,6 +273,7 @@ const formRef = ref<FormInstance>()                     // 表单引用
 const availablePermissions = ref<FeaturePermission[]>([])  // 可用权限列表
 const loadingPermissions = ref(false)                    // 加载权限列表状态
 const expireShortcutOptions = EXPIRE_SHORTCUT_OPTIONS    // 过期时间快捷选项
+const priceManuallyEdited = ref(false)                   // 管理员是否手动改过价格
 
 /**
  * 表单数据
@@ -237,8 +282,9 @@ const form = reactive({
   app_id: undefined as number | undefined,
   count: 10,
   expire_time: '',
-  max_device_count: 1,
+  max_device_count: BASE_DEVICE_COUNT,
   permissions: [] as string[],
+  price: 0.5,
   remark: ''
 })
 
@@ -262,7 +308,47 @@ const rules: FormRules = {
   ],
   permissions: [
     { required: true, message: '请至少选择一项权限', trigger: 'change', type: 'array', min: 1 }
+  ],
+  price: [
+    { required: true, message: '请输入卡密价格', trigger: 'blur' },
+    { type: 'number', min: MIN_CARD_PRICE, message: '卡密价格不能低于0.5元', trigger: 'blur' }
   ]
+}
+
+const selectedPermissions = computed(() => {
+  const selectedKeys = new Set(form.permissions)
+  return availablePermissions.value.filter(permission => selectedKeys.has(permission.permission_key))
+})
+
+const pricingBreakdown = computed(() => calculateCardPricingBreakdown({
+  permissions: form.permissions,
+  availablePermissions: selectedPermissions.value,
+  expireTime: form.expire_time,
+  maxDeviceCount: form.max_device_count
+}))
+
+const monthlyPermissionPrice = computed(() => pricingBreakdown.value.monthlyPermissionPrice)
+const proratedPermissionPrice = computed(() => pricingBreakdown.value.proratedPermissionPrice)
+const extraDevicePrice = computed(() => pricingBreakdown.value.extraDevicePrice)
+const durationDays = computed(() => pricingBreakdown.value.durationDays)
+const calculatedPrice = computed(() => pricingBreakdown.value.finalPrice)
+
+/**
+ * 同步规则建议价
+ */
+const syncCalculatedPrice = () => {
+  if (!priceManuallyEdited.value) {
+    form.price = calculatedPrice.value
+  }
+}
+
+const handleManualPriceChange = () => {
+  priceManuallyEdited.value = true
+}
+
+const resetPriceToCalculated = () => {
+  priceManuallyEdited.value = false
+  syncCalculatedPrice()
 }
 
 /**
@@ -297,12 +383,20 @@ const handleExpireShortcutSelect = (shortcutKey: ExpireShortcutKey) => {
  * 加载权限列表
  */
 const loadPermissions = async () => {
+  if (!form.app_id) {
+    availablePermissions.value = []
+    return
+  }
+
   loadingPermissions.value = true
-  console.info('[卡密生成弹窗] 开始加载权限列表')
+  console.info('[卡密生成弹窗] 开始加载权限列表', {
+    appId: form.app_id
+  })
   try {
     const response = await getFeaturePermissionList({
       page: 1,
-      size: 100  // 获取所有权限
+      size: 100,  // 获取当前应用下的权限
+      app_id: form.app_id
     })
     // 只显示正常状态的权限
     availablePermissions.value = response.permissions.filter(p => p.status === 'normal')
@@ -380,7 +474,8 @@ const handleGenerate = async () => {
       count: form.count,
       expireTime: form.expire_time,
       maxDeviceCount: form.max_device_count,
-      permissionCount: form.permissions.length
+      permissionCount: form.permissions.length,
+      price: form.price
     })
     
     // 调用生成 API
@@ -390,6 +485,7 @@ const handleGenerate = async () => {
       expire_time: form.expire_time,
       max_device_count: form.max_device_count,
       permissions: form.permissions,
+      price: form.price,
       remark: form.remark || undefined
     })
     
@@ -436,10 +532,12 @@ const resetForm = () => {
   generatedCards.value = []
   form.app_id = undefined
   form.count = 10
-  form.expire_time = ''
-  form.max_device_count = 1
+  form.expire_time = getExpireShortcutValue('oneMonth')
+  form.max_device_count = BASE_DEVICE_COUNT
   form.permissions = []
+  form.price = MIN_CARD_PRICE
   form.remark = ''
+  priceManuallyEdited.value = false
   availablePermissions.value = []
 }
 
@@ -449,12 +547,37 @@ const resetForm = () => {
 watch(dialogVisible, (newVal) => {
   if (newVal) {
     console.info('[卡密生成弹窗] 弹窗已打开，准备初始化数据')
+    form.expire_time = getExpireShortcutValue('oneMonth')
+    form.max_device_count = BASE_DEVICE_COUNT
+    priceManuallyEdited.value = false
     // 打开弹窗时加载权限列表
     loadPermissions()
   } else {
     setTimeout(resetForm, 300)
   }
 })
+
+watch(
+  () => form.app_id,
+  async () => {
+    form.permissions = []
+    await loadPermissions()
+    syncCalculatedPrice()
+  }
+)
+
+watch(
+  () => [
+    form.permissions.slice().join(','),
+    form.expire_time,
+    form.max_device_count,
+    pricingBreakdown.value.monthlyPermissionPrice,
+    pricingBreakdown.value.proratedPermissionPrice,
+    pricingBreakdown.value.extraDevicePrice,
+    pricingBreakdown.value.durationDays
+  ],
+  syncCalculatedPrice
+)
 </script>
 
 <style scoped>
@@ -485,9 +608,41 @@ watch(dialogVisible, (newVal) => {
   @apply text-sm font-medium text-gray-900;
 }
 
+.permission-price {
+  @apply ml-auto text-xs font-semibold text-emerald-600 tabular-nums;
+}
+
 .option-desc {
   @apply text-xs text-gray-500;
   @apply mt-1;
+}
+
+.price-editor {
+  @apply flex gap-3 w-full;
+}
+
+.pricing-panel {
+  @apply mt-3 w-full rounded-2xl border border-blue-100 bg-blue-50 p-4;
+}
+
+.pricing-summary {
+  @apply grid grid-cols-2 gap-3 mb-3;
+}
+
+.pricing-summary div {
+  @apply rounded-xl bg-white border border-blue-100 p-3;
+}
+
+.pricing-summary span {
+  @apply block text-xs text-gray-500 mb-1;
+}
+
+.pricing-summary strong {
+  @apply text-lg font-bold text-blue-700 tabular-nums;
+}
+
+.pricing-formula {
+  @apply space-y-1 text-xs leading-5 text-blue-900;
 }
 
 /* 生成结果 */

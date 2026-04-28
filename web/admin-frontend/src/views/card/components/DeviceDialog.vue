@@ -153,7 +153,20 @@
             class="limit-input"
           />
           <div class="form-tip">
-            输入范围 1-100，且不能小于当前已绑定设备数 {{ activeDeviceCount }}。
+            输入范围 1-100，且不能小于当前已绑定设备数 {{ activeDeviceCount }}；保存后会按当前权限和有效时间重新计算卡密价格。
+          </div>
+          <div class="pricing-panel">
+            <div class="pricing-summary">
+              <span>预计价格</span>
+              <strong>{{ formatPrice(pricingBreakdown.finalPrice) }}</strong>
+            </div>
+            <p>
+              当前：权限月价 {{ formatPrice(pricingBreakdown.monthlyPermissionPrice) }}
+              ，有效 {{ pricingBreakdown.durationDays }} 天；
+              权限折算后 {{ formatPrice(pricingBreakdown.proratedPermissionPrice) }}
+              + 设备加价 {{ formatPrice(pricingBreakdown.extraDevicePrice) }}
+              = 最终价格 {{ formatPrice(pricingBreakdown.finalPrice) }}。
+            </p>
           </div>
         </el-form-item>
       </el-form>
@@ -183,7 +196,12 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Connection, CircleCheck, CircleClose, Refresh, Edit } from '@element-plus/icons-vue'
 import { getDeviceList, updateCardMaxDeviceCount, updateDeviceStatus } from '@/api/admin'
-import type { Card, Device } from '@/types'
+import { getFeaturePermissionList } from '@/api/feature-permission'
+import {
+  calculateCardPricingBreakdown,
+  formatPrice
+} from '@/utils/card-pricing'
+import type { Card, Device, FeaturePermission } from '@/types'
 
 /**
  * Props 定义
@@ -216,6 +234,7 @@ const dialogVisible = computed({
  */
 const loading = ref(false)                              // 加载状态
 const deviceList = ref<Device[]>([])                    // 设备列表
+const availablePermissions = ref<FeaturePermission[]>([]) // 当前应用可用权限，用于价格拆解展示
 const maxDeviceCountDialogVisible = ref(false)          // 修改设备限制弹窗显示状态
 const maxDeviceCountSubmitting = ref(false)             // 修改设备限制提交状态
 const maxDeviceCountForm = ref({
@@ -229,6 +248,32 @@ const maxDeviceCountForm = ref({
 const activeDeviceCount = computed(() => {
   return deviceList.value.filter(device => device.status === 'active').length
 })
+
+const pricingBreakdown = computed(() => calculateCardPricingBreakdown({
+  permissions: props.card?.permissions || [],
+  availablePermissions: availablePermissions.value,
+  expireTime: props.card?.expire_time || '',
+  maxDeviceCount: maxDeviceCountForm.value.max_device_count
+}))
+
+const loadPricingPermissions = async () => {
+  if (!props.card?.app_id) {
+    availablePermissions.value = []
+    return
+  }
+
+  try {
+    const response = await getFeaturePermissionList({
+      page: 1,
+      size: 100,
+      app_id: props.card.app_id
+    })
+    availablePermissions.value = response.permissions || []
+  } catch (error) {
+    console.error('[设备弹窗] 加载价格计算所需权限失败', error)
+    availablePermissions.value = []
+  }
+}
 
 /**
  * 格式化日期时间
@@ -339,6 +384,7 @@ const openMaxDeviceCountDialog = () => {
     currentMaxDeviceCount: props.card.max_device_count,
     activeDeviceCount: activeDeviceCount.value
   })
+  loadPricingPermissions()
   maxDeviceCountDialogVisible.value = true
 }
 
@@ -387,20 +433,22 @@ const handleMaxDeviceCountSubmit = async () => {
       activeDeviceCount: activeDeviceCount.value
     })
 
-    await updateCardMaxDeviceCount(props.card.id, targetMaxDeviceCount)
+    const result = await updateCardMaxDeviceCount(props.card.id, targetMaxDeviceCount)
 
     const updatedCard: Card = {
       ...props.card,
-      max_device_count: targetMaxDeviceCount
+      max_device_count: targetMaxDeviceCount,
+      price: result.price ?? props.card.price
     }
 
     console.info('[设备弹窗] 设备限制更新成功', {
       cardId: updatedCard.id,
       cardKey: updatedCard.card_key,
-      newMaxDeviceCount: updatedCard.max_device_count
+      newMaxDeviceCount: updatedCard.max_device_count,
+      newPrice: updatedCard.price
     })
 
-    ElMessage.success('设备限制更新成功')
+    ElMessage.success('设备限制更新成功，卡密价格已重新计算')
     emit('success', updatedCard)
     maxDeviceCountDialogVisible.value = false
   } catch (error) {
@@ -564,6 +612,24 @@ watch(dialogVisible, (newVal) => {
 
 .form-tip {
   @apply text-xs text-gray-500 mt-2 leading-5;
+}
+
+.pricing-panel {
+  @apply mt-3 rounded-xl border border-blue-100 bg-blue-50 p-4;
+  @apply text-xs leading-5 text-blue-900;
+}
+
+.pricing-summary {
+  @apply flex items-center justify-between mb-2;
+}
+
+.pricing-summary span {
+  @apply text-gray-500;
+}
+
+.pricing-summary strong {
+  @apply text-lg font-bold text-blue-700;
+  font-variant-numeric: tabular-nums;
 }
 
 .dialog-footer {

@@ -70,6 +70,20 @@
         </el-form-item>
       </el-form>
 
+      <div class="pricing-panel">
+        <div class="pricing-summary">
+          <span>预计价格</span>
+          <strong>{{ formatPrice(pricingBreakdown.finalPrice) }}</strong>
+        </div>
+        <p>
+          当前：权限月价 {{ formatPrice(pricingBreakdown.monthlyPermissionPrice) }}
+          ，有效 {{ pricingBreakdown.durationDays }} 天；
+          权限折算后 {{ formatPrice(pricingBreakdown.proratedPermissionPrice) }}
+          + 设备加价 {{ formatPrice(pricingBreakdown.extraDevicePrice) }}
+          = 最终价格 {{ formatPrice(pricingBreakdown.finalPrice) }}。
+        </p>
+      </div>
+
       <!-- 提示信息 -->
       <el-alert
         title="权限修改将立即生效"
@@ -79,7 +93,7 @@
         class="mt-4"
       >
         <template #default>
-          修改权限后，使用该卡密的用户将立即获得或失去相应权限
+          修改权限后，使用该卡密的用户将立即获得或失去相应权限，卡密价格也会按当前设备数和有效时间重新计算
         </template>
       </el-alert>
     </div>
@@ -107,6 +121,10 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { getCardFeaturePermissions, updateCardFeaturePermissions } from '@/api/feature-permission'
+import {
+  calculateCardPricingBreakdown,
+  formatPrice
+} from '@/utils/card-pricing'
 import type { Card, FeaturePermission } from '@/types'
 
 /**
@@ -125,7 +143,7 @@ const props = defineProps<Props>()
  */
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'success': []
+  success: [card?: Card]
 }>()
 
 /**
@@ -159,6 +177,13 @@ const rules: FormRules = {
     { required: true, message: '请至少选择一项权限', trigger: 'change', type: 'array', min: 1 }
   ]
 }
+
+const pricingBreakdown = computed(() => calculateCardPricingBreakdown({
+  permissions: form.permissions,
+  availablePermissions: availablePermissions.value,
+  expireTime: props.card?.expire_time || '',
+  maxDeviceCount: props.card?.max_device_count || 1
+}))
 
 /**
  * 获取状态标签类型
@@ -261,10 +286,16 @@ const handleSubmit = async () => {
     loading.value = true
 
     // 调用更新权限 API
-    await updateCardFeaturePermissions(props.card.id, form.permissions)
+    const result = await updateCardFeaturePermissions(props.card.id, form.permissions)
 
-    ElMessage.success('权限修改成功')
-    emit('success')
+    const updatedCard: Card = {
+      ...props.card,
+      permissions: [...form.permissions],
+      price: result.price ?? props.card.price
+    }
+
+    ElMessage.success('权限修改成功，卡密价格已重新计算')
+    emit('success', updatedCard)
     handleClose()
   } catch (error: any) {
     console.error('修改权限失败:', error)
@@ -440,6 +471,34 @@ watch(dialogVisible, (newVal) => {
   color: #999;
   line-height: 1.5;
   margin-top: 4px;
+}
+
+.pricing-panel {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.pricing-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.pricing-summary span {
+  color: #64748b;
+}
+
+.pricing-summary strong {
+  color: #1d4ed8;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 滚动条样式 */

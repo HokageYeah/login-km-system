@@ -148,6 +148,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="price" label="售卖价格" width="120" align="right">
+          <template #default="{ row }">
+            <span class="price-cell">{{ formatPrice(row.price) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="sort_order" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -269,6 +274,17 @@
             当前还没有应用，请先去应用管理中创建应用后再创建权限。
             <el-button link type="primary" @click="goToAppManagement">去创建应用</el-button>
           </div>
+        </el-form-item>
+
+        <el-form-item label="售卖价格" prop="price">
+          <el-input-number
+            v-model="formData.price"
+            :min="0"
+            :precision="2"
+            :step="1"
+            controls-position="right"
+            class="w-full"
+          />
         </el-form-item>
 
         <el-form-item label="图标" prop="icon">
@@ -439,6 +455,7 @@ const formData = ref<any>({
   permission_name: '',
   app_id: undefined as number | undefined,
   description: '',
+  price: 0,
   icon: '',
   sort_order: 0,
   status: 'normal'
@@ -463,6 +480,10 @@ const formRules: FormRules = {
   ],
   description: [
     { max: 500, message: '描述最多500个字符', trigger: 'blur' }
+  ],
+  price: [
+    { required: true, message: '请输入售卖价格', trigger: 'blur' },
+    { type: 'number', min: 0, message: '售卖价格不能小于0', trigger: 'blur' }
   ],
   app_id: [
     { required: true, message: '请选择所属应用', trigger: 'change' }
@@ -639,6 +660,7 @@ const handleCreate = () => {
     permission_name: '',
     app_id: undefined,
     description: '',
+    price: 0,
     icon: '',
     sort_order: 0,
     status: 'normal'
@@ -659,6 +681,7 @@ const handleEdit = (permission: FeaturePermission) => {
     permission_name: permission.permission_name,
     app_id: permission.app_id,
     description: permission.description || '',
+    price: Number(permission.price ?? 0),
     icon: permission.icon || '',
     sort_order: permission.sort_order,
     status: permission.status
@@ -927,6 +950,17 @@ const formatDate = (dateStr: string) => {
 }
 
 /**
+ * 格式化权限售卖价格
+ */
+const formatPrice = (price: number | string | null | undefined) => {
+  const parsedPrice = Number(price ?? 0)
+  if (Number.isNaN(parsedPrice)) {
+    return '¥0.00'
+  }
+  return `¥${parsedPrice.toFixed(2)}`
+}
+
+/**
  * 组件挂载时加载数据
  */
 onMounted(() => {
@@ -1056,6 +1090,10 @@ watch(
 
 .status-tag {
   @apply font-medium;
+}
+
+.price-cell {
+  @apply font-semibold text-gray-800;
 }
 
 .text-muted {
