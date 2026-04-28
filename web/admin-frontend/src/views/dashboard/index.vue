@@ -1772,6 +1772,25 @@ onBeforeUnmount(() => {
 <style scoped>
 @reference "../../styles/index.css";
 
+/* ========== 入场动画 ========== */
+@keyframes dash-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dash-bar-grow {
+  from {
+    width: 0%;
+  }
+}
+
+/* ========== 页面容器 ========== */
 .dashboard-container {
   @apply min-h-full px-6 py-6 lg:px-8;
   background:
@@ -1780,8 +1799,10 @@ onBeforeUnmount(() => {
     linear-gradient(180deg, #f8fbfd 0%, #f4f8fb 52%, #f8fafc 100%);
 }
 
+/* ========== 页头 ========== */
 .dashboard-header {
-  @apply flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between mb-6;
+  @apply flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between mb-8;
+  animation: dash-fade-up 0.5s ease-out both;
 }
 
 .header-copy {
@@ -1790,11 +1811,16 @@ onBeforeUnmount(() => {
 
 .header-badge {
   @apply inline-flex items-center rounded-full px-3 py-1 text-xs tracking-[0.18em] uppercase;
-  @apply bg-sky-100 text-sky-700 border border-sky-200;
+  @apply bg-sky-50 text-sky-600 border border-sky-200/70;
+  letter-spacing: 0.22em;
 }
 
 .dashboard-title {
-  @apply mt-4 text-3xl lg:text-4xl font-semibold text-slate-900;
+  @apply mt-4 text-3xl lg:text-4xl font-bold text-slate-900;
+  background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .dashboard-subtitle {
@@ -1806,22 +1832,37 @@ onBeforeUnmount(() => {
 }
 
 .header-info-card {
-  @apply min-w-[168px] rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm;
+  @apply min-w-[168px] rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3;
+  @apply backdrop-blur-sm;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.header-info-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.08);
 }
 
 .header-info-card span {
-  @apply block text-xs text-slate-400 mb-1;
+  @apply block text-[11px] text-slate-400 font-medium tracking-wide uppercase mb-1;
 }
 
 .header-info-card strong {
-  @apply text-sm font-semibold text-slate-900;
+  @apply text-sm font-semibold text-slate-900 tabular-nums;
 }
 
 .refresh-btn {
   @apply rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 font-medium;
-  @apply shadow-sm hover:bg-sky-100 hover:text-sky-800;
+  @apply shadow-sm;
+  transition: all 0.2s ease;
 }
 
+.refresh-btn:hover {
+  @apply bg-sky-100 text-sky-800;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+}
+
+/* ========== 总览卡片 ========== */
 .overview-grid {
   @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
 }
@@ -1830,12 +1871,19 @@ onBeforeUnmount(() => {
 .panel-card,
 .chart-card,
 .signal-card {
-  @apply rounded-[28px] border border-slate-200/80 bg-white/88 shadow-sm;
+  @apply rounded-[24px] border border-slate-200/80 bg-white/88 shadow-sm;
   @apply backdrop-blur-sm;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  animation: dash-fade-up 0.5s ease-out both;
 }
 
 .overview-card {
-  @apply p-5;
+  @apply p-5 lg:p-6;
+}
+
+.overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
 }
 
 .overview-card-top {
@@ -1843,35 +1891,40 @@ onBeforeUnmount(() => {
 }
 
 .overview-icon {
-  @apply flex items-center justify-center w-11 h-11 rounded-2xl;
+  @apply flex items-center justify-center w-11 h-11 rounded-xl;
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .icon-user {
-  @apply bg-sky-100 text-sky-700;
+  @apply bg-sky-50 text-sky-600;
 }
 
 .icon-card {
-  @apply bg-amber-100 text-amber-700;
+  @apply bg-amber-50 text-amber-600;
+  border-color: rgba(245, 158, 11, 0.08);
 }
 
 .icon-device {
-  @apply bg-teal-100 text-teal-700;
+  @apply bg-teal-50 text-teal-600;
+  border-color: rgba(20, 184, 166, 0.08);
 }
 
 .icon-app {
-  @apply bg-violet-100 text-violet-700;
+  @apply bg-violet-50 text-violet-600;
+  border-color: rgba(139, 92, 246, 0.08);
 }
 
 .overview-tag {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-slate-500 bg-slate-100;
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+  @apply text-slate-500 bg-slate-50 border border-slate-100;
 }
 
 .overview-label {
-  @apply block text-sm text-slate-500;
+  @apply block text-xs text-slate-400 font-medium tracking-wide uppercase;
 }
 
 .overview-value {
-  @apply block mt-2 text-3xl font-semibold text-slate-900;
+  @apply block mt-2 text-3xl font-bold text-slate-900 tabular-nums;
 }
 
 .overview-meta {
@@ -1891,18 +1944,21 @@ onBeforeUnmount(() => {
 }
 
 .overview-progress-track {
-  @apply flex-1 h-2 rounded-full bg-slate-100 overflow-hidden;
+  @apply flex-1 h-1.5 rounded-full overflow-hidden;
+  background: rgba(148, 163, 184, 0.12);
 }
 
 .overview-progress-bar {
   @apply h-full rounded-full;
-  background: linear-gradient(90deg, #38bdf8 0%, #22c55e 100%);
+  background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
+  animation: dash-bar-grow 0.8s ease-out both;
 }
 
 .overview-progress span {
-  @apply text-xs font-semibold text-slate-500;
+  @apply text-xs font-semibold text-slate-400 tabular-nums;
 }
 
+/* ========== 高亮面板网格 ========== */
 .highlight-grid {
   @apply grid grid-cols-1 xl:grid-cols-[1.1fr_1.2fr_0.82fr] gap-4 mb-4;
 }
@@ -1912,68 +1968,93 @@ onBeforeUnmount(() => {
   @apply p-5 lg:p-6;
 }
 
+.panel-card:hover {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
 .panel-head {
-  @apply flex items-start justify-between gap-4 mb-5;
+  @apply flex items-start justify-between gap-4 mb-5 pb-4 border-b border-slate-100/80;
 }
 
 .panel-eyebrow {
-  @apply text-xs uppercase tracking-[0.2em] text-slate-400;
+  @apply text-[11px] uppercase tracking-[0.22em] text-slate-400 font-medium;
 }
 
 .panel-title {
-  @apply mt-1 text-xl font-semibold text-slate-900;
+  @apply mt-1 text-lg font-semibold text-slate-900;
 }
 
 .panel-icon {
-  @apply flex items-center justify-center w-11 h-11 rounded-2xl bg-slate-100 text-slate-600;
+  @apply flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-500;
+  border: 1px solid rgba(0, 0, 0, 0.03);
 }
 
+/* ========== 摘要列表 ========== */
 .summary-list {
   @apply grid grid-cols-2 gap-3;
 }
 
 .summary-item {
-  @apply rounded-2xl bg-slate-50 px-4 py-4;
+  @apply rounded-xl bg-slate-50/80 px-4 py-4;
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  transition: background 0.15s ease;
+}
+
+.summary-item:hover {
+  background: rgba(241, 245, 249, 0.9);
 }
 
 .summary-item span {
-  @apply block text-xs text-slate-400 mb-2;
+  @apply block text-[11px] text-slate-400 font-medium tracking-wide uppercase mb-2;
 }
 
 .summary-item strong {
-  @apply block text-2xl font-semibold text-slate-900;
+  @apply block text-2xl font-bold text-slate-900 tabular-nums;
 }
 
 .summary-item em {
   @apply mt-2 block text-xs leading-5 text-slate-500 not-italic;
 }
 
+/* ========== 焦点列表 ========== */
 .focus-list {
-  @apply space-y-4;
+  @apply space-y-3;
 }
 
 .focus-item {
-  @apply flex items-start gap-3;
+  @apply flex items-start gap-3 rounded-xl p-3;
+  transition: background 0.15s ease;
+}
+
+.focus-item:hover {
+  background: rgba(248, 250, 252, 0.7);
 }
 
 .focus-dot {
-  @apply mt-2 w-2.5 h-2.5 rounded-full shrink-0;
+  @apply mt-1.5 w-2 h-2 rounded-full shrink-0;
+  box-shadow: 0 0 6px currentColor;
 }
 
 .focus-body strong {
-  @apply block text-sm font-semibold text-slate-900;
+  @apply block text-sm font-semibold text-slate-800;
 }
 
 .focus-body p {
-  @apply mt-1 text-sm leading-6 text-slate-500;
+  @apply mt-1 text-[13px] leading-6 text-slate-500;
 }
 
+/* ========== 信号卡片 ========== */
 .signal-grid {
   @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
 }
 
 .signal-card {
   @apply p-4 lg:p-5;
+}
+
+.signal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
 
 .signal-card-top {
@@ -1985,20 +2066,22 @@ onBeforeUnmount(() => {
 }
 
 .signal-card-top strong {
-  @apply text-2xl font-semibold text-slate-900;
+  @apply text-2xl font-bold text-slate-900 tabular-nums;
 }
 
 .signal-card p {
   @apply mt-3 text-sm leading-6 text-slate-500;
 }
 
+/* ========== 收入面板 ========== */
 .revenue-panel {
-  @apply mb-6 rounded-[28px] border border-emerald-200/80 bg-white/88 p-5 lg:p-6 shadow-sm;
+  @apply mb-6 rounded-[24px] border border-emerald-200/60 bg-white/88 p-5 lg:p-7 shadow-sm;
   @apply backdrop-blur-sm;
+  animation: dash-fade-up 0.6s ease-out both;
 }
 
 .revenue-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-4;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-5 pb-5 border-b border-emerald-100/60;
 }
 
 .revenue-range-text {
@@ -2013,13 +2096,15 @@ onBeforeUnmount(() => {
   @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
 }
 
+/* ========== 趋势面板 ========== */
 .trend-panel {
-  @apply mb-6 rounded-[28px] border border-sky-200/80 bg-white/88 p-5 lg:p-6 shadow-sm;
+  @apply mb-6 rounded-[24px] border border-sky-200/60 bg-white/88 p-5 lg:p-7 shadow-sm;
   @apply backdrop-blur-sm;
+  animation: dash-fade-up 0.6s ease-out 0.1s both;
 }
 
 .trend-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-4;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-5 pb-5 border-b border-sky-100/60;
 }
 
 .trend-range-text {
@@ -2034,22 +2119,28 @@ onBeforeUnmount(() => {
   @apply grid grid-cols-1 xl:grid-cols-4 gap-4;
 }
 
+/* ========== 状态色 ========== */
 .level-success {
-  @apply bg-emerald-500;
+  background: #10b981;
+  color: #10b981;
 }
 
 .level-info {
-  @apply bg-sky-500;
+  background: #0ea5e9;
+  color: #0ea5e9;
 }
 
 .level-warning {
-  @apply bg-amber-500;
+  background: #f59e0b;
+  color: #f59e0b;
 }
 
 .level-danger {
-  @apply bg-rose-500;
+  background: #f43f5e;
+  color: #f43f5e;
 }
 
+/* ========== 图表尺寸 ========== */
 .mini-chart-container {
   width: 100%;
   height: 220px;
@@ -2076,12 +2167,14 @@ onBeforeUnmount(() => {
   height: 360px;
 }
 
+/* ========== 摘要面板 ========== */
 .summary-board {
-  @apply space-y-4;
+  @apply space-y-3;
 }
 
 .summary-board-item {
-  @apply rounded-2xl bg-slate-50 px-4 py-4;
+  @apply rounded-xl bg-slate-50/80 px-4 py-4;
+  border: 1px solid rgba(148, 163, 184, 0.06);
 }
 
 .summary-board-top {
@@ -2093,18 +2186,26 @@ onBeforeUnmount(() => {
 }
 
 .summary-board-top strong {
-  @apply text-sm font-semibold text-slate-900;
+  @apply text-sm font-semibold text-slate-900 tabular-nums;
 }
 
 .summary-board-track {
-  @apply h-2 rounded-full bg-slate-200 overflow-hidden;
+  @apply h-1.5 rounded-full overflow-hidden;
+  background: rgba(148, 163, 184, 0.12);
 }
 
 .summary-board-bar {
   @apply h-full rounded-full;
   background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
+  animation: dash-bar-grow 0.8s ease-out both;
 }
 
+/* ========== 图表卡片入场 ========== */
+.chart-card {
+  animation: dash-fade-up 0.5s ease-out both;
+}
+
+/* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .dashboard-container {
     @apply px-4 py-4;
@@ -2128,7 +2229,7 @@ onBeforeUnmount(() => {
   .signal-card,
   .revenue-panel,
   .trend-panel {
-    @apply rounded-3xl;
+    @apply rounded-2xl;
   }
 
   .mini-chart-container {
@@ -2138,7 +2239,7 @@ onBeforeUnmount(() => {
   .chart-container,
   .chart-medium,
   .chart-large {
-    height: 300px;
+    height: 280px;
   }
 }
 </style>
