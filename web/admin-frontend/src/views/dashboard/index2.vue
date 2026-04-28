@@ -23,6 +23,10 @@
           <span>增长质量分</span>
           <strong>{{ currentGrowthQuality }} 分</strong>
         </div>
+        <div class="ink-status-card">
+          <span>最新进账</span>
+          <strong>{{ formatCurrency(todayRevenue) }}</strong>
+        </div>
         <el-button
           :icon="RefreshRight"
           :loading="loading"
@@ -31,6 +35,172 @@
         >
           刷新水墨看板
         </el-button>
+      </div>
+    </section>
+
+    <section class="ink-growth-suite" v-loading="loading">
+      <div class="ink-suite-toolbar">
+        <div>
+          <p class="ink-panel-eyebrow">Growth Scope</p>
+          <h3 class="ink-panel-title">增长与销售联动分析</h3>
+          <p class="ink-suite-text">{{ growthRangeText }}</p>
+        </div>
+
+        <div class="ink-suite-controls">
+          <el-segmented
+            v-model="growthRangeMode"
+            :options="growthRangeModeOptions"
+            @change="handleGrowthRangeModeChange"
+          />
+
+          <el-date-picker
+            v-if="growthRangeMode === 'day'"
+            v-model="selectedGrowthDay"
+            type="date"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            placeholder="选择日期"
+            :clearable="false"
+            @change="handleGrowthDateChange"
+          />
+
+          <el-date-picker
+            v-if="growthRangeMode === 'month'"
+            v-model="selectedGrowthMonth"
+            type="month"
+            value-format="YYYY-MM"
+            format="YYYY年MM月"
+            placeholder="选择月份"
+            :clearable="false"
+            @change="handleGrowthDateChange"
+          />
+
+          <el-date-picker
+            v-if="growthRangeMode === 'range'"
+            v-model="selectedGrowthRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            :clearable="false"
+            @change="handleGrowthDateChange"
+          />
+        </div>
+      </div>
+
+      <div class="ink-growth-chart-grid">
+        <article class="ink-chart-card ink-chart-wide">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Sales Trend</p>
+              <h3 class="ink-panel-title">每日销售额 / 订单数趋势</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><DataLine /></el-icon>
+          </div>
+          <div ref="salesTrendRef" class="ink-chart ink-chart-large"></div>
+        </article>
+
+        <article class="ink-chart-card ink-chart-wide">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Daily Growth</p>
+              <h3 class="ink-panel-title">每日新增用户 / 设备 / 卡密对比</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><DataAnalysis /></el-icon>
+          </div>
+          <div ref="growthCompareRef" class="ink-chart ink-chart-large"></div>
+        </article>
+
+        <article class="ink-chart-card ink-chart-wide">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Growth Quality</p>
+              <h3 class="ink-panel-title">增长质量指数</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><DataLine /></el-icon>
+          </div>
+          <div ref="growthQualityRef" class="ink-chart ink-chart-medium"></div>
+        </article>
+
+        <article class="ink-chart-card ink-chart-wide">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Cumulative Growth</p>
+              <h3 class="ink-panel-title">累计增长与系统使用规模</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><CollectionTag /></el-icon>
+          </div>
+          <div ref="cumulativeTrendRef" class="ink-chart ink-chart-large"></div>
+        </article>
+
+        <article class="ink-chart-card ink-chart-wide">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Usage Contrast</p>
+              <h3 class="ink-panel-title">关键指标对比分析</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><Histogram /></el-icon>
+          </div>
+          <div ref="keyMetricsRef" class="ink-chart ink-chart-medium"></div>
+        </article>
+
+        <article class="ink-chart-card ink-chart-wide">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Growth Scatter</p>
+              <h3 class="ink-panel-title">增长协同散点图</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><Grid /></el-icon>
+          </div>
+          <div ref="growthScatterRef" class="ink-chart ink-chart-medium"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="ink-risk-suite" v-loading="loading">
+      <div class="ink-suite-toolbar">
+        <div>
+          <p class="ink-panel-eyebrow">Risk Structure</p>
+          <h3 class="ink-panel-title">异常与经营结构观察</h3>
+          <p class="ink-suite-text">这一组聚焦风险用户、卡密状态和经营韧性，方便快速判断增长是否被风险侧侵蚀。</p>
+        </div>
+      </div>
+
+      <div class="ink-risk-chart-grid">
+        <article class="ink-chart-card">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">User Risk</p>
+              <h3 class="ink-panel-title">异常用户结构</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><User /></el-icon>
+          </div>
+          <div ref="userRiskRef" class="ink-chart"></div>
+        </article>
+
+        <article class="ink-chart-card">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Card Flow</p>
+              <h3 class="ink-panel-title">卡密使用 / 封禁对比</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><Ticket /></el-icon>
+          </div>
+          <div ref="cardUsageRef" class="ink-chart"></div>
+        </article>
+
+        <article class="ink-chart-card">
+          <div class="ink-panel-head">
+            <div>
+              <p class="ink-panel-eyebrow">Health Radar</p>
+              <h3 class="ink-panel-title">增长经营雷达</h3>
+            </div>
+            <el-icon class="ink-panel-icon"><Opportunity /></el-icon>
+          </div>
+          <div ref="analysisRadarRef" class="ink-chart"></div>
+        </article>
       </div>
     </section>
 
@@ -138,95 +308,6 @@
       </article>
     </section>
 
-    <section class="ink-chart-grid" v-loading="loading">
-      <article class="ink-chart-card ink-chart-wide">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">Daily Growth</p>
-            <h3 class="ink-panel-title">每日新增用户 / 设备 / 卡密对比</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><DataAnalysis /></el-icon>
-        </div>
-        <div ref="growthCompareRef" class="ink-chart ink-chart-large"></div>
-      </article>
-
-      <article class="ink-chart-card">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">User Risk</p>
-            <h3 class="ink-panel-title">异常用户结构</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><User /></el-icon>
-        </div>
-        <div ref="userRiskRef" class="ink-chart"></div>
-      </article>
-
-      <article class="ink-chart-card ink-chart-wide">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">Growth Quality</p>
-            <h3 class="ink-panel-title">增长质量指数</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><DataLine /></el-icon>
-        </div>
-        <div ref="growthQualityRef" class="ink-chart ink-chart-medium"></div>
-      </article>
-
-      <article class="ink-chart-card ink-chart-wide">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">Usage Contrast</p>
-            <h3 class="ink-panel-title">关键指标对比分析</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><Histogram /></el-icon>
-        </div>
-        <div ref="keyMetricsRef" class="ink-chart ink-chart-medium"></div>
-      </article>
-
-      <article class="ink-chart-card">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">Card Flow</p>
-            <h3 class="ink-panel-title">卡密使用 / 封禁对比</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><Ticket /></el-icon>
-        </div>
-        <div ref="cardUsageRef" class="ink-chart"></div>
-      </article>
-
-      <article class="ink-chart-card ink-chart-wide">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">Growth Scatter</p>
-            <h3 class="ink-panel-title">增长协同散点图</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><Grid /></el-icon>
-        </div>
-        <div ref="growthScatterRef" class="ink-chart ink-chart-medium"></div>
-      </article>
-
-      <article class="ink-chart-card ink-chart-wide">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">Cumulative Growth</p>
-            <h3 class="ink-panel-title">累计增长与系统使用规模</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><CollectionTag /></el-icon>
-        </div>
-        <div ref="cumulativeTrendRef" class="ink-chart ink-chart-large"></div>
-      </article>
-
-      <article class="ink-chart-card">
-        <div class="ink-panel-head">
-          <div>
-            <p class="ink-panel-eyebrow">Health Radar</p>
-            <h3 class="ink-panel-title">增长经营雷达</h3>
-          </div>
-          <el-icon class="ink-panel-icon"><Opportunity /></el-icon>
-        </div>
-        <div ref="analysisRadarRef" class="ink-chart"></div>
-      </article>
-    </section>
   </div>
 </template>
 
@@ -265,10 +346,13 @@ import {
   getAverageValue,
   getLastValue,
   getRate,
-  getSeriesPeak
+  getSeriesPeak,
+  formatDashboardCurrency,
+  toDashboardAmount
 } from './dashboard-metrics'
 
 type ChartKey =
+  | 'salesTrend'
   | 'growthCompare'
   | 'userRisk'
   | 'growthQuality'
@@ -282,7 +366,50 @@ const loading = ref(false)                              // 页面加载状态
 const statistics = ref<Statistics | null>(null)         // 后端统计快照
 const lastUpdatedAt = ref<Date | null>(null)            // 最近刷新时间
 
+const padDateUnit = (value: number) => String(value).padStart(2, '0')
+type GrowthRangeMode = 'today' | 'day' | 'month' | 'range'
+
+const getDateValue = (date: Date) => {
+  return `${date.getFullYear()}-${padDateUnit(date.getMonth() + 1)}-${padDateUnit(date.getDate())}`
+}
+
+const getMonthValue = (date: Date) => {
+  return `${date.getFullYear()}-${padDateUnit(date.getMonth() + 1)}`
+}
+
+const formatDisplayDate = (value: string) => {
+  const [year, month, day] = value.split('-')
+  return `${year}年${month}月${day}日`
+}
+
+const getMonthRange = (monthValue: string): [string, string] => {
+  const [year = new Date().getFullYear(), month = new Date().getMonth() + 1] = monthValue.split('-').map(Number)
+  const firstDay = new Date(year, month - 1, 1)
+  const lastDay = new Date(year, month, 0)
+  return [getDateValue(firstDay), getDateValue(lastDay)]
+}
+
+const getShiftedDateValue = (offsetDays: number) => {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return getDateValue(date)
+}
+
+const todayValue = getDateValue(new Date())
+const createDefaultRangeValue = (): [string, string] => [getShiftedDateValue(-7), todayValue]
+const growthRangeMode = ref<GrowthRangeMode>('today')
+const selectedGrowthDay = ref(todayValue)
+const selectedGrowthMonth = ref(getMonthValue(new Date()))
+const selectedGrowthRange = ref<[string, string]>(createDefaultRangeValue())
+const growthRangeModeOptions = [
+  { label: '今日', value: 'today' },
+  { label: '指定日期', value: 'day' },
+  { label: '指定月份', value: 'month' },
+  { label: '自定义范围', value: 'range' }
+]
+
 const growthCompareRef = ref<HTMLDivElement>()
+const salesTrendRef = ref<HTMLDivElement>()
 const userRiskRef = ref<HTMLDivElement>()
 const growthQualityRef = ref<HTMLDivElement>()
 const keyMetricsRef = ref<HTMLDivElement>()
@@ -301,6 +428,87 @@ const statisticsSnapshot = computed<Statistics>(() => {
   return statistics.value ?? createDashboardFallbackStatistics()
 })
 
+const formatCurrency = (value: number | string | null | undefined) => formatDashboardCurrency(value)
+const growthScopeLabel = computed(() => {
+  const range = statisticsSnapshot.value.trend_range
+  if (range.start_date === range.end_date) {
+    return '当日'
+  }
+  return '当前范围'
+})
+
+const growthRangeText = computed(() => {
+  const trendRange = statisticsSnapshot.value.trend_range
+  const revenueRange = statisticsSnapshot.value.revenue_range
+
+  if (
+    trendRange.start_date === trendRange.end_date &&
+    trendRange.start_date === revenueRange.start_date &&
+    revenueRange.start_date === revenueRange.end_date
+  ) {
+    return `当前查看 ${formatDisplayDate(trendRange.start_date)} 的销售、增长、质量与累计规模变化。`
+  }
+
+  return `当前查看 ${formatDisplayDate(trendRange.start_date)} 至 ${formatDisplayDate(trendRange.end_date)} 的销售、增长、质量与累计规模变化。`
+})
+
+const growthQueryRange = computed(() => {
+  if (growthRangeMode.value === 'day') {
+    return {
+      start_date: selectedGrowthDay.value,
+      end_date: selectedGrowthDay.value,
+      trend_start_date: selectedGrowthDay.value,
+      trend_end_date: selectedGrowthDay.value
+    }
+  }
+
+  if (growthRangeMode.value === 'month') {
+    const [startDate, endDate] = getMonthRange(selectedGrowthMonth.value)
+    return {
+      start_date: startDate,
+      end_date: endDate,
+      trend_start_date: startDate,
+      trend_end_date: endDate
+    }
+  }
+
+  if (growthRangeMode.value === 'range') {
+    return {
+      start_date: selectedGrowthRange.value[0],
+      end_date: selectedGrowthRange.value[1],
+      trend_start_date: selectedGrowthRange.value[0],
+      trend_end_date: selectedGrowthRange.value[1]
+    }
+  }
+
+  return {
+    start_date: todayValue,
+    end_date: todayValue,
+    trend_start_date: todayValue,
+    trend_end_date: todayValue
+  }
+})
+
+const handleGrowthRangeModeChange = () => {
+  if (growthRangeMode.value === 'today') {
+    selectedGrowthDay.value = todayValue
+  }
+
+  if (growthRangeMode.value === 'month') {
+    selectedGrowthMonth.value = getMonthValue(new Date())
+  }
+
+  if (growthRangeMode.value === 'range') {
+    selectedGrowthRange.value = createDefaultRangeValue()
+  }
+
+  loadStatistics()
+}
+
+const handleGrowthDateChange = () => {
+  loadStatistics()
+}
+
 const lastUpdatedText = computed(() => {
   if (!lastUpdatedAt.value) return '尚未刷新'
   return lastUpdatedAt.value.toLocaleString('zh-CN', {
@@ -315,9 +523,12 @@ const lastUpdatedText = computed(() => {
 const todayNewUsers = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.users))
 const todayNewDevices = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.devices))
 const todayNewCards = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.cards))
+const todayRevenue = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
+const todayOrders = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_orders))
 
 const averageDailyUsers = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.users))
 const averageDailyCards = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.cards))
+const averageDailyRevenue = computed(() => getAverageValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
 
 const abnormalUserRate = computed(() => {
   return getRate(statisticsSnapshot.value.users.banned, statisticsSnapshot.value.users.total)
@@ -420,10 +631,10 @@ const strategicHeadline = computed(() => {
 
 const strategicSubtitle = computed(() => {
   if (currentGrowthQuality.value >= averageGrowthQuality.value) {
-    return `今日增长质量分 ${currentGrowthQuality.value}，高于或等于近 7 日均值 ${averageGrowthQuality.value.toFixed(1)}，经营状态偏积极。`
+    return `最新统计日增长质量分 ${currentGrowthQuality.value}，高于或等于${growthScopeLabel.value}均值 ${averageGrowthQuality.value.toFixed(1)}，经营状态偏积极。`
   }
 
-  return `今日增长质量分 ${currentGrowthQuality.value}，低于近 7 日均值 ${averageGrowthQuality.value.toFixed(1)}，建议重点观察新增转化和风险拦截。`
+  return `最新统计日增长质量分 ${currentGrowthQuality.value}，低于${growthScopeLabel.value}均值 ${averageGrowthQuality.value.toFixed(1)}，建议重点观察新增转化和风险拦截。`
 })
 
 const coreAnalysisCards = computed(() => {
@@ -435,8 +646,8 @@ const coreAnalysisCards = computed(() => {
       label: '用户增长',
       value: `${todayNewUsers.value} 人`,
       rate: clampPercent((todayNewUsers.value / Math.max(snapshot.users.total, 1)) * 100),
-      tag: `7日均值 ${averageDailyUsers.value}`,
-      desc: `当前总用户 ${snapshot.users.total}，今日新增与近 7 日均值对比后更能看出增长是否还在持续。`,
+      tag: `${growthScopeLabel.value}均值 ${averageDailyUsers.value}`,
+      desc: `当前总用户 ${snapshot.users.total}，最新统计日新增与${growthScopeLabel.value}均值对比后更能看出增长是否还在持续。`,
       icon: User,
       iconClass: 'ink-user'
     },
@@ -452,11 +663,11 @@ const coreAnalysisCards = computed(() => {
     },
     {
       key: 'card-usage',
-      label: '卡密使用',
-      value: `${snapshot.cards.used} 个`,
-      rate: cardUsageRate.value,
-      tag: `使用率 ${cardUsageRate.value}%`,
-      desc: '只有增长和卡密使用同时存在，系统活跃才更接近真实使用，而不是单纯访问。 ',
+      label: '最新销售额',
+      value: formatCurrency(todayRevenue.value),
+      rate: clampPercent((todayRevenue.value / Math.max(averageDailyRevenue.value, 1)) * 100),
+      tag: `订单 ${todayOrders.value} 笔`,
+      desc: `销售额按卡密生成日期统计，${growthScopeLabel.value}日均为 ${formatCurrency(averageDailyRevenue.value)}。`,
       icon: Ticket,
       iconClass: 'ink-ticket'
     },
@@ -480,8 +691,8 @@ const growthInsights = computed(() => {
     {
       label: '用户增长对比',
       text: todayNewUsers.value >= averageDailyUsers.value
-        ? `今日新增用户 ${todayNewUsers.value} 人，高于或等于近 7 日均值 ${averageDailyUsers.value}，拉新表现偏积极。`
-        : `今日新增用户 ${todayNewUsers.value} 人，低于近 7 日均值 ${averageDailyUsers.value}，增长动能相对偏弱。`,
+        ? `最新统计日新增用户 ${todayNewUsers.value} 人，高于或等于${growthScopeLabel.value}均值 ${averageDailyUsers.value}，拉新表现偏积极。`
+        : `最新统计日新增用户 ${todayNewUsers.value} 人，低于${growthScopeLabel.value}均值 ${averageDailyUsers.value}，增长动能相对偏弱。`,
       levelClass: todayNewUsers.value >= averageDailyUsers.value ? 'level-info' : 'level-warning'
     },
     {
@@ -501,8 +712,8 @@ const growthInsights = computed(() => {
     {
       label: '新增卡密承接',
       text: todayNewCards.value >= averageDailyCards.value
-        ? `今日新增卡密 ${todayNewCards.value} 个，已达到或超过近 7 日均值 ${averageDailyCards.value}，库存承接较主动。`
-        : `今日新增卡密 ${todayNewCards.value} 个，低于近 7 日均值 ${averageDailyCards.value}，新增承接力度一般。`,
+        ? `最新统计日新增卡密 ${todayNewCards.value} 个，已达到或超过${growthScopeLabel.value}均值 ${averageDailyCards.value}，库存承接较主动。`
+        : `最新统计日新增卡密 ${todayNewCards.value} 个，低于${growthScopeLabel.value}均值 ${averageDailyCards.value}，新增承接力度一般。`,
       levelClass: todayNewCards.value >= averageDailyCards.value ? 'level-info' : 'level-warning'
     }
   ]
@@ -554,7 +765,7 @@ const decisionInsights = computed(() => {
     },
     {
       label: '质量判断',
-      text: `今日增长质量分 ${currentGrowthQuality.value}，近 7 日均值 ${averageGrowthQuality.value.toFixed(1)}。`,
+      text: `最新统计日增长质量分 ${currentGrowthQuality.value}，${growthScopeLabel.value}均值 ${averageGrowthQuality.value.toFixed(1)}。`,
       levelClass: currentGrowthQuality.value >= averageGrowthQuality.value ? 'level-info' : 'level-warning'
     },
     {
@@ -603,6 +814,7 @@ const radarMetrics = computed<number[]>(() => {
 
 const getChartElement = (chartKey: ChartKey) => {
   const elementMap: Record<ChartKey, HTMLDivElement | undefined> = {
+    salesTrend: salesTrendRef.value,
     growthCompare: growthCompareRef.value,
     userRisk: userRiskRef.value,
     growthQuality: growthQualityRef.value,
@@ -626,6 +838,90 @@ const ensureChartInstance = (chartKey: ChartKey) => {
   const createdInstance = echarts.init(element)
   chartInstances[chartKey] = createdInstance
   return createdInstance
+}
+
+const renderSalesTrend = () => {
+  const instance = ensureChartInstance('salesTrend')
+  if (!instance) return
+
+  const salesTrend = statisticsSnapshot.value.sales_trend
+  const revenueSeries = salesTrend.daily_revenue.map(toDashboardAmount)
+  const averageOrderValue = salesTrend.average_order_value.map(toDashboardAmount)
+
+  const option: EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const index = params[0].dataIndex
+        return `${salesTrend.labels[index]}<br/>销售额：${formatCurrency(revenueSeries[index])}<br/>订单数：${salesTrend.daily_orders[index] ?? 0}<br/>客单价：${formatCurrency(averageOrderValue[index])}`
+      }
+    },
+    legend: {
+      top: 0,
+      textStyle: { color: '#57534e' }
+    },
+    grid: {
+      left: '4%',
+      right: '5%',
+      top: '14%',
+      bottom: '6%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: salesTrend.labels,
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: '#d6d3d1' } },
+      axisLabel: { color: '#57534e' }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '销售额',
+        splitLine: { lineStyle: { color: '#ece7e1' } },
+        axisLabel: {
+          color: '#78716c',
+          formatter: (value: number) => formatCurrency(value)
+        }
+      },
+      {
+        type: 'value',
+        name: '订单数',
+        splitLine: { show: false },
+        axisLabel: { color: '#78716c' }
+      }
+    ],
+    series: [
+      {
+        name: '销售额',
+        type: 'line',
+        smooth: true,
+        symbolSize: 9,
+        lineStyle: { width: 3, color: '#111827' },
+        itemStyle: { color: '#111827', borderColor: '#ffffff', borderWidth: 2 },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(17, 24, 39, 0.18)' },
+            { offset: 1, color: 'rgba(17, 24, 39, 0.02)' }
+          ])
+        },
+        data: revenueSeries
+      },
+      {
+        name: '订单数',
+        type: 'bar',
+        yAxisIndex: 1,
+        barWidth: 18,
+        itemStyle: {
+          color: 'rgba(180, 83, 9, 0.42)',
+          borderRadius: [8, 8, 0, 0]
+        },
+        data: salesTrend.daily_orders
+      }
+    ]
+  }
+
+  instance.setOption(option)
 }
 
 const renderGrowthCompare = () => {
@@ -829,7 +1125,7 @@ const renderKeyMetrics = () => {
     },
     xAxis: {
       type: 'category',
-      data: ['今日新增用户', '今日新增设备', '已使用卡密', '异常用户', '封禁卡密', '库存卡密'],
+      data: ['最新新增用户', '最新新增设备', '已使用卡密', '异常用户', '封禁卡密', '库存卡密'],
       axisTick: { show: false },
       axisLine: { lineStyle: { color: '#d6d3d1' } },
       axisLabel: {
@@ -1091,6 +1387,7 @@ const renderAllCharts = async () => {
     growthQualitySeries: growthQualitySeries.value
   })
 
+  renderSalesTrend()
   renderGrowthCompare()
   renderUserRisk()
   renderGrowthQuality()
@@ -1103,10 +1400,11 @@ const renderAllCharts = async () => {
 
 const loadStatistics = async () => {
   loading.value = true
-  console.info('[水墨仪表盘] 开始加载统计数据')
+  const query = growthQueryRange.value
+  console.info('[水墨仪表盘] 开始加载统计数据', query)
 
   try {
-    const data = await getStatistics()
+    const data = await getStatistics(query)
     statistics.value = data
     lastUpdatedAt.value = new Date()
 
@@ -1115,6 +1413,8 @@ const loadStatistics = async () => {
       cards: data.cards,
       devices: data.devices,
       apps: data.apps,
+      revenueRange: data.revenue_range,
+      trendRange: data.trend_range,
       trendLabels: data.trends.labels
     })
     ElMessage.success('水墨仪表盘数据已刷新')
@@ -1136,6 +1436,7 @@ const handleResize = () => {
 
 const disposeCharts = () => {
   const chartKeys: ChartKey[] = [
+    'salesTrend',
     'growthCompare',
     'userRisk',
     'growthQuality',
@@ -1324,6 +1625,25 @@ onBeforeUnmount(() => {
   @apply inline-flex items-center rounded-full bg-stone-100/90 px-3 py-1 text-xs text-stone-600 border border-stone-200;
 }
 
+.ink-growth-suite,
+.ink-risk-suite {
+  @apply mb-6 rounded-[28px] border border-stone-300/70 p-5 lg:p-6 shadow-sm;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(247,244,239,0.88) 100%);
+}
+
+.ink-suite-toolbar {
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-4;
+}
+
+.ink-suite-text {
+  @apply mt-2 text-sm leading-6 text-stone-500;
+}
+
+.ink-suite-controls {
+  @apply flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center xl:justify-end;
+}
+
 .ink-metric-grid {
   @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
 }
@@ -1476,6 +1796,14 @@ onBeforeUnmount(() => {
   @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
 }
 
+.ink-growth-chart-grid {
+  @apply grid grid-cols-1 xl:grid-cols-4 gap-4;
+}
+
+.ink-risk-chart-grid {
+  @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
+}
+
 .ink-chart-wide {
   @apply xl:col-span-2;
 }
@@ -1503,6 +1831,8 @@ onBeforeUnmount(() => {
   }
 
   .ink-hero,
+  .ink-growth-suite,
+  .ink-risk-suite,
   .ink-quote-strip,
   .ink-metric-card,
   .ink-panel,

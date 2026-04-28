@@ -209,140 +209,14 @@
     </div>
 
     <!-- 创建/编辑弹窗 -->
-    <el-dialog
+    <PermissionFormDialog
       v-model="dialogVisible"
-      :title="dialogTitle"
-      width="600px"
-      :close-on-click-modal="false"
-      class="permission-dialog"
-    >
-      <el-form
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        label-width="120px"
-      >
-        <el-form-item label="权限标识" prop="permission_key">
-          <el-input
-            v-model="formData.permission_key"
-            placeholder="如：wechat, ximalaya"
-            clearable
-            :disabled="isEdit"
-          />
-          <template #label>
-            <span class="form-label">权限标识</span>
-            <el-tooltip content="权限的唯一标识符，只能包含字母、数字、下划线和连字符" placement="top">
-              <el-icon :size="14" class="label-icon"><QuestionFilled /></el-icon>
-            </el-tooltip>
-          </template>
-        </el-form-item>
-
-        <el-form-item label="权限名称" prop="permission_name">
-          <el-input
-            v-model="formData.permission_name"
-            placeholder="如：微信抓取、喜马拉雅播放"
-            clearable
-          />
-        </el-form-item>
-
-        <el-form-item label="权限描述" prop="description">
-          <el-input
-            v-model="formData.description"
-            type="textarea"
-            :rows="3"
-            placeholder="描述该功能权限的用途"
-            clearable
-          />
-        </el-form-item>
-
-        <el-form-item label="所属应用" prop="app_id">
-          <el-select
-            v-model="formData.app_id"
-            placeholder="请选择所属应用"
-            filterable
-            clearable
-            class="w-full"
-          >
-            <el-option
-              v-for="app in appOptions"
-              :key="app.id"
-              :label="app.app_name"
-              :value="app.id"
-            />
-          </el-select>
-          <div v-if="appOptions.length === 0" class="empty-app-tip">
-            当前还没有应用，请先去应用管理中创建应用后再创建权限。
-            <el-button link type="primary" @click="goToAppManagement">去创建应用</el-button>
-          </div>
-        </el-form-item>
-
-        <el-form-item label="售卖价格" prop="price">
-          <el-input-number
-            v-model="formData.price"
-            :min="0"
-            :precision="2"
-            :step="1"
-            controls-position="right"
-            class="w-full"
-          />
-        </el-form-item>
-
-        <el-form-item label="图标" prop="icon">
-          <el-select
-            v-model="formData.icon"
-            placeholder="选择图标"
-            clearable
-            filterable
-          >
-            <el-option
-              v-for="icon in iconOptions"
-              :key="icon.value"
-              :label="icon.label"
-              :value="icon.value"
-            >
-              <div class="icon-option">
-                <el-icon :size="20"><component :is="icon.value" /></el-icon>
-                <span>{{ icon.label }}</span>
-              </div>
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="排序" prop="sort_order">
-          <el-input-number
-            v-model="formData.sort_order"
-            :min="0"
-            :max="9999"
-            controls-position="right"
-            class="w-full"
-          />
-          <template #label>
-            <span class="form-label">排序</span>
-            <el-tooltip content="数字越小越靠前，默认为0" placement="top">
-              <el-icon :size="14" class="label-icon"><QuestionFilled /></el-icon>
-            </el-tooltip>
-          </template>
-        </el-form-item>
-
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="formData.status">
-            <el-radio label="normal">正常</el-radio>
-            <el-radio label="disabled">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="submitLoading"
-          @click="handleSubmit"
-        >
-          {{ isEdit ? '更新' : '创建' }}
-        </el-button>
-      </template>
-    </el-dialog>
+      :is-edit="isEdit"
+      :edit-permission="editPermission"
+      :app-options="appOptions"
+      @success="handleFormSuccess"
+      @go-to-app="goToAppManagement"
+    />
 
   </div>
 </template>
@@ -356,30 +230,18 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ElMessage,
-  ElMessageBox,
-  type FormInstance,
-  type FormRules
+  ElMessageBox
 } from 'element-plus'
 import {
   Plus,
   Search,
   Refresh,
-  QuestionFilled,
   Upload,
   Delete,
-  ChatDotRound,
-  Document,
-  VideoPlay,
-  Download,
-  Picture,
-  Location,
-  Share,
-  Setting
+  Download
 } from '@element-plus/icons-vue'
 import {
   getFeaturePermissionList,
-  createFeaturePermission,
-  updateFeaturePermission,
   deleteFeaturePermission,
   batchDeleteFeaturePermissions,
   exportFeaturePermissions,
@@ -389,20 +251,7 @@ import { getAppList } from '@/api/app'
 import type { App, FeaturePermission } from '@/types'
 import { getAppTagStyle } from '@/utils/app-tag'
 import type { ElTable } from 'element-plus'
-
-/**
- * 图标选项
- */
-const iconOptions = [
-  { label: '聊天', value: 'ChatDotRound' },
-  { label: '文档', value: 'Document' },
-  { label: '视频播放', value: 'VideoPlay' },
-  { label: '下载', value: 'Download' },
-  { label: '图片', value: 'Picture' },
-  { label: '定位', value: 'Location' },
-  { label: '分享', value: 'Share' },
-  { label: '设置', value: 'Setting' }
-]
+import PermissionFormDialog from './components/PermissionFormDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -441,60 +290,8 @@ const filters = ref({
  * 弹窗相关
  */
 const dialogVisible = ref(false)
-const dialogTitle = ref('创建功能权限')
 const isEdit = ref(false)
-const submitLoading = ref(false)
-const formRef = ref<FormInstance>()
-const currentEditPermissionId = ref<number | null>(null)
-
-/**
- * 表单数据
- */
-const formData = ref<any>({
-  permission_key: '',
-  permission_name: '',
-  app_id: undefined as number | undefined,
-  description: '',
-  price: 0,
-  icon: '',
-  sort_order: 0,
-  status: 'normal'
-})
-
-/**
- * 表单验证规则
- */
-const formRules: FormRules = {
-  permission_key: [
-    { required: true, message: '请输入权限标识', trigger: 'blur' },
-    { min: 1, max: 100, message: '权限标识长度为1-100个字符', trigger: 'blur' },
-    {
-      pattern: /^[a-zA-Z0-9_-]+$/,
-      message: '权限标识只能包含字母、数字、下划线和连字符',
-      trigger: 'blur'
-    }
-  ],
-  permission_name: [
-    { required: true, message: '请输入权限名称', trigger: 'blur' },
-    { min: 1, max: 100, message: '权限名称长度为1-100个字符', trigger: 'blur' }
-  ],
-  description: [
-    { max: 500, message: '描述最多500个字符', trigger: 'blur' }
-  ],
-  price: [
-    { required: true, message: '请输入售卖价格', trigger: 'blur' },
-    { type: 'number', min: 0, message: '售卖价格不能小于0', trigger: 'blur' }
-  ],
-  app_id: [
-    { required: true, message: '请选择所属应用', trigger: 'change' }
-  ],
-  sort_order: [
-    { type: 'number', message: '排序必须为数字', trigger: 'blur' }
-  ],
-  status: [
-    { required: true, message: '请选择状态', trigger: 'change' }
-  ]
-}
+const editPermission = ref<FeaturePermission | null>(null)
 
 /**
  * 加载权限列表
@@ -652,20 +449,8 @@ const handleCreate = () => {
     return
   }
 
-  dialogTitle.value = '创建功能权限'
   isEdit.value = false
-  currentEditPermissionId.value = null
-  formData.value = {
-    permission_key: '',
-    permission_name: '',
-    app_id: undefined,
-    description: '',
-    price: 0,
-    icon: '',
-    sort_order: 0,
-    status: 'normal'
-  }
-  console.info('[功能权限管理] 打开创建权限弹窗')
+  editPermission.value = null
   dialogVisible.value = true
 }
 
@@ -673,24 +458,8 @@ const handleCreate = () => {
  * 编辑权限
  */
 const handleEdit = (permission: FeaturePermission) => {
-  dialogTitle.value = '编辑功能权限'
   isEdit.value = true
-  currentEditPermissionId.value = permission.id
-  formData.value = {
-    permission_key: permission.permission_key,
-    permission_name: permission.permission_name,
-    app_id: permission.app_id,
-    description: permission.description || '',
-    price: Number(permission.price ?? 0),
-    icon: permission.icon || '',
-    sort_order: permission.sort_order,
-    status: permission.status
-  }
-  console.info('[功能权限管理] 打开编辑权限弹窗', {
-    permission_id: permission.id,
-    permission_key: permission.permission_key,
-    app_id: permission.app_id
-  })
+  editPermission.value = permission
   dialogVisible.value = true
 }
 
@@ -787,45 +556,10 @@ const handleBatchDelete = async () => {
 }
 
 /**
- * 提交表单
+ * 表单提交成功回调
  */
-const handleSubmit = async () => {
-  if (!formRef.value) return
-
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-
-    submitLoading.value = true
-    try {
-      if (isEdit.value) {
-        if (!currentEditPermissionId.value) {
-          ElMessage.error('未找到当前编辑的权限记录')
-          return
-        }
-
-        console.info('[功能权限管理] 开始更新权限', {
-          permission_id: currentEditPermissionId.value,
-          formData: formData.value
-        })
-        await updateFeaturePermission(currentEditPermissionId.value, formData.value)
-        ElMessage.success('更新成功')
-      } else {
-        console.info('[功能权限管理] 开始创建权限', {
-          formData: formData.value
-        })
-        await createFeaturePermission(formData.value)
-        ElMessage.success('创建成功')
-      }
-
-      dialogVisible.value = false
-      await loadPermissions()
-    } catch (error: any) {
-      console.error('[功能权限管理] 提交权限表单失败', error)
-      ElMessage.error(error.response?.data?.detail || '操作失败')
-    } finally {
-      submitLoading.value = false
-    }
-  })
+const handleFormSuccess = async () => {
+  await loadPermissions()
 }
 
 /**
@@ -1096,14 +830,6 @@ watch(
   @apply font-semibold text-gray-800;
 }
 
-.text-muted {
-  @apply text-gray-400;
-}
-
-.empty-app-tip {
-  @apply mt-2 text-sm text-amber-600;
-}
-
 .action-buttons {
   @apply flex gap-2;
 }
@@ -1111,35 +837,6 @@ watch(
 /* 分页 */
 .pagination-wrapper {
   @apply flex justify-center mt-6;
-}
-
-/* 表单标签 */
-.form-label {
-  @apply flex items-center gap-1;
-}
-
-.label-icon {
-  @apply text-gray-400 cursor-help;
-}
-
-/* 弹窗样式 */
-.permission-dialog {
-  :deep(.el-dialog__header) {
-    @apply border-b border-gray-100 pb-4;
-  }
-
-  :deep(.el-dialog__body) {
-    @apply pt-4;
-  }
-
-  :deep(.el-form-item__label) {
-    @apply font-medium text-gray-700;
-  }
-}
-
-/* 图标选项 */
-.icon-option {
-  @apply flex items-center gap-2;
 }
 
 /* 响应式调整 */

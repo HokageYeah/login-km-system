@@ -5,8 +5,8 @@
         <span class="header-badge">Comprehensive Operations Board</span>
         <h1 class="dashboard-title">授权系统综合数据看板</h1>
         <p class="dashboard-subtitle">
-          这一版继续聚焦综合快照，把用户、卡密、设备、应用与最近 7 日趋势统一放进一张经营总览图里，
-          让你既能看当前规模，也能看增长、库存、风险和资源协同情况。
+          这一版把收入、资源规模、增长趋势和健康度统一放进同一张经营总览图里，
+          让管理员能同时看到当前盘面、指定日期和自定义范围内的经营变化。
         </p>
       </div>
 
@@ -131,6 +131,171 @@
       </article>
     </section>
 
+    <section class="revenue-panel" v-loading="loading">
+      <div class="revenue-toolbar">
+        <div>
+          <p class="panel-eyebrow">Revenue Scope</p>
+          <h3 class="panel-title">收入数据总览</h3>
+          <p class="revenue-range-text">{{ revenueRangeText }}</p>
+        </div>
+
+        <div class="revenue-controls">
+          <el-segmented
+            v-model="revenueRangeMode"
+            :options="revenueRangeModeOptions"
+            @change="handleRevenueRangeModeChange"
+          />
+
+          <el-date-picker
+            v-if="revenueRangeMode === 'day'"
+            v-model="selectedDay"
+            type="date"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            placeholder="选择日期"
+            :clearable="false"
+            @change="handleRevenueDateChange"
+          />
+
+          <el-date-picker
+            v-if="revenueRangeMode === 'month'"
+            v-model="selectedMonth"
+            type="month"
+            value-format="YYYY-MM"
+            format="YYYY年MM月"
+            placeholder="选择月份"
+            :clearable="false"
+            @change="handleRevenueDateChange"
+          />
+
+          <el-date-picker
+            v-if="revenueRangeMode === 'range'"
+            v-model="selectedRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            :clearable="false"
+            @change="handleRevenueDateChange"
+          />
+        </div>
+      </div>
+
+      <div class="revenue-chart-grid">
+        <article class="chart-card">
+          <div class="panel-head">
+            <div>
+              <p class="panel-eyebrow">Revenue Mix</p>
+              <h3 class="panel-title">收入结构扇形图</h3>
+            </div>
+            <el-icon class="panel-icon"><Ticket /></el-icon>
+          </div>
+          <div ref="revenuePieRef" class="chart-container"></div>
+        </article>
+
+        <article class="chart-card chart-span-2">
+          <div class="panel-head">
+            <div>
+              <p class="panel-eyebrow">Permission Revenue</p>
+              <h3 class="panel-title">权限收入分配</h3>
+            </div>
+            <el-icon class="panel-icon"><CollectionTag /></el-icon>
+          </div>
+          <div ref="permissionRevenueRef" class="chart-container chart-medium"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="trend-panel" v-loading="loading">
+      <div class="trend-toolbar">
+        <div>
+          <p class="panel-eyebrow">Growth Scope</p>
+          <h3 class="panel-title">核心资源增长趋势</h3>
+          <p class="trend-range-text">{{ trendRangeText }}</p>
+        </div>
+
+        <div class="trend-controls">
+          <el-segmented
+            v-model="trendRangeMode"
+            :options="trendRangeModeOptions"
+            @change="handleTrendRangeModeChange"
+          />
+
+          <el-date-picker
+            v-if="trendRangeMode === 'day'"
+            v-model="selectedTrendDay"
+            type="date"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            placeholder="选择日期"
+            :clearable="false"
+            @change="handleTrendDateChange"
+          />
+
+          <el-date-picker
+            v-if="trendRangeMode === 'month'"
+            v-model="selectedTrendMonth"
+            type="month"
+            value-format="YYYY-MM"
+            format="YYYY年MM月"
+            placeholder="选择月份"
+            :clearable="false"
+            @change="handleTrendDateChange"
+          />
+
+          <el-date-picker
+            v-if="trendRangeMode === 'range'"
+            v-model="selectedTrendRange"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            format="YYYY年MM月DD日"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            :clearable="false"
+            @change="handleTrendDateChange"
+          />
+        </div>
+      </div>
+
+      <div class="trend-chart-grid">
+        <article class="chart-card chart-span-2">
+          <div class="panel-head">
+            <div>
+              <p class="panel-eyebrow">Daily Core Growth</p>
+              <h3 class="panel-title">每日新增核心资源趋势</h3>
+            </div>
+            <el-icon class="panel-icon"><TrendCharts /></el-icon>
+          </div>
+          <div ref="dailyCompareRef" class="chart-container chart-large"></div>
+        </article>
+
+        <article class="chart-card chart-span-2">
+          <div class="panel-head">
+            <div>
+              <p class="panel-eyebrow">Growth Matrix</p>
+              <h3 class="panel-title">资源新增矩阵</h3>
+            </div>
+            <el-icon class="panel-icon"><Grid /></el-icon>
+          </div>
+          <div ref="growthHeatmapRef" class="chart-container chart-medium"></div>
+        </article>
+
+        <article class="chart-card chart-span-2">
+          <div class="panel-head">
+            <div>
+              <p class="panel-eyebrow">Cumulative Trend</p>
+              <h3 class="panel-title">累计规模趋势</h3>
+            </div>
+            <el-icon class="panel-icon"><DataAnalysis /></el-icon>
+          </div>
+          <div ref="growthLineRef" class="chart-container chart-large"></div>
+        </article>
+      </div>
+    </section>
+
     <section class="charts-grid" v-loading="loading">
       <article class="chart-card chart-span-2">
         <div class="panel-head">
@@ -165,17 +330,6 @@
         <div ref="statusTrendRef" class="chart-container chart-medium"></div>
       </article>
 
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Daily Core Growth</p>
-            <h3 class="panel-title">每日新增核心资源趋势</h3>
-          </div>
-          <el-icon class="panel-icon"><TrendCharts /></el-icon>
-        </div>
-        <div ref="dailyCompareRef" class="chart-container chart-large"></div>
-      </article>
-
       <article class="chart-card">
         <div class="panel-head">
           <div>
@@ -185,28 +339,6 @@
           <el-icon class="panel-icon"><Monitor /></el-icon>
         </div>
         <div ref="healthBarRef" class="chart-container"></div>
-      </article>
-
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Growth Matrix</p>
-            <h3 class="panel-title">近 7 日资源新增矩阵</h3>
-          </div>
-          <el-icon class="panel-icon"><Grid /></el-icon>
-        </div>
-        <div ref="growthHeatmapRef" class="chart-container chart-medium"></div>
-      </article>
-
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Cumulative Trend</p>
-            <h3 class="panel-title">近 7 日累计规模趋势</h3>
-          </div>
-          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
-        </div>
-        <div ref="growthLineRef" class="chart-container chart-large"></div>
       </article>
 
       <article class="chart-card">
@@ -250,7 +382,7 @@
  * 综合仪表盘页面
  * @description 这一版继续围绕“综合数据总览”增强：
  * 1. 统一复用公共统计派生 helper，保证多个仪表盘的指标口径一致；
- * 2. 增加资源总量对比、7 日资源新增矩阵、更多联动分析卡；
+ * 2. 增加资源总量对比、可切换日期范围的资源新增矩阵和趋势联动分析卡；
  * 3. 所有图表都严格基于 /admin/statistics 当前返回，不拼接虚假趋势数据。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -281,7 +413,9 @@ import {
   getLastValue,
   getRate,
   getSeriesPeak,
-  getSeriesTotal
+  getSeriesTotal,
+  formatDashboardCurrency,
+  toDashboardAmount
 } from './dashboard-metrics'
 
 type ChartKey =
@@ -294,6 +428,8 @@ type ChartKey =
   | 'growthHeatmap'
   | 'growthLine'
   | 'radarChart'
+  | 'revenuePie'
+  | 'permissionRevenue'
 
 const loading = ref(false)                              // 页面加载状态
 const statistics = ref<Statistics | null>(null)         // 仪表盘统计快照
@@ -308,8 +444,57 @@ const healthBarRef = ref<HTMLDivElement>()
 const growthHeatmapRef = ref<HTMLDivElement>()
 const growthLineRef = ref<HTMLDivElement>()
 const radarChartRef = ref<HTMLDivElement>()
+const revenuePieRef = ref<HTMLDivElement>()
+const permissionRevenueRef = ref<HTMLDivElement>()
 
 const chartInstances: Partial<Record<ChartKey, ECharts>> = {}
+
+type RevenueRangeMode = 'today' | 'day' | 'month' | 'range'
+type TrendRangeMode = 'today' | 'day' | 'month' | 'range'
+
+const padDateUnit = (value: number) => String(value).padStart(2, '0')
+
+const getDateValue = (date: Date) => {
+  return `${date.getFullYear()}-${padDateUnit(date.getMonth() + 1)}-${padDateUnit(date.getDate())}`
+}
+
+const getMonthValue = (date: Date) => {
+  return `${date.getFullYear()}-${padDateUnit(date.getMonth() + 1)}`
+}
+
+const getShiftedDateValue = (offsetDays: number) => {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  return getDateValue(date)
+}
+
+const formatDisplayDate = (value: string) => {
+  const [year, month, day] = value.split('-')
+  return `${year}年${month}月${day}日`
+}
+
+const todayValue = getDateValue(new Date())
+const createDefaultRangeValue = (): [string, string] => [getShiftedDateValue(-7), todayValue]
+const revenueRangeMode = ref<RevenueRangeMode>('today')
+const selectedDay = ref(todayValue)
+const selectedMonth = ref(getMonthValue(new Date()))
+const selectedRange = ref<[string, string]>(createDefaultRangeValue())
+const trendRangeMode = ref<TrendRangeMode>('today')
+const selectedTrendDay = ref(todayValue)
+const selectedTrendMonth = ref(getMonthValue(new Date()))
+const selectedTrendRange = ref<[string, string]>(createDefaultRangeValue())
+const revenueRangeModeOptions = [
+  { label: '今日', value: 'today' },
+  { label: '指定日期', value: 'day' },
+  { label: '指定月份', value: 'month' },
+  { label: '自定义范围', value: 'range' }
+]
+const trendRangeModeOptions = [
+  { label: '今日', value: 'today' },
+  { label: '指定日期', value: 'day' },
+  { label: '指定月份', value: 'month' },
+  { label: '自定义范围', value: 'range' }
+]
 
 /**
  * 统计数据兜底
@@ -320,6 +505,131 @@ const statisticsSnapshot = computed<Statistics>(() => {
 })
 
 const formatNumber = (num: number) => formatDashboardNumber(num)
+const formatCurrency = (value: number | string | null | undefined) => formatDashboardCurrency(value)
+const trendScopeLabel = computed(() => {
+  const range = statisticsSnapshot.value.trend_range
+  if (range.start_date === range.end_date) {
+    return '当日'
+  }
+  return '当前范围'
+})
+
+const getMonthRange = (monthValue: string): [string, string] => {
+  const [year = new Date().getFullYear(), month = new Date().getMonth() + 1] = monthValue.split('-').map(Number)
+  const firstDay = new Date(year, month - 1, 1)
+  const lastDay = new Date(year, month, 0)
+  return [getDateValue(firstDay), getDateValue(lastDay)]
+}
+
+const revenueQueryRange = computed(() => {
+  if (revenueRangeMode.value === 'day') {
+    return {
+      start_date: selectedDay.value,
+      end_date: selectedDay.value
+    }
+  }
+
+  if (revenueRangeMode.value === 'month') {
+    const [startDate, endDate] = getMonthRange(selectedMonth.value)
+    return {
+      start_date: startDate,
+      end_date: endDate
+    }
+  }
+
+  if (revenueRangeMode.value === 'range') {
+    return {
+      start_date: selectedRange.value[0],
+      end_date: selectedRange.value[1]
+    }
+  }
+
+  return {
+    start_date: todayValue,
+    end_date: todayValue
+  }
+})
+
+const revenueRangeText = computed(() => {
+  const range = statisticsSnapshot.value.revenue_range
+  if (range.start_date === range.end_date) {
+    return `当前查看 ${formatDisplayDate(range.start_date)} 的收入、销售与权限贡献。`
+  }
+  return `当前查看 ${formatDisplayDate(range.start_date)} 至 ${formatDisplayDate(range.end_date)} 的收入、销售与权限贡献。`
+})
+
+const trendQueryRange = computed(() => {
+  if (trendRangeMode.value === 'day') {
+    return {
+      trend_start_date: selectedTrendDay.value,
+      trend_end_date: selectedTrendDay.value
+    }
+  }
+
+  if (trendRangeMode.value === 'month') {
+    const [startDate, endDate] = getMonthRange(selectedTrendMonth.value)
+    return {
+      trend_start_date: startDate,
+      trend_end_date: endDate
+    }
+  }
+
+  if (trendRangeMode.value === 'range') {
+    return {
+      trend_start_date: selectedTrendRange.value[0],
+      trend_end_date: selectedTrendRange.value[1]
+    }
+  }
+
+  return {
+    trend_start_date: todayValue,
+    trend_end_date: todayValue
+  }
+})
+
+const trendRangeText = computed(() => {
+  const range = statisticsSnapshot.value.trend_range
+  if (range.start_date === range.end_date) {
+    return `当前查看 ${formatDisplayDate(range.start_date)} 的新增与累计变化。`
+  }
+  return `当前查看 ${formatDisplayDate(range.start_date)} 至 ${formatDisplayDate(range.end_date)} 的新增与累计变化。`
+})
+
+const handleRevenueRangeModeChange = () => {
+  if (revenueRangeMode.value === 'today') {
+    selectedDay.value = todayValue
+  }
+
+  if (revenueRangeMode.value === 'range') {
+    selectedRange.value = createDefaultRangeValue()
+  }
+
+  loadStatistics()
+}
+
+const handleRevenueDateChange = () => {
+  loadStatistics()
+}
+
+const handleTrendRangeModeChange = () => {
+  if (trendRangeMode.value === 'today') {
+    selectedTrendDay.value = todayValue
+  }
+
+  if (trendRangeMode.value === 'month') {
+    selectedTrendMonth.value = getMonthValue(new Date())
+  }
+
+  if (trendRangeMode.value === 'range') {
+    selectedTrendRange.value = createDefaultRangeValue()
+  }
+
+  loadStatistics()
+}
+
+const handleTrendDateChange = () => {
+  loadStatistics()
+}
 
 const lastUpdatedText = computed(() => {
   if (!lastUpdatedAt.value) return '尚未刷新'
@@ -347,11 +657,14 @@ const todayNewUsers = computed(() => getLastValue(statisticsSnapshot.value.trend
 const todayNewDevices = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.devices))
 const todayNewCards = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.cards))
 const todayNewApps = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.apps))
+const todayRevenue = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
+const todayOrders = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_orders))
 
 const averageDailyUsers = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.users))
 const averageDailyDevices = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.devices))
 const averageDailyCards = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.cards))
 const averageDailyApps = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.apps))
+const averageDailyRevenue = computed(() => getAverageValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
 
 const todayGrowthTotal = computed(() => {
   return todayNewUsers.value + todayNewDevices.value + todayNewCards.value + todayNewApps.value
@@ -368,22 +681,13 @@ const averageGrowthTotal = computed(() => {
 
 /**
  * 增长动量
- * @description 观察今日总新增相对近 7 日均值的强弱，用于综合版首页快速判断。
+ * @description 观察今日总新增相对当前趋势统计均值的强弱，用于综合版首页快速判断。
  */
 const growthMomentumRate = computed(() => {
   if (!averageGrowthTotal.value) {
     return todayGrowthTotal.value > 0 ? 100 : 0
   }
   return clampPercent((todayGrowthTotal.value / averageGrowthTotal.value) * 100)
-})
-
-/**
- * 库存支持天数
- * @description 用未使用卡密对比平均新增用户，帮助判断库存还能支撑多久。
- */
-const inventorySupportDays = computed(() => {
-  const averageUsers = Math.max(averageDailyUsers.value, 1)
-  return Math.round(statisticsSnapshot.value.cards.unused / averageUsers)
 })
 
 /**
@@ -491,27 +795,27 @@ const summaryItems = computed(() => {
     {
       label: '今日新增用户',
       value: `${todayNewUsers.value}`,
-      desc: `7日均值 ${averageDailyUsers.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyUsers.value}`
     },
     {
       label: '今日新增设备',
       value: `${todayNewDevices.value}`,
-      desc: `7日均值 ${averageDailyDevices.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyDevices.value}`
     },
     {
       label: '今日新增卡密',
       value: `${todayNewCards.value}`,
-      desc: `7日均值 ${averageDailyCards.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyCards.value}`
     },
     {
       label: '今日新增应用',
       value: `${todayNewApps.value}`,
-      desc: `7日均值 ${averageDailyApps.value}`
+      desc: `${trendScopeLabel.value}均值 ${averageDailyApps.value}`
     },
     {
       label: '今日总新增',
       value: `${todayGrowthTotal.value}`,
-      desc: `近7日累计 ${weeklyGrowthTotal.value}`
+      desc: `${trendScopeLabel.value}累计 ${weeklyGrowthTotal.value}`
     },
     {
       label: '卡密使用率',
@@ -528,16 +832,9 @@ const focusItems = computed(() => {
     {
       label: '增长动能',
       text: growthMomentumRate.value >= 100
-        ? `今日总新增 ${todayGrowthTotal.value} 条，已经达到或超过近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}。`
-        : `今日总新增 ${todayGrowthTotal.value} 条，低于近 7 日均值 ${averageGrowthTotal.value.toFixed(1)}，建议继续观察接入节奏。`,
+        ? `今日总新增 ${todayGrowthTotal.value} 条，已经达到或超过${trendScopeLabel.value}均值 ${averageGrowthTotal.value.toFixed(1)}。`
+        : `今日总新增 ${todayGrowthTotal.value} 条，低于${trendScopeLabel.value}均值 ${averageGrowthTotal.value.toFixed(1)}，建议继续观察接入节奏。`,
       levelClass: growthMomentumRate.value >= 100 ? 'level-success' : 'level-info'
-    },
-    {
-      label: '库存覆盖',
-      text: snapshot.cards.unused > 0
-        ? `当前仍有 ${snapshot.cards.unused} 个未使用卡密，按近 7 日平均新增用户估算可支撑约 ${inventorySupportDays.value} 天。`
-        : '未使用卡密已经耗尽，建议优先补充卡密库存，避免影响后续授权转化。',
-      levelClass: snapshot.cards.unused > 0 ? 'level-success' : 'level-danger'
     },
     {
       label: '用户与设备协同',
@@ -564,18 +861,11 @@ const focusItems = computed(() => {
 })
 
 const executiveMetrics = computed(() => {
-  const snapshot = statisticsSnapshot.value
-
   return [
     {
       label: '增长动量',
       value: `${growthMomentumRate.value}%`,
-      desc: `今日总新增 ${todayGrowthTotal.value}，对比近 7 日平均总新增 ${averageGrowthTotal.value.toFixed(1)}。`
-    },
-    {
-      label: '库存覆盖',
-      value: `${inventorySupportDays.value} 天`,
-      desc: `按近 7 日平均新增用户估算，当前 ${snapshot.cards.unused} 个库存还能支撑的大致天数。`
+      desc: `今日总新增 ${todayGrowthTotal.value}，对比${trendScopeLabel.value}平均总新增 ${averageGrowthTotal.value.toFixed(1)}。`
     },
     {
       label: '风险暴露率',
@@ -586,8 +876,17 @@ const executiveMetrics = computed(() => {
       label: '资源协同分',
       value: `${resourceSynergyScore.value} 分`,
       desc: '重点衡量用户增长、设备跟随、卡密库存和应用可用是否同步支撑整体业务。'
+    },
+    {
+      label: '最新进账',
+      value: formatCurrency(todayRevenue.value),
+      desc: `最近一个统计日新增订单 ${todayOrders.value} 笔，当前收入范围日均收入 ${formatCurrency(averageDailyRevenue.value)}。`
     }
   ]
+})
+
+const topPermissionRevenue = computed(() => {
+  return statisticsSnapshot.value.permission_revenue.slice(0, 8)
 })
 
 const summaryMetrics = computed(() => {
@@ -615,7 +914,7 @@ const summaryMetrics = computed(() => {
       rate: appAvailabilityRate.value
     },
     {
-      label: '今日总新增 / 7日均值',
+      label: `今日总新增 / ${trendScopeLabel.value}均值`,
       value: `${todayGrowthTotal.value} / ${averageGrowthTotal.value.toFixed(1)}`,
       rate: growthMomentumRate.value
     },
@@ -672,7 +971,9 @@ const getChartElement = (chartKey: ChartKey) => {
     healthBar: healthBarRef.value,
     growthHeatmap: growthHeatmapRef.value,
     growthLine: growthLineRef.value,
-    radarChart: radarChartRef.value
+    radarChart: radarChartRef.value,
+    revenuePie: revenuePieRef.value,
+    permissionRevenue: permissionRevenueRef.value
   }
 
   return elementMap[chartKey]
@@ -1245,6 +1546,128 @@ const renderRadarChart = () => {
   instance.setOption(option)
 }
 
+const renderRevenuePieChart = () => {
+  const instance = ensureChartInstance('revenuePie')
+  if (!instance) return
+
+  const revenue = statisticsSnapshot.value.revenue
+  const totalRevenue = toDashboardAmount(revenue.total)
+  const option: EChartsOption = {
+    color: ['#14b8a6', '#f59e0b'],
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        return `${params.name}<br/>金额：${formatCurrency(params.value)} (${params.percent}%)`
+      }
+    },
+    title: {
+      text: formatCurrency(totalRevenue),
+      subtext: '总收入',
+      left: 'center',
+      top: '36%',
+      textStyle: {
+        color: '#0f172a',
+        fontSize: 22,
+        fontWeight: 700
+      },
+      subtextStyle: {
+        color: '#64748b',
+        fontSize: 12
+      }
+    },
+    legend: {
+      bottom: 0,
+      icon: 'circle',
+      textStyle: { color: '#475569' }
+    },
+    series: [
+      {
+        name: '收入结构',
+        type: 'pie',
+        radius: ['48%', '72%'],
+        center: ['50%', '42%'],
+        label: {
+          formatter: (params: any) => `${params.name}\n${formatCurrency(params.value)}`
+        },
+        itemStyle: {
+          borderColor: '#fff',
+          borderWidth: 4,
+          borderRadius: 10
+        },
+        data: [
+          { value: toDashboardAmount(revenue.used), name: '使用中收入' },
+          { value: toDashboardAmount(revenue.unused), name: '未使用库存金额' }
+        ]
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
+const renderPermissionRevenueChart = () => {
+  const instance = ensureChartInstance('permissionRevenue')
+  if (!instance) return
+
+  const data = topPermissionRevenue.value
+  const option: EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        const item = data[params[0].dataIndex]
+        if (!item) return ''
+        return `${item.permission_name}<br/>归因收入：${formatCurrency(item.revenue)}<br/>卡密数：${item.card_count}<br/>月价：${formatCurrency(item.monthly_price)}`
+      }
+    },
+    grid: {
+      left: '4%',
+      right: '6%',
+      bottom: '6%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf2f7' } },
+      axisLabel: {
+        color: '#64748b',
+        formatter: (value: number) => formatCurrency(value)
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: data.map(item => item.permission_name),
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: { color: '#334155', fontWeight: 600 }
+    },
+    series: [
+      {
+        name: '权限收入',
+        type: 'bar',
+        barWidth: 16,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+            { offset: 0, color: '#0ea5e9' },
+            { offset: 1, color: '#14b8a6' }
+          ]),
+          borderRadius: [0, 8, 8, 0]
+        },
+        label: {
+          show: true,
+          position: 'right',
+          color: '#0f172a',
+          formatter: (params: any) => formatCurrency(params.value)
+        },
+        data: data.map(item => toDashboardAmount(item.revenue))
+      }
+    ]
+  }
+
+  instance.setOption(option)
+}
+
 const renderAllCharts = async () => {
   await nextTick()
 
@@ -1267,14 +1690,22 @@ const renderAllCharts = async () => {
   renderGrowthHeatmap()
   renderGrowthLineChart()
   renderRadarChart()
+  renderRevenuePieChart()
+  renderPermissionRevenueChart()
 }
 
 const loadStatistics = async () => {
   loading.value = true
-  console.info('[综合仪表盘] 开始加载统计数据')
+  const revenueRange = revenueQueryRange.value
+  const trendRange = trendQueryRange.value
+  const query = {
+    ...revenueRange,
+    ...trendRange
+  }
+  console.info('[综合仪表盘] 开始加载统计数据', query)
 
   try {
-    const data = await getStatistics()
+    const data = await getStatistics(query)
     statistics.value = data
     lastUpdatedAt.value = new Date()
 
@@ -1283,6 +1714,9 @@ const loadStatistics = async () => {
       cards: data.cards,
       devices: data.devices,
       apps: data.apps,
+      revenue: data.revenue,
+      revenueRange: data.revenue_range,
+      trendRange: data.trend_range,
       trendLabels: data.trends.labels
     })
     ElMessage.success('综合数据看板已刷新')
@@ -1312,7 +1746,9 @@ const disposeCharts = () => {
     'healthBar',
     'growthHeatmap',
     'growthLine',
-    'radarChart'
+    'radarChart',
+    'revenuePie',
+    'permissionRevenue'
   ]
 
   chartKeys.forEach((chartKey) => {
@@ -1557,6 +1993,48 @@ onBeforeUnmount(() => {
   @apply mt-3 text-sm leading-6 text-slate-500;
 }
 
+.revenue-panel {
+  @apply mb-6 rounded-[28px] border border-emerald-200/80 bg-white/88 p-5 lg:p-6 shadow-sm;
+  @apply backdrop-blur-sm;
+}
+
+.revenue-toolbar {
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-4;
+}
+
+.revenue-range-text {
+  @apply mt-2 text-sm leading-6 text-slate-500;
+}
+
+.revenue-controls {
+  @apply flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center xl:justify-end;
+}
+
+.revenue-chart-grid {
+  @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
+}
+
+.trend-panel {
+  @apply mb-6 rounded-[28px] border border-sky-200/80 bg-white/88 p-5 lg:p-6 shadow-sm;
+  @apply backdrop-blur-sm;
+}
+
+.trend-toolbar {
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-4;
+}
+
+.trend-range-text {
+  @apply mt-2 text-sm leading-6 text-slate-500;
+}
+
+.trend-controls {
+  @apply flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center xl:justify-end;
+}
+
+.trend-chart-grid {
+  @apply grid grid-cols-1 xl:grid-cols-4 gap-4;
+}
+
 .level-success {
   @apply bg-emerald-500;
 }
@@ -1648,7 +2126,9 @@ onBeforeUnmount(() => {
   .overview-card,
   .panel-card,
   .chart-card,
-  .signal-card {
+  .signal-card,
+  .revenue-panel,
+  .trend-panel {
     @apply rounded-3xl;
   }
 

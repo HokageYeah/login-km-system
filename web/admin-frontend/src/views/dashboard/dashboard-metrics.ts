@@ -11,7 +11,7 @@ const buildFallbackLabels = (days: number) => {
   return Array.from({ length: days }, (_, index) => {
     const date = new Date()
     date.setDate(date.getDate() - (days - 1 - index))
-    return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    return `${String(date.getMonth() + 1).padStart(2, '0')}月${String(date.getDate()).padStart(2, '0')}日`
   })
 }
 
@@ -27,6 +27,15 @@ export const createDashboardFallbackStatistics = (
     cards: { total: 0, unused: 0, used: 0, disabled: 0 },
     devices: { total: 0, active: 0, disabled: 0 },
     apps: { total: 0, active: 0 },
+    revenue: { total: 0, used: 0, unused: 0 },
+    revenue_range: {
+      start_date: new Date().toISOString().slice(0, 10),
+      end_date: new Date().toISOString().slice(0, 10)
+    },
+    trend_range: {
+      start_date: new Date().toISOString().slice(0, 10),
+      end_date: new Date().toISOString().slice(0, 10)
+    },
     trends: {
       labels: buildFallbackLabels(days),
       daily_new: {
@@ -41,7 +50,14 @@ export const createDashboardFallbackStatistics = (
         cards: Array(days).fill(0),
         apps: Array(days).fill(0)
       }
-    }
+    },
+    sales_trend: {
+      labels: buildFallbackLabels(days),
+      daily_orders: Array(days).fill(0),
+      daily_revenue: Array(days).fill(0),
+      average_order_value: Array(days).fill(0)
+    },
+    permission_revenue: []
   }
 }
 
@@ -51,6 +67,18 @@ export const createDashboardFallbackStatistics = (
  */
 export const formatDashboardNumber = (num: number) => {
   return num.toLocaleString('zh-CN')
+}
+
+export const toDashboardAmount = (value: number | string | null | undefined) => {
+  const parsedValue = Number(value ?? 0)
+  return Number.isFinite(parsedValue) ? parsedValue : 0
+}
+
+export const formatDashboardCurrency = (value: number | string | null | undefined) => {
+  return `¥${toDashboardAmount(value).toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`
 }
 
 /**

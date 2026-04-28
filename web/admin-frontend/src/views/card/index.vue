@@ -452,78 +452,11 @@
     </el-drawer>
 
     <!-- 修改过期时间弹窗 -->
-    <el-dialog
+    <ExpireTimeDialog
       v-model="expireTimeDialogVisible"
-      title="修改过期时间"
-      width="460px"
-      :close-on-click-modal="false"
-      @close="resetExpireTimeDialog"
-    >
-      <div v-if="currentCard" class="expire-dialog-content">
-        <div class="expire-card-preview">
-          <span>当前卡密</span>
-          <strong>{{ currentCard.card_key }}</strong>
-          <div class="expire-preview-time">
-            <small>当前过期时间</small>
-            <b>{{ formatDateTime(currentCard.expire_time) }}</b>
-          </div>
-        </div>
-        <el-form label-width="96px">
-          <el-form-item label="过期时间">
-            <span class="form-readonly-text">{{ formatDateTime(currentCard.expire_time) }}</span>
-          </el-form-item>
-          <el-form-item label="新的时间" required>
-            <el-date-picker
-              v-model="expireTimeForm.expire_time"
-              type="datetime"
-              placeholder="请选择新的过期时间"
-              format="YYYY-MM-DD HH:mm:ss"
-              value-format="YYYY-MM-DDTHH:mm:ss"
-              class="w-full"
-            />
-            <div class="expire-shortcut-group">
-              <el-button
-                v-for="shortcut in expireShortcutOptions"
-                :key="shortcut.key"
-                size="small"
-                plain
-                @click="handleExpireTimeShortcutSelect(shortcut.key)"
-              >
-                {{ shortcut.label }}
-              </el-button>
-            </div>
-            <div class="form-tip">
-              可选择未来时间延长有效期，也可选择过去时间让卡密立即进入已过期状态；保存后会按当前设备数和权限重新计算卡密价格。
-            </div>
-            <div class="pricing-panel">
-              <div class="pricing-summary">
-                <span>预计价格</span>
-                <strong>{{ formatPrice(expirePricingBreakdown.finalPrice) }}</strong>
-              </div>
-              <p>
-                当前：权限月价 {{ formatPrice(expirePricingBreakdown.monthlyPermissionPrice) }}
-                ，有效 {{ expirePricingBreakdown.durationDays }} 天；
-                权限折算后 {{ formatPrice(expirePricingBreakdown.proratedPermissionPrice) }}
-                + 设备加价 {{ formatPrice(expirePricingBreakdown.extraDevicePrice) }}
-                = 最终价格 {{ formatPrice(expirePricingBreakdown.finalPrice) }}。
-              </p>
-            </div>
-          </el-form-item>
-        </el-form>
-      </div>
-      <template #footer>
-        <el-button @click="expireTimeDialogVisible = false">
-          取消
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="expireTimeSubmitting"
-          @click="handleExpireTimeSubmit"
-        >
-          保存
-        </el-button>
-      </template>
-    </el-dialog>
+      :card="currentCard"
+      @success="handleExpireTimeSuccess"
+    />
 
     <!-- 生成卡密弹窗 -->
     <GenerateDialog
@@ -573,23 +506,16 @@ import {
 } from '@element-plus/icons-vue'
 import type { ElTable } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { getCardList, updateCardStatus, updateCardExpireTime } from '@/api/admin'
+import { getCardList, updateCardStatus } from '@/api/admin'
 import { batchDeleteCards } from '@/api/card'
 import { getAppList } from '@/api/app'
-import { getFeaturePermissionList } from '@/api/feature-permission'
 import { useUserStore } from '@/stores/user'
-import type { Card, App, FeaturePermission } from '@/types'
+import type { Card, App } from '@/types'
 import { getAppTagStyle } from '@/utils/app-tag'
-import { calculateCardPricingBreakdown } from '@/utils/card-pricing'
-import {
-  EXPIRE_SHORTCUT_OPTIONS,
-  formatDateTimeValue,
-  getExpireShortcutValue,
-  type ExpireShortcutKey
-} from '@/utils/expire-shortcuts'
 import GenerateDialog from './components/GenerateDialog.vue'
 import PermissionDialog from './components/PermissionDialog.vue'
 import DeviceDialog from './components/DeviceDialog.vue'
+import ExpireTimeDialog from './components/ExpireTimeDialog.vue'
 
 /**
  * 状态定义
@@ -612,9 +538,6 @@ const permissionDialogVisible = ref(false)              // 修改权限弹窗
 const deviceDialogVisible = ref(false)                  // 查看设备弹窗
 const cardDetailDrawerVisible = ref(false)              // 卡密详情抽屉
 const expireTimeDialogVisible = ref(false)              // 修改过期时间弹窗
-const expireTimeSubmitting = ref(false)                 // 修改过期时间提交状态
-const expireShortcutOptions = EXPIRE_SHORTCUT_OPTIONS   // 过期时间快捷选项
-const expirePricingPermissions = ref<FeaturePermission[]>([]) // 修改过期时间时用于价格拆解的权限元数据
 
 /**
  * 筛选表单
@@ -625,36 +548,6 @@ const filterForm = reactive({
   keyword: '',
   username: ''
 })
-
-const expireTimeForm = reactive({
-  expire_time: ''
-})
-
-const expirePricingBreakdown = computed(() => calculateCardPricingBreakdown({
-  permissions: currentCard.value?.permissions || [],
-  availablePermissions: expirePricingPermissions.value,
-  expireTime: expireTimeForm.expire_time,
-  maxDeviceCount: currentCard.value?.max_device_count || 1
-}))
-
-const loadExpirePricingPermissions = async (card: Card) => {
-  if (!card.app_id) {
-    expirePricingPermissions.value = []
-    return
-  }
-
-  try {
-    const response = await getFeaturePermissionList({
-      page: 1,
-      size: 100,
-      app_id: card.app_id
-    })
-    expirePricingPermissions.value = response.permissions || []
-  } catch (error) {
-    console.error('[卡密管理] 加载修改过期时间价格计算所需权限失败', error)
-    expirePricingPermissions.value = []
-  }
-}
 
 const syncFilterFromRoute = () => {
   const routeAppId = route.query.app_id
@@ -792,32 +685,6 @@ const getBoundDeviceCount = (card: Card) => {
 
 const getDeviceUsageText = (card: Card) => {
   return `${getBoundDeviceCount(card)} / ${card.max_device_count}`
-}
-
-const isExpiredByTime = (expireTime: string) => {
-  if (!expireTime) return false
-  return new Date(expireTime).getTime() < Date.now()
-}
-
-/**
- * 处理修改过期时间弹窗中的快捷时间选择
- * @description 与“批量生成卡密”复用同一套快捷规则，确保各入口行为一致，
- * 后续若扩展快捷项，也只需要修改公共工具文件即可。
- * @param shortcutKey 快捷时间 key
- */
-const handleExpireTimeShortcutSelect = (shortcutKey: ExpireShortcutKey) => {
-  const selectedShortcut = expireShortcutOptions.find(item => item.key === shortcutKey)
-  const expireTimeValue = getExpireShortcutValue(shortcutKey)
-
-  expireTimeForm.expire_time = expireTimeValue
-
-  console.info('[卡密管理] 修改过期时间弹窗选择快捷时间', {
-    cardId: currentCard.value?.id,
-    cardKey: currentCard.value?.card_key,
-    shortcutKey,
-    shortcutLabel: selectedShortcut?.label,
-    expireTime: expireTimeValue
-  })
 }
 
 /**
@@ -1019,86 +886,20 @@ const showExpireTimeDialog = (card: Card) => {
     ElMessage.warning('只有管理员可以修改卡密过期时间')
     return
   }
-
   currentCard.value = card
-  expireTimeForm.expire_time = formatDateTimeValue(new Date())
-  loadExpirePricingPermissions(card)
-  console.info('[卡密管理] 打开修改过期时间弹窗', {
-    cardId: card.id,
-    cardKey: card.card_key,
-    currentExpireTime: card.expire_time,
-    defaultExpireTime: expireTimeForm.expire_time
-  })
   expireTimeDialogVisible.value = true
 }
 
 /**
- * 重置修改过期时间弹窗
+ * 修改过期时间成功回调
  */
-const resetExpireTimeDialog = () => {
-  console.info('[卡密管理] 重置修改过期时间弹窗状态', {
-    cardId: currentCard.value?.id,
-    cardKey: currentCard.value?.card_key
-  })
-  expireTimeForm.expire_time = ''
-  expirePricingPermissions.value = []
-  expireTimeSubmitting.value = false
-}
-
-/**
- * 提交修改过期时间
- */
-const handleExpireTimeSubmit = async () => {
-  if (!currentCard.value) {
-    ElMessage.warning('请选择要修改的卡密')
-    return
+const handleExpireTimeSuccess = (updatedCard: Card) => {
+  currentCard.value = updatedCard
+  const listIndex = cardList.value.findIndex(card => card.id === updatedCard.id)
+  if (listIndex !== -1) {
+    cardList.value[listIndex] = updatedCard
   }
-
-  if (!expireTimeForm.expire_time) {
-    ElMessage.warning('请选择新的过期时间')
-    return
-  }
-
-  expireTimeSubmitting.value = true
-  try {
-    console.info('[卡密管理] 开始提交新的过期时间', {
-      cardId: currentCard.value.id,
-      cardKey: currentCard.value.card_key,
-      oldExpireTime: currentCard.value.expire_time,
-      newExpireTime: expireTimeForm.expire_time
-    })
-
-    const result = await updateCardExpireTime(currentCard.value.id, expireTimeForm.expire_time)
-
-    const updatedCard = {
-      ...currentCard.value,
-      expire_time: expireTimeForm.expire_time,
-      is_expired: isExpiredByTime(expireTimeForm.expire_time),
-      price: result.price ?? currentCard.value.price
-    }
-
-    currentCard.value = updatedCard
-    const listIndex = cardList.value.findIndex(card => card.id === updatedCard.id)
-    if (listIndex !== -1) {
-      cardList.value[listIndex] = updatedCard
-    }
-
-    console.info('[卡密管理] 过期时间更新成功', {
-      cardId: updatedCard.id,
-      cardKey: updatedCard.card_key,
-      newExpireTime: updatedCard.expire_time,
-      isExpired: updatedCard.is_expired,
-      newPrice: updatedCard.price
-    })
-    ElMessage.success('卡密过期时间更新成功，卡密价格已重新计算')
-    expireTimeDialogVisible.value = false
-    loadCardList()
-  } catch (error) {
-    ElMessage.error('卡密过期时间更新失败')
-    console.error('卡密过期时间更新失败:', error)
-  } finally {
-    expireTimeSubmitting.value = false
-  }
+  loadCardList()
 }
 
 /**
@@ -1591,65 +1392,6 @@ watch(
 
 .drawer-actions .el-button {
   @apply m-0 w-full justify-center;
-}
-
-/* 修改过期时间弹窗 */
-.expire-dialog-content {
-  @apply space-y-5;
-}
-
-.expire-card-preview {
-  @apply rounded-2xl border border-blue-100 bg-blue-50 p-4;
-}
-
-.expire-card-preview span {
-  @apply block text-xs text-blue-600 mb-2;
-}
-
-.expire-card-preview strong {
-  @apply block font-mono text-sm text-gray-900 break-all;
-}
-
-.expire-preview-time {
-  @apply mt-4 rounded-xl bg-white/80 border border-blue-100 p-3;
-}
-
-.expire-preview-time small {
-  @apply block text-xs text-gray-500 mb-1;
-}
-
-.expire-preview-time b {
-  @apply text-sm text-gray-900 font-semibold;
-}
-
-.form-readonly-text {
-  @apply text-sm text-gray-700;
-}
-
-.form-tip {
-  @apply mt-2 text-xs text-gray-500 leading-relaxed;
-}
-
-.pricing-panel {
-  @apply mt-3 rounded-xl border border-blue-100 bg-blue-50 p-4;
-  @apply text-xs leading-5 text-blue-900;
-}
-
-.pricing-summary {
-  @apply flex items-center justify-between mb-2;
-}
-
-.pricing-summary span {
-  @apply text-gray-500;
-}
-
-.pricing-summary strong {
-  @apply text-lg font-bold text-blue-700;
-  font-variant-numeric: tabular-nums;
-}
-
-.expire-shortcut-group {
-  @apply flex flex-wrap gap-2 mt-3;
 }
 
 /* 分页 */

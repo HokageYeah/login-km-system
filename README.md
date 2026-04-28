@@ -640,9 +640,11 @@ Authorization: Bearer <admin_token>
 
 #### 获取统计数据
 ```http
-GET /api/v1/admin/statistics
+GET /api/v1/admin/statistics?start_date=2026-04-28&end_date=2026-04-28&trend_start_date=2026-04-21&trend_end_date=2026-04-28
 Authorization: Bearer <admin_token>
 ```
+
+说明：统计响应除了用户、卡密、设备、应用和最近趋势外，还会返回 `revenue`、`revenue_range`、`trend_range`、`sales_trend`、`permission_revenue`，用于管理后台展示总收入、每日销售额/订单数、权限收入归因和资源趋势。`start_date`、`end_date` 用于筛选收入区间，不传时默认统计当天；`trend_start_date`、`trend_end_date` 用于筛选综合看板趋势区，不传时默认统计当天，前端在“指定月份”模式下会自动换算为该月第一天到最后一天。
 
 ### 功能权限管理接口（需要管理员权限）
 

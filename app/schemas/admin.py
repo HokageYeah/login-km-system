@@ -210,6 +210,25 @@ class AppStatisticsResponse(BaseModel):
     active: int = Field(..., description="正常应用数")
 
 
+class RevenueStatisticsResponse(BaseModel):
+    """收入统计数据响应"""
+    total: Decimal = Field(Decimal("0.00"), description="使用中与未使用卡密的总收入")
+    used: Decimal = Field(Decimal("0.00"), description="使用中卡密收入")
+    unused: Decimal = Field(Decimal("0.00"), description="未使用卡密收入")
+
+
+class RevenueRangeResponse(BaseModel):
+    """收入统计日期范围响应"""
+    start_date: str = Field(..., description="收入统计开始日期")
+    end_date: str = Field(..., description="收入统计结束日期")
+
+
+class TrendRangeResponse(BaseModel):
+    """趋势统计日期范围响应"""
+    start_date: str = Field(..., description="趋势统计开始日期")
+    end_date: str = Field(..., description="趋势统计结束日期")
+
+
 class StatisticsTrendSeriesResponse(BaseModel):
     """统计趋势序列响应"""
     users: List[int] = Field(..., description="用户趋势序列")
@@ -225,10 +244,33 @@ class StatisticsTrendsResponse(BaseModel):
     cumulative: StatisticsTrendSeriesResponse = Field(..., description="累计规模趋势")
 
 
+class SalesTrendResponse(BaseModel):
+    """销售趋势响应"""
+    labels: List[str] = Field(..., description="趋势日期标签")
+    daily_orders: List[int] = Field(..., description="每日卡密订单数")
+    daily_revenue: List[Decimal] = Field(..., description="每日卡密销售额")
+    average_order_value: List[Decimal] = Field(..., description="每日平均卡密单价")
+
+
+class PermissionRevenueResponse(BaseModel):
+    """权限收入归因响应"""
+    permission_key: str = Field(..., description="权限唯一标识")
+    permission_name: str = Field(..., description="权限显示名称")
+    app_name: str = Field(..., description="所属应用名称")
+    monthly_price: Decimal = Field(Decimal("0.00"), description="权限月价")
+    card_count: int = Field(0, description="包含该权限的卡密数")
+    revenue: Decimal = Field(Decimal("0.00"), description="按卡密最终价格归因的收入")
+
+
 class StatisticsResponse(BaseModel):
     """统计数据响应"""
     users: UserStatisticsResponse = Field(..., description="用户统计")
     cards: CardStatisticsResponse = Field(..., description="卡密统计")
     devices: DeviceStatisticsResponse = Field(..., description="设备统计")
     apps: AppStatisticsResponse = Field(..., description="应用统计")
+    revenue: RevenueStatisticsResponse = Field(..., description="收入统计")
+    revenue_range: RevenueRangeResponse = Field(..., description="收入统计日期范围")
+    trend_range: TrendRangeResponse = Field(..., description="趋势统计日期范围")
     trends: StatisticsTrendsResponse = Field(..., description="统计趋势数据")
+    sales_trend: SalesTrendResponse = Field(..., description="销售趋势数据")
+    permission_revenue: List[PermissionRevenueResponse] = Field(default_factory=list, description="权限收入归因")

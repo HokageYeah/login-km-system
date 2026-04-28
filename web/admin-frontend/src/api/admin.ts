@@ -213,8 +213,17 @@ export const updateDeviceStatus = (deviceId: number, status: string) => {
 /**
  * 获取统计数据
  * @description 获取系统各项数据的统计信息（需要管理员权限）
+ * @param params.start_date 收入统计开始日期（YYYY-MM-DD，可选）
+ * @param params.end_date 收入统计结束日期（YYYY-MM-DD，可选）
+ * @param params.trend_start_date 趋势统计开始日期（YYYY-MM-DD，可选）
+ * @param params.trend_end_date 趋势统计结束日期（YYYY-MM-DD，可选）
  * @returns Promise<Statistics> 返回统计数据
  */
-export const getStatistics = () => {
-  return request.get<Statistics>('/admin/statistics')
+export const getStatistics = (params?: {
+  start_date?: string
+  end_date?: string
+  trend_start_date?: string
+  trend_end_date?: string
+}) => {
+  return request.get<Statistics>('/admin/statistics', { params })
 }

@@ -14,7 +14,8 @@ from app.models.card import Card, CardStatus
 from app.models.card_device import CardDevice, CardDeviceStatus
 from app.models.user_card import UserCard, UserCardStatus
 from app.models.app import App
-from app.services.card_pricing_service import calculate_card_price
+from app.models.feature_permission import FeaturePermission
+from app.services.card_pricing_service import calculate_card_price, extract_permission_keys
 from app.utils.card_generator import generate_batch_cards
 
 
@@ -27,6 +28,8 @@ class AdminService:
     def _build_recent_creation_trend(
         self,
         model,
+        start_date=None,
+        end_date=None,
         days: int = 7,
         field_name: str = "created_at"
     ) -> Dict[str, List[int] | List[str]]:
@@ -37,10 +40,13 @@ class AdminService:
         都来自真实数据，而不是前端模拟值。
         """
         date_field = getattr(model, field_name)
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=days - 1)
+        if not start_date or not end_date:
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=days - 1)
+
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+        total_days = max(1, (end_date - start_date).days + 1)
 
         daily_rows = (
             self.db.query(
@@ -70,12 +76,12 @@ class AdminService:
         cumulative_counts: List[int] = []
         running_total = int(base_total)
 
-        for offset in range(days):
+        for offset in range(total_days):
             current_date = start_date + timedelta(days=offset)
             current_key = current_date.isoformat()
             current_count = counts_by_day.get(current_key, 0)
 
-            labels.append(current_date.strftime("%m-%d"))
+            labels.append(current_date.strftime("%m月%d日"))
             daily_counts.append(current_count)
 
             running_total += current_count
@@ -86,6 +92,144 @@ class AdminService:
             "daily": daily_counts,
             "cumulative": cumulative_counts
         }
+
+    def _build_recent_sales_trend(
+        self,
+        start_date=None,
+        end_date=None,
+        days: int = 7
+    ) -> Dict[str, List[Decimal] | List[int] | List[str]]:
+        """按卡密生成日期统计指定区间的销售额与订单数。"""
+        if not start_date or not end_date:
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=days - 1)
+
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        end_datetime = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+        total_days = max(1, (end_date - start_date).days + 1)
+        revenue_statuses = [CardStatus.USED, CardStatus.UNUSED]
+
+        daily_rows = (
+            self.db.query(
+                func.date(Card.created_at).label("day"),
+                func.count(Card.id).label("orders"),
+                func.coalesce(func.sum(Card.price), Decimal("0.00")).label("revenue")
+            )
+            .filter(
+                Card.status.in_(revenue_statuses),
+                Card.created_at >= start_datetime,
+                Card.created_at < end_datetime
+            )
+            .group_by(func.date(Card.created_at))
+            .all()
+        )
+
+        orders_by_day: Dict[str, int] = {}
+        revenue_by_day: Dict[str, Decimal] = {}
+        for row in daily_rows:
+            day_value = row.day
+            day_key = day_value if isinstance(day_value, str) else day_value.isoformat()
+            orders_by_day[day_key] = int(row.orders or 0)
+            revenue_by_day[day_key] = Decimal(str(row.revenue or "0.00"))
+
+        labels: List[str] = []
+        daily_orders: List[int] = []
+        daily_revenue: List[Decimal] = []
+        average_order_value: List[Decimal] = []
+
+        for day_offset in range(total_days):
+            current_date = start_date + timedelta(days=day_offset)
+            day_key = current_date.isoformat()
+            orders = orders_by_day.get(day_key, 0)
+            revenue = revenue_by_day.get(day_key, Decimal("0.00")).quantize(Decimal("0.01"))
+
+            labels.append(current_date.strftime("%m月%d日"))
+            daily_orders.append(orders)
+            daily_revenue.append(revenue)
+            average_order_value.append(
+                (revenue / Decimal(orders)).quantize(Decimal("0.01")) if orders else Decimal("0.00")
+            )
+
+        return {
+            "labels": labels,
+            "daily_orders": daily_orders,
+            "daily_revenue": daily_revenue,
+            "average_order_value": average_order_value
+        }
+
+    def _build_permission_revenue_distribution(
+        self,
+        start_date=None,
+        end_date=None
+    ) -> List[Dict]:
+        """
+        按卡密最终价格做权限收入归因。
+
+        一张卡密可以包含多个权限，这里将该卡密价格均分给启用的权限，
+        这样权限后续叠加新增时无需额外表结构即可继续观察贡献分布。
+        """
+        revenue_statuses = [CardStatus.USED, CardStatus.UNUSED]
+        card_query = self.db.query(Card.permissions, Card.price).filter(Card.status.in_(revenue_statuses))
+        if start_date and end_date:
+            start_datetime = datetime.combine(start_date, datetime.min.time())
+            end_datetime = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+            card_query = card_query.filter(Card.created_at >= start_datetime, Card.created_at < end_datetime)
+        cards = card_query.all()
+
+        permission_rows = self.db.query(
+            FeaturePermission.permission_key,
+            FeaturePermission.permission_name,
+            FeaturePermission.price,
+            App.app_name
+        ).outerjoin(App, App.id == FeaturePermission.app_id).all()
+
+        permission_meta = {
+            row.permission_key: {
+                "permission_key": row.permission_key,
+                "permission_name": row.permission_name,
+                "app_name": row.app_name or "未绑定应用",
+                "monthly_price": Decimal(str(row.price or "0.00")),
+                "card_count": 0,
+                "revenue": Decimal("0.00")
+            }
+            for row in permission_rows
+        }
+
+        for permissions, price in cards:
+            permission_keys = sorted(extract_permission_keys(permissions))
+            if not permission_keys:
+                continue
+
+            card_price = Decimal(str(price or "0.00"))
+            allocated_revenue = (card_price / Decimal(len(permission_keys))).quantize(Decimal("0.01"))
+            for permission_key in permission_keys:
+                permission_item = permission_meta.setdefault(
+                    permission_key,
+                    {
+                        "permission_key": permission_key,
+                        "permission_name": permission_key,
+                        "app_name": "历史权限",
+                        "monthly_price": Decimal("0.00"),
+                        "card_count": 0,
+                        "revenue": Decimal("0.00")
+                    }
+                )
+                permission_item["card_count"] += 1
+                permission_item["revenue"] += allocated_revenue
+
+        return sorted(
+            [
+                {
+                    **item,
+                    "monthly_price": item["monthly_price"].quantize(Decimal("0.01")),
+                    "revenue": item["revenue"].quantize(Decimal("0.01"))
+                }
+                for item in permission_meta.values()
+                if item["card_count"] > 0 or item["monthly_price"] > 0
+            ],
+            key=lambda item: item["revenue"],
+            reverse=True
+        )
 
     def _sync_card_usage_statuses(self, card_ids: Optional[List[int]] = None) -> bool:
         """
@@ -861,7 +1005,13 @@ class AdminService:
             logger.error(f"更新设备状态失败: {e}")
             return False, f"更新设备状态失败: {str(e)}"
     
-    def get_statistics(self) -> Tuple[Dict, Optional[str]]:
+    def get_statistics(
+        self,
+        start_date=None,
+        end_date=None,
+        trend_start_date=None,
+        trend_end_date=None
+    ) -> Tuple[Dict, Optional[str]]:
         """
         获取统计数据
         
@@ -869,7 +1019,26 @@ class AdminService:
             (统计数据字典, 错误信息)
         """
         try:
-            logger.info("[管理员服务] 开始汇总系统统计数据")
+            today = datetime.now().date()
+            selected_end_date = end_date or today
+            selected_start_date = start_date or selected_end_date
+            if selected_start_date > selected_end_date:
+                return {}, "开始日期不能晚于结束日期"
+
+            selected_trend_end_date = trend_end_date or today
+            selected_trend_start_date = trend_start_date or selected_trend_end_date
+            if selected_trend_start_date > selected_trend_end_date:
+                return {}, "趋势开始日期不能晚于趋势结束日期"
+
+            selected_start_datetime = datetime.combine(selected_start_date, datetime.min.time())
+            selected_end_datetime = datetime.combine(selected_end_date + timedelta(days=1), datetime.min.time())
+            revenue_statuses = [CardStatus.USED, CardStatus.UNUSED]
+
+            logger.info(
+                "[管理员服务] 开始汇总系统统计数据，"
+                f"revenue_range={selected_start_date.isoformat()}~{selected_end_date.isoformat()}，"
+                f"trend_range={selected_trend_start_date.isoformat()}~{selected_trend_end_date.isoformat()}"
+            )
             if self._sync_card_usage_statuses():
                 self.db.commit()
                 logger.info("[管理员服务] 统计前已同步卡密使用状态，已提交数据库事务")
@@ -884,6 +1053,27 @@ class AdminService:
             unused_cards = self.db.query(Card).filter(Card.status == CardStatus.UNUSED).count()
             used_cards = self.db.query(Card).filter(Card.status == CardStatus.USED).count()
             disabled_cards = self.db.query(Card).filter(Card.status == CardStatus.DISABLED).count()
+            used_revenue = Decimal(str(
+                self.db.query(func.coalesce(func.sum(Card.price), Decimal("0.00")))
+                .filter(
+                    Card.status == CardStatus.USED,
+                    Card.created_at >= selected_start_datetime,
+                    Card.created_at < selected_end_datetime
+                )
+                .scalar()
+                or "0.00"
+            ))
+            unused_revenue = Decimal(str(
+                self.db.query(func.coalesce(func.sum(Card.price), Decimal("0.00")))
+                .filter(
+                    Card.status == CardStatus.UNUSED,
+                    Card.created_at >= selected_start_datetime,
+                    Card.created_at < selected_end_datetime
+                )
+                .scalar()
+                or "0.00"
+            ))
+            total_revenue = used_revenue + unused_revenue
             
             # 设备统计
             total_devices = self.db.query(CardDevice).count()
@@ -895,10 +1085,12 @@ class AdminService:
             active_apps = self.db.query(App).filter(App.status == "normal").count()
 
             # 趋势统计
-            user_trend = self._build_recent_creation_trend(User)
-            device_trend = self._build_recent_creation_trend(CardDevice)
-            card_trend = self._build_recent_creation_trend(Card)
-            app_trend = self._build_recent_creation_trend(App)
+            user_trend = self._build_recent_creation_trend(User, selected_trend_start_date, selected_trend_end_date)
+            device_trend = self._build_recent_creation_trend(CardDevice, selected_trend_start_date, selected_trend_end_date)
+            card_trend = self._build_recent_creation_trend(Card, selected_trend_start_date, selected_trend_end_date)
+            app_trend = self._build_recent_creation_trend(App, selected_trend_start_date, selected_trend_end_date)
+            sales_trend = self._build_recent_sales_trend(selected_start_date, selected_end_date)
+            permission_revenue = self._build_permission_revenue_distribution(selected_start_date, selected_end_date)
             
             statistics = {
                 "users": {
@@ -921,6 +1113,19 @@ class AdminService:
                     "total": total_apps,
                     "active": active_apps
                 },
+                "revenue": {
+                    "total": total_revenue.quantize(Decimal("0.01")),
+                    "used": used_revenue.quantize(Decimal("0.01")),
+                    "unused": unused_revenue.quantize(Decimal("0.01"))
+                },
+                "revenue_range": {
+                    "start_date": selected_start_date.isoformat(),
+                    "end_date": selected_end_date.isoformat()
+                },
+                "trend_range": {
+                    "start_date": selected_trend_start_date.isoformat(),
+                    "end_date": selected_trend_end_date.isoformat()
+                },
                 "trends": {
                     "labels": user_trend["labels"],
                     "daily_new": {
@@ -935,13 +1140,16 @@ class AdminService:
                         "cards": card_trend["cumulative"],
                         "apps": app_trend["cumulative"]
                     }
-                }
+                },
+                "sales_trend": sales_trend,
+                "permission_revenue": permission_revenue
             }
 
             logger.info(
                 "[管理员服务] 系统统计汇总完成："
                 f"users={statistics['users']}，"
                 f"cards={statistics['cards']}，"
+                f"revenue={statistics['revenue']}，"
                 f"devices={statistics['devices']}，"
                 f"apps={statistics['apps']}，"
                 f"trend_labels={statistics['trends']['labels']}"
