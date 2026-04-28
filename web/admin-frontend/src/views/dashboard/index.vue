@@ -1,35 +1,16 @@
 <template>
   <div class="dashboard-container">
     <section class="dashboard-header">
-      <div class="header-copy">
-        <span class="header-badge">Comprehensive Operations Board</span>
-        <h1 class="dashboard-title">授权系统综合数据看板</h1>
-        <p class="dashboard-subtitle">
-          这一版把收入、资源规模、增长趋势和健康度统一放进同一张经营总览图里，
-          让管理员能同时看到当前盘面、指定日期和自定义范围内的经营变化。
-        </p>
-      </div>
-
+      <h1 class="dashboard-title">数据看板</h1>
       <div class="header-actions">
-        <div class="header-info-card">
-          <span>最近更新时间</span>
-          <strong>{{ lastUpdatedText }}</strong>
-        </div>
-        <div class="header-info-card">
-          <span>增长动量</span>
-          <strong>{{ growthMomentumRate }}%</strong>
-        </div>
-        <div class="header-info-card">
-          <span>健康评分</span>
-          <strong>{{ overallHealthScore }} 分</strong>
-        </div>
+        <span class="header-updated">{{ lastUpdatedText }}</span>
         <el-button
           :icon="RefreshRight"
           :loading="loading"
           @click="loadStatistics"
           class="refresh-btn"
         >
-          刷新数据
+          刷新
         </el-button>
       </div>
     </section>
@@ -42,33 +23,19 @@
       >
         <div class="overview-card-top">
           <div class="overview-icon" :class="item.iconClass">
-            <el-icon :size="20">
+            <el-icon :size="18">
               <component :is="item.icon" />
             </el-icon>
           </div>
           <span class="overview-tag">{{ item.tag }}</span>
         </div>
-
-        <div class="overview-main">
-          <span class="overview-label">{{ item.label }}</span>
-          <strong class="overview-value">{{ formatNumber(item.value) }}</strong>
-          <div class="overview-meta">
-            <span>{{ item.metaLabel }}</span>
-            <b>{{ item.metaValue }}</b>
-          </div>
-          <div class="overview-progress">
-            <div class="overview-progress-track">
-              <div class="overview-progress-bar" :style="{ width: `${item.rate}%` }" />
-            </div>
-            <span>{{ item.rate }}%</span>
-          </div>
-        </div>
+        <span class="overview-label">{{ item.label }}</span>
+        <strong class="overview-value">{{ formatNumber(item.value) }}</strong>
       </article>
     </section>
         <section class="revenue-panel" v-loading="loading">
       <div class="revenue-toolbar">
         <div>
-          <p class="panel-eyebrow">Revenue Scope</p>
           <h3 class="panel-title">收入数据总览</h3>
           <p class="revenue-range-text">{{ revenueRangeText }}</p>
         </div>
@@ -119,24 +86,12 @@
 
       <div class="revenue-chart-grid">
         <article class="chart-card">
-          <div class="panel-head">
-            <div>
-              <p class="panel-eyebrow">Revenue Mix</p>
-              <h3 class="panel-title">收入结构扇形图</h3>
-            </div>
-            <el-icon class="panel-icon"><Ticket /></el-icon>
-          </div>
+          <h3 class="panel-title">收入结构</h3>
           <div ref="revenuePieRef" class="chart-container"></div>
         </article>
 
         <article class="chart-card chart-span-2">
-          <div class="panel-head">
-            <div>
-              <p class="panel-eyebrow">Permission Revenue</p>
-              <h3 class="panel-title">权限收入分配</h3>
-            </div>
-            <el-icon class="panel-icon"><CollectionTag /></el-icon>
-          </div>
+          <h3 class="panel-title">权限收入分配</h3>
           <div ref="permissionRevenueRef" class="chart-container chart-medium"></div>
         </article>
       </div>
@@ -144,14 +99,7 @@
 
     <section class="highlight-grid">
       <article class="panel-card panel-summary">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Today Snapshot</p>
-            <h3 class="panel-title">当日增长摘要</h3>
-          </div>
-          <el-icon class="panel-icon"><TrendCharts /></el-icon>
-        </div>
-
+        <h3 class="panel-title">当日增长摘要</h3>
         <div class="summary-list">
           <div v-for="item in summaryItems" :key="item.label" class="summary-item">
             <span>{{ item.label }}</span>
@@ -162,14 +110,7 @@
       </article>
 
       <article class="panel-card panel-status">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">System Reading</p>
-            <h3 class="panel-title">综合运营观察</h3>
-          </div>
-          <el-icon class="panel-icon"><DataAnalysis /></el-icon>
-        </div>
-
+        <h3 class="panel-title">综合运营观察</h3>
         <div class="focus-list">
           <div v-for="item in focusItems" :key="item.label" class="focus-item">
             <span class="focus-dot" :class="item.levelClass" />
@@ -180,37 +121,11 @@
           </div>
         </div>
       </article>
-
-      <article class="panel-card panel-gauge">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Health Score</p>
-            <h3 class="panel-title">系统健康度</h3>
-          </div>
-          <el-icon class="panel-icon"><Odometer /></el-icon>
-        </div>
-        <div ref="healthGaugeRef" class="mini-chart-container"></div>
-      </article>
-    </section>
-
-    <section class="signal-grid">
-      <article
-        v-for="item in executiveMetrics"
-        :key="item.label"
-        class="signal-card"
-      >
-        <div class="signal-card-top">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
-        </div>
-        <p>{{ item.desc }}</p>
-      </article>
     </section>
 
     <section class="trend-panel" v-loading="loading">
       <div class="trend-toolbar">
         <div>
-          <p class="panel-eyebrow">Growth Scope</p>
           <h3 class="panel-title">核心资源增长趋势</h3>
           <p class="trend-range-text">{{ trendRangeText }}</p>
         </div>
@@ -260,117 +175,32 @@
       </div>
 
       <div class="trend-chart-grid">
-        <article class="chart-card chart-span-2">
-          <div class="panel-head">
-            <div>
-              <p class="panel-eyebrow">Daily Core Growth</p>
-              <h3 class="panel-title">每日新增核心资源趋势</h3>
-            </div>
-            <el-icon class="panel-icon"><TrendCharts /></el-icon>
-          </div>
+        <article class="chart-card">
+          <h3 class="panel-title">每日新增核心资源</h3>
           <div ref="dailyCompareRef" class="chart-container chart-large"></div>
         </article>
 
-        <article class="chart-card chart-span-2">
-          <div class="panel-head">
-            <div>
-              <p class="panel-eyebrow">Growth Matrix</p>
-              <h3 class="panel-title">资源新增矩阵</h3>
-            </div>
-            <el-icon class="panel-icon"><Grid /></el-icon>
-          </div>
+        <article class="chart-card">
+          <h3 class="panel-title">资源新增矩阵</h3>
           <div ref="growthHeatmapRef" class="chart-container chart-medium"></div>
-        </article>
-
-        <article class="chart-card chart-span-2">
-          <div class="panel-head">
-            <div>
-              <p class="panel-eyebrow">Cumulative Trend</p>
-              <h3 class="panel-title">累计规模趋势</h3>
-            </div>
-            <el-icon class="panel-icon"><DataAnalysis /></el-icon>
-          </div>
-          <div ref="growthLineRef" class="chart-container chart-large"></div>
         </article>
       </div>
     </section>
 
     <section class="charts-grid" v-loading="loading">
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Scale Compare</p>
-            <h3 class="panel-title">核心资源总量对比</h3>
-          </div>
-          <el-icon class="panel-icon"><Histogram /></el-icon>
-        </div>
-        <div ref="resourceCompareRef" class="chart-container chart-medium"></div>
-      </article>
-
       <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Card Mix</p>
-            <h3 class="panel-title">卡密状态分布</h3>
-          </div>
-          <el-icon class="panel-icon"><Ticket /></el-icon>
-        </div>
+        <h3 class="panel-title">卡密状态分布</h3>
         <div ref="cardDonutRef" class="chart-container"></div>
       </article>
 
-      <article class="chart-card chart-span-2">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Status Line</p>
-            <h3 class="panel-title">核心状态占比走势</h3>
-          </div>
-          <el-icon class="panel-icon"><DataLine /></el-icon>
-        </div>
-        <div ref="statusTrendRef" class="chart-container chart-medium"></div>
+      <article class="chart-card">
+        <h3 class="panel-title">核心状态占比走势</h3>
+        <div ref="statusTrendRef" class="chart-container"></div>
       </article>
 
       <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Status Board</p>
-            <h3 class="panel-title">设备与应用健康</h3>
-          </div>
-          <el-icon class="panel-icon"><Monitor /></el-icon>
-        </div>
+        <h3 class="panel-title">设备与应用健康</h3>
         <div ref="healthBarRef" class="chart-container"></div>
-      </article>
-
-      <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Radar View</p>
-            <h3 class="panel-title">综合协同雷达</h3>
-          </div>
-          <el-icon class="panel-icon"><Memo /></el-icon>
-        </div>
-        <div ref="radarChartRef" class="chart-container"></div>
-      </article>
-
-      <article class="chart-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-eyebrow">Quick Board</p>
-            <h3 class="panel-title">综合数据摘要</h3>
-          </div>
-          <el-icon class="panel-icon"><CollectionTag /></el-icon>
-        </div>
-
-        <div class="summary-board">
-          <div v-for="metric in summaryMetrics" :key="metric.label" class="summary-board-item">
-            <div class="summary-board-top">
-              <span>{{ metric.label }}</span>
-              <strong>{{ metric.value }}</strong>
-            </div>
-            <div class="summary-board-track">
-              <div class="summary-board-bar" :style="{ width: `${metric.rate}%` }" />
-            </div>
-          </div>
-        </div>
       </article>
     </section>
   </div>
@@ -389,17 +219,10 @@ import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import type { ECharts, EChartsOption } from 'echarts'
 import {
-  CollectionTag,
-  DataAnalysis,
-  DataLine,
   Grid,
-  Histogram,
-  Memo,
   Monitor,
-  Odometer,
   RefreshRight,
   Ticket,
-  TrendCharts,
   User
 } from '@element-plus/icons-vue'
 import { getStatistics } from '@/api/admin'
@@ -418,15 +241,11 @@ import {
 } from './dashboard-metrics'
 
 type ChartKey =
-  | 'healthGauge'
-  | 'resourceCompare'
   | 'statusTrend'
   | 'cardDonut'
   | 'dailyCompare'
-  | 'healthBar'
   | 'growthHeatmap'
-  | 'growthLine'
-  | 'radarChart'
+  | 'healthBar'
   | 'revenuePie'
   | 'permissionRevenue'
 
@@ -434,15 +253,11 @@ const loading = ref(false)                              // 页面加载状态
 const statistics = ref<Statistics | null>(null)         // 仪表盘统计快照
 const lastUpdatedAt = ref<Date | null>(null)            // 最近刷新时间
 
-const healthGaugeRef = ref<HTMLDivElement>()
-const resourceCompareRef = ref<HTMLDivElement>()
 const statusTrendRef = ref<HTMLDivElement>()
 const cardDonutRef = ref<HTMLDivElement>()
 const dailyCompareRef = ref<HTMLDivElement>()
-const healthBarRef = ref<HTMLDivElement>()
 const growthHeatmapRef = ref<HTMLDivElement>()
-const growthLineRef = ref<HTMLDivElement>()
-const radarChartRef = ref<HTMLDivElement>()
+const healthBarRef = ref<HTMLDivElement>()
 const revenuePieRef = ref<HTMLDivElement>()
 const permissionRevenueRef = ref<HTMLDivElement>()
 
@@ -726,17 +541,6 @@ const resourceSynergyScore = computed(() => {
   )
 })
 
-const overallHealthScore = computed(() => {
-  const score = (
-    userHealthRate.value * 0.24 +
-    cardReserveRate.value * 0.18 +
-    cardUsageRate.value * 0.14 +
-    deviceHealthRate.value * 0.2 +
-    appAvailabilityRate.value * 0.12 +
-    (100 - riskExposureRate.value) * 0.12
-  )
-  return Math.round(score)
-})
 
 const overviewCards = computed(() => {
   const snapshot = statisticsSnapshot.value
@@ -859,71 +663,11 @@ const focusItems = computed(() => {
   ]
 })
 
-const executiveMetrics = computed(() => {
-  return [
-    {
-      label: '增长动量',
-      value: `${growthMomentumRate.value}%`,
-      desc: `今日总新增 ${todayGrowthTotal.value}，对比${trendScopeLabel.value}平均总新增 ${averageGrowthTotal.value.toFixed(1)}。`
-    },
-    {
-      label: '风险暴露率',
-      value: `${riskExposureRate.value}%`,
-      desc: `异常用户、禁用卡密、禁用设备和异常应用合并观察，更适合看综合风险面。`
-    },
-    {
-      label: '资源协同分',
-      value: `${resourceSynergyScore.value} 分`,
-      desc: '重点衡量用户增长、设备跟随、卡密库存和应用可用是否同步支撑整体业务。'
-    },
-    {
-      label: '最新进账',
-      value: formatCurrency(todayRevenue.value),
-      desc: `最近一个统计日新增订单 ${todayOrders.value} 笔，当前收入范围日均收入 ${formatCurrency(averageDailyRevenue.value)}。`
-    }
-  ]
-})
 
 const topPermissionRevenue = computed(() => {
   return statisticsSnapshot.value.permission_revenue.slice(0, 8)
 })
 
-const summaryMetrics = computed(() => {
-  const snapshot = statisticsSnapshot.value
-
-  return [
-    {
-      label: '正常用户 / 总用户',
-      value: `${snapshot.users.normal} / ${snapshot.users.total}`,
-      rate: userHealthRate.value
-    },
-    {
-      label: '已使用卡密 / 总卡密',
-      value: `${snapshot.cards.used} / ${snapshot.cards.total}`,
-      rate: cardUsageRate.value
-    },
-    {
-      label: '活跃设备 / 总设备',
-      value: `${snapshot.devices.active} / ${snapshot.devices.total}`,
-      rate: deviceHealthRate.value
-    },
-    {
-      label: '可用应用 / 总应用',
-      value: `${snapshot.apps.active} / ${snapshot.apps.total}`,
-      rate: appAvailabilityRate.value
-    },
-    {
-      label: `今日总新增 / ${trendScopeLabel.value}均值`,
-      value: `${todayGrowthTotal.value} / ${averageGrowthTotal.value.toFixed(1)}`,
-      rate: growthMomentumRate.value
-    },
-    {
-      label: '资源协同分 / 100',
-      value: `${resourceSynergyScore.value} / 100`,
-      rate: resourceSynergyScore.value
-    }
-  ]
-})
 
 const statusTrendIndicators = computed(() => {
   return [
@@ -962,15 +706,11 @@ const heatmapMaxValue = computed(() => {
 
 const getChartElement = (chartKey: ChartKey) => {
   const elementMap: Record<ChartKey, HTMLDivElement | undefined> = {
-    healthGauge: healthGaugeRef.value,
-    resourceCompare: resourceCompareRef.value,
     statusTrend: statusTrendRef.value,
     cardDonut: cardDonutRef.value,
     dailyCompare: dailyCompareRef.value,
-    healthBar: healthBarRef.value,
     growthHeatmap: growthHeatmapRef.value,
-    growthLine: growthLineRef.value,
-    radarChart: radarChartRef.value,
+    healthBar: healthBarRef.value,
     revenuePie: revenuePieRef.value,
     permissionRevenue: permissionRevenueRef.value
   }
@@ -990,119 +730,7 @@ const ensureChartInstance = (chartKey: ChartKey) => {
   return createdInstance
 }
 
-const renderHealthGauge = () => {
-  const instance = ensureChartInstance('healthGauge')
-  if (!instance) return
 
-  const option: EChartsOption = {
-    series: [
-      {
-        type: 'gauge',
-        startAngle: 210,
-        endAngle: -30,
-        min: 0,
-        max: 100,
-        progress: {
-          show: true,
-          roundCap: true,
-          width: 12,
-          itemStyle: {
-            color: overallHealthScore.value >= 80 ? '#14b8a6' : overallHealthScore.value >= 60 ? '#f59e0b' : '#fb7185'
-          }
-        },
-        axisLine: {
-          roundCap: true,
-          lineStyle: {
-            width: 12,
-            color: [[1, '#e2e8f0']]
-          }
-        },
-        pointer: { show: false },
-        anchor: { show: false },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        axisLabel: { show: false },
-        detail: {
-          formatter: '{value}',
-          valueAnimation: true,
-          color: '#0f172a',
-          fontSize: 26,
-          fontWeight: 'bold',
-          offsetCenter: [0, '6%']
-        },
-        title: {
-          color: '#64748b',
-          fontSize: 12,
-          offsetCenter: [0, '64%']
-        },
-        data: [
-          {
-            value: overallHealthScore.value,
-            name: '综合健康度'
-          }
-        ]
-      }
-    ]
-  }
-
-  instance.setOption(option)
-}
-
-const renderResourceCompareChart = () => {
-  const instance = ensureChartInstance('resourceCompare')
-  if (!instance) return
-
-  const snapshot = statisticsSnapshot.value
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' }
-    },
-    grid: {
-      left: '4%',
-      right: '4%',
-      bottom: '6%',
-      top: '12%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: ['用户', '卡密', '设备', '应用'],
-      axisTick: { show: false },
-      axisLine: { lineStyle: { color: '#d7dee8' } },
-      axisLabel: { color: '#475569' }
-    },
-    yAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { color: '#edf2f7' } },
-      axisLabel: { color: '#64748b' }
-    },
-    series: [
-      {
-        type: 'bar',
-        barWidth: '42%',
-        data: [
-          { value: snapshot.users.total, itemStyle: { color: '#38bdf8' } },
-          { value: snapshot.cards.total, itemStyle: { color: '#f59e0b' } },
-          { value: snapshot.devices.total, itemStyle: { color: '#14b8a6' } },
-          { value: snapshot.apps.total, itemStyle: { color: '#8b5cf6' } }
-        ],
-        label: {
-          show: true,
-          position: 'top',
-          color: '#0f172a',
-          fontWeight: 600
-        },
-        itemStyle: {
-          borderRadius: [10, 10, 0, 0]
-        }
-      }
-    ]
-  }
-
-  instance.setOption(option)
-}
 
 const renderStatusTrendChart = () => {
   const instance = ensureChartInstance('statusTrend')
@@ -1287,63 +915,6 @@ const renderDailyCompareChart = () => {
   instance.setOption(option)
 }
 
-const renderHealthBarChart = () => {
-  const instance = ensureChartInstance('healthBar')
-  if (!instance) return
-
-  const snapshot = statisticsSnapshot.value
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' }
-    },
-    legend: {
-      bottom: 0,
-      textStyle: { color: '#475569' }
-    },
-    grid: {
-      left: '4%',
-      right: '4%',
-      bottom: '14%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { color: '#edf2f7' } },
-      axisLabel: { color: '#64748b' }
-    },
-    yAxis: {
-      type: 'category',
-      data: ['设备', '应用'],
-      axisTick: { show: false },
-      axisLine: { show: false },
-      axisLabel: { color: '#334155', fontWeight: 600 }
-    },
-    series: [
-      {
-        name: '正常 / 活跃',
-        type: 'bar',
-        stack: 'total',
-        itemStyle: { color: '#5eead4', borderRadius: [0, 8, 8, 0] },
-        label: { show: true, color: '#0f172a' },
-        data: [snapshot.devices.active, snapshot.apps.active]
-      },
-      {
-        name: '异常 / 禁用',
-        type: 'bar',
-        stack: 'total',
-        itemStyle: { color: '#fda4af', borderRadius: [0, 8, 8, 0] },
-        label: { show: true, color: '#0f172a' },
-        data: [snapshot.devices.disabled, abnormalAppCount.value]
-      }
-    ]
-  }
-
-  instance.setOption(option)
-}
-
 const renderGrowthHeatmap = () => {
   const instance = ensureChartInstance('growthHeatmap')
   if (!instance) return
@@ -1401,7 +972,7 @@ const renderGrowthHeatmap = () => {
           fontWeight: 600
         },
         itemStyle: {
-          borderRadius: 10,
+          borderRadius: 8,
           borderColor: 'rgba(255,255,255,0.8)',
           borderWidth: 2
         }
@@ -1412,138 +983,65 @@ const renderGrowthHeatmap = () => {
   instance.setOption(option)
 }
 
-const renderGrowthLineChart = () => {
-  const instance = ensureChartInstance('growthLine')
+const renderHealthBarChart = () => {
+  const instance = ensureChartInstance('healthBar')
   if (!instance) return
 
-  const trends = statisticsSnapshot.value.trends
+  const snapshot = statisticsSnapshot.value
 
   const option: EChartsOption = {
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
     },
     legend: {
-      top: 0,
+      bottom: 0,
       textStyle: { color: '#475569' }
     },
     grid: {
       left: '4%',
       right: '4%',
-      bottom: '5%',
-      top: '14%',
+      bottom: '14%',
+      top: '10%',
       containLabel: true
     },
     xAxis: {
-      type: 'category',
-      data: trends.labels,
-      axisTick: { show: false },
-      axisLine: { lineStyle: { color: '#d7dee8' } },
-      axisLabel: { color: '#64748b' }
-    },
-    yAxis: {
       type: 'value',
       splitLine: { lineStyle: { color: '#edf2f7' } },
       axisLabel: { color: '#64748b' }
     },
-    series: [
-      {
-        name: '累计用户',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#14b8a6' },
-        itemStyle: { color: '#14b8a6' },
-        data: trends.cumulative.users
-      },
-      {
-        name: '累计设备',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#60a5fa' },
-        itemStyle: { color: '#60a5fa' },
-        data: trends.cumulative.devices
-      },
-      {
-        name: '累计卡密',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#f59e0b' },
-        itemStyle: { color: '#f59e0b' },
-        data: trends.cumulative.cards
-      },
-      {
-        name: '累计应用',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        lineStyle: { width: 2.5, color: '#8b5cf6' },
-        itemStyle: { color: '#8b5cf6' },
-        data: trends.cumulative.apps
-      }
-    ]
-  }
-
-  instance.setOption(option)
-}
-
-const renderRadarChart = () => {
-  const instance = ensureChartInstance('radarChart')
-  if (!instance) return
-
-  const option: EChartsOption = {
-    color: ['#38bdf8'],
-    radar: {
-      radius: '64%',
-      splitNumber: 5,
-      axisName: {
-        color: '#334155',
-        fontWeight: 600
-      },
-      splitLine: {
-        lineStyle: { color: 'rgba(203, 213, 225, 0.7)' }
-      },
-      splitArea: {
-        areaStyle: {
-          color: ['rgba(248,250,252,0.4)', 'rgba(241,245,249,0.9)']
-        }
-      },
-      indicator: [
-        { name: '用户健康', max: 100 },
-        { name: '卡密库存', max: 100 },
-        { name: '卡密使用', max: 100 },
-        { name: '设备活跃', max: 100 },
-        { name: '资源协同', max: 100 }
-      ]
+    yAxis: {
+      type: 'category',
+      data: ['设备', '应用'],
+      axisTick: { show: false },
+      axisLine: { show: false },
+      axisLabel: { color: '#334155', fontWeight: 600 }
     },
     series: [
       {
-        type: 'radar',
-        areaStyle: {
-          color: 'rgba(56, 189, 248, 0.18)'
-        },
-        lineStyle: {
-          width: 3
-        },
-        symbolSize: 8,
-        data: [
-          {
-            value: [
-              userHealthRate.value,
-              cardReserveRate.value,
-              cardUsageRate.value,
-              deviceHealthRate.value,
-              resourceSynergyScore.value
-            ]
-          }
-        ]
+        name: '正常 / 活跃',
+        type: 'bar',
+        stack: 'total',
+        itemStyle: { color: '#5eead4', borderRadius: [0, 8, 8, 0] },
+        label: { show: true, color: '#0f172a' },
+        data: [snapshot.devices.active, snapshot.apps.active]
+      },
+      {
+        name: '异常 / 禁用',
+        type: 'bar',
+        stack: 'total',
+        itemStyle: { color: '#fda4af', borderRadius: [0, 8, 8, 0] },
+        label: { show: true, color: '#0f172a' },
+        data: [snapshot.devices.disabled, abnormalAppCount.value]
       }
     ]
   }
 
   instance.setOption(option)
 }
+
+
+
 
 const renderRevenuePieChart = () => {
   const instance = ensureChartInstance('revenuePie')
@@ -1680,15 +1178,11 @@ const renderAllCharts = async () => {
     trends: statistics.value.trends
   })
 
-  renderHealthGauge()
-  renderResourceCompareChart()
   renderStatusTrendChart()
   renderCardDonut()
   renderDailyCompareChart()
-  renderHealthBarChart()
   renderGrowthHeatmap()
-  renderGrowthLineChart()
-  renderRadarChart()
+  renderHealthBarChart()
   renderRevenuePieChart()
   renderPermissionRevenueChart()
 }
@@ -1737,15 +1231,11 @@ const handleResize = () => {
 
 const disposeCharts = () => {
   const chartKeys: ChartKey[] = [
-    'healthGauge',
-    'resourceCompare',
     'statusTrend',
     'cardDonut',
     'dailyCompare',
-    'healthBar',
     'growthHeatmap',
-    'growthLine',
-    'radarChart',
+    'healthBar',
     'revenuePie',
     'permissionRevenue'
   ]
@@ -1772,320 +1262,110 @@ onBeforeUnmount(() => {
 <style scoped>
 @reference "../../styles/index.css";
 
-/* ========== 入场动画 ========== */
 @keyframes dash-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes dash-bar-grow {
-  from {
-    width: 0%;
-  }
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ========== 页面容器 ========== */
 .dashboard-container {
-  @apply min-h-full px-6 py-6 lg:px-8;
-  background:
-    radial-gradient(circle at top left, rgba(125, 211, 252, 0.18), transparent 24%),
-    radial-gradient(circle at top right, rgba(129, 140, 248, 0.1), transparent 22%),
-    linear-gradient(180deg, #f8fbfd 0%, #f4f8fb 52%, #f8fafc 100%);
+  @apply min-h-full px-6 py-8 lg:px-10;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 /* ========== 页头 ========== */
 .dashboard-header {
-  @apply flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between mb-8;
-  animation: dash-fade-up 0.5s ease-out both;
-}
-
-.header-copy {
-  @apply max-w-3xl;
-}
-
-.header-badge {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs tracking-[0.18em] uppercase;
-  @apply bg-sky-50 text-sky-600 border border-sky-200/70;
-  letter-spacing: 0.22em;
+  @apply flex items-center justify-between mb-10;
+  animation: dash-fade-up 0.4s ease-out both;
 }
 
 .dashboard-title {
-  @apply mt-4 text-3xl lg:text-4xl font-bold text-slate-900;
-  background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.dashboard-subtitle {
-  @apply mt-3 text-sm lg:text-base leading-7 text-slate-500;
+  @apply text-2xl font-bold text-slate-800;
 }
 
 .header-actions {
-  @apply flex flex-col sm:flex-row sm:flex-wrap gap-3 xl:items-center xl:justify-end;
+  @apply flex items-center gap-4;
 }
 
-.header-info-card {
-  @apply min-w-[168px] rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3;
-  @apply backdrop-blur-sm;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.header-info-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.08);
-}
-
-.header-info-card span {
-  @apply block text-[11px] text-slate-400 font-medium tracking-wide uppercase mb-1;
-}
-
-.header-info-card strong {
-  @apply text-sm font-semibold text-slate-900 tabular-nums;
+.header-updated {
+  @apply text-sm text-slate-400 tabular-nums;
 }
 
 .refresh-btn {
-  @apply rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 font-medium;
+  @apply rounded-xl border border-slate-200 bg-white text-slate-600 font-medium;
   @apply shadow-sm;
   transition: all 0.2s ease;
 }
 
 .refresh-btn:hover {
-  @apply bg-sky-100 text-sky-800;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+  @apply border-sky-300 text-sky-700 bg-sky-50;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.12);
 }
 
 /* ========== 总览卡片 ========== */
 .overview-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
-}
-
-.overview-card,
-.panel-card,
-.chart-card,
-.signal-card {
-  @apply rounded-[24px] border border-slate-200/80 bg-white/88 shadow-sm;
-  @apply backdrop-blur-sm;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-  animation: dash-fade-up 0.5s ease-out both;
+  @apply grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8;
 }
 
 .overview-card {
-  @apply p-5 lg:p-6;
+  @apply rounded-2xl border border-slate-200/80 bg-white px-5 py-4;
+  @apply flex items-center gap-4;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: dash-fade-up 0.4s ease-out both;
 }
 
 .overview-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
 }
 
 .overview-card-top {
-  @apply flex items-center justify-between mb-5;
+  @apply flex items-center justify-between;
 }
 
 .overview-icon {
-  @apply flex items-center justify-center w-11 h-11 rounded-xl;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  @apply flex items-center justify-center w-10 h-10 rounded-xl shrink-0;
 }
 
-.icon-user {
-  @apply bg-sky-50 text-sky-600;
-}
-
-.icon-card {
-  @apply bg-amber-50 text-amber-600;
-  border-color: rgba(245, 158, 11, 0.08);
-}
-
-.icon-device {
-  @apply bg-teal-50 text-teal-600;
-  border-color: rgba(20, 184, 166, 0.08);
-}
-
-.icon-app {
-  @apply bg-violet-50 text-violet-600;
-  border-color: rgba(139, 92, 246, 0.08);
-}
+.icon-user { @apply bg-sky-50 text-sky-600; }
+.icon-card { @apply bg-amber-50 text-amber-600; }
+.icon-device { @apply bg-teal-50 text-teal-600; }
+.icon-app { @apply bg-violet-50 text-violet-600; }
 
 .overview-tag {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
-  @apply text-slate-500 bg-slate-50 border border-slate-100;
+  @apply text-xs font-medium text-slate-400;
 }
 
 .overview-label {
-  @apply block text-xs text-slate-400 font-medium tracking-wide uppercase;
+  @apply block text-xs text-slate-400;
 }
 
 .overview-value {
-  @apply block mt-2 text-3xl font-bold text-slate-900 tabular-nums;
+  @apply block text-2xl font-bold text-slate-900 tabular-nums mt-0.5;
 }
 
-.overview-meta {
-  @apply mt-4 flex items-center justify-between text-sm;
-}
-
-.overview-meta span {
-  @apply text-slate-400;
-}
-
-.overview-meta b {
-  @apply text-slate-700 font-semibold;
-}
-
-.overview-progress {
-  @apply mt-4 flex items-center gap-3;
-}
-
-.overview-progress-track {
-  @apply flex-1 h-1.5 rounded-full overflow-hidden;
-  background: rgba(148, 163, 184, 0.12);
-}
-
-.overview-progress-bar {
-  @apply h-full rounded-full;
-  background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
-  animation: dash-bar-grow 0.8s ease-out both;
-}
-
-.overview-progress span {
-  @apply text-xs font-semibold text-slate-400 tabular-nums;
-}
-
-/* ========== 高亮面板网格 ========== */
-.highlight-grid {
-  @apply grid grid-cols-1 xl:grid-cols-[1.1fr_1.2fr_0.82fr] gap-4 mb-4;
-}
-
-.panel-card,
-.chart-card {
-  @apply p-5 lg:p-6;
-}
-
-.panel-card:hover {
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
-}
-
-.panel-head {
-  @apply flex items-start justify-between gap-4 mb-5 pb-4 border-b border-slate-100/80;
-}
-
-.panel-eyebrow {
-  @apply text-[11px] uppercase tracking-[0.22em] text-slate-400 font-medium;
-}
-
+/* ========== 面板标题 ========== */
 .panel-title {
-  @apply mt-1 text-lg font-semibold text-slate-900;
+  @apply text-base font-semibold text-slate-800 mb-1;
 }
 
-.panel-icon {
-  @apply flex items-center justify-center w-10 h-10 rounded-xl bg-slate-50 text-slate-500;
-  border: 1px solid rgba(0, 0, 0, 0.03);
-}
-
-/* ========== 摘要列表 ========== */
-.summary-list {
-  @apply grid grid-cols-2 gap-3;
-}
-
-.summary-item {
-  @apply rounded-xl bg-slate-50/80 px-4 py-4;
-  border: 1px solid rgba(148, 163, 184, 0.08);
-  transition: background 0.15s ease;
-}
-
-.summary-item:hover {
-  background: rgba(241, 245, 249, 0.9);
-}
-
-.summary-item span {
-  @apply block text-[11px] text-slate-400 font-medium tracking-wide uppercase mb-2;
-}
-
-.summary-item strong {
-  @apply block text-2xl font-bold text-slate-900 tabular-nums;
-}
-
-.summary-item em {
-  @apply mt-2 block text-xs leading-5 text-slate-500 not-italic;
-}
-
-/* ========== 焦点列表 ========== */
-.focus-list {
-  @apply space-y-3;
-}
-
-.focus-item {
-  @apply flex items-start gap-3 rounded-xl p-3;
-  transition: background 0.15s ease;
-}
-
-.focus-item:hover {
-  background: rgba(248, 250, 252, 0.7);
-}
-
-.focus-dot {
-  @apply mt-1.5 w-2 h-2 rounded-full shrink-0;
-  box-shadow: 0 0 6px currentColor;
-}
-
-.focus-body strong {
-  @apply block text-sm font-semibold text-slate-800;
-}
-
-.focus-body p {
-  @apply mt-1 text-[13px] leading-6 text-slate-500;
-}
-
-/* ========== 信号卡片 ========== */
-.signal-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
-}
-
-.signal-card {
-  @apply p-4 lg:p-5;
-}
-
-.signal-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
-}
-
-.signal-card-top {
-  @apply flex items-start justify-between gap-4;
-}
-
-.signal-card-top span {
-  @apply text-sm text-slate-500;
-}
-
-.signal-card-top strong {
-  @apply text-2xl font-bold text-slate-900 tabular-nums;
-}
-
-.signal-card p {
-  @apply mt-3 text-sm leading-6 text-slate-500;
+.panel-card {
+  @apply rounded-2xl border border-slate-200/80 bg-white p-5;
+  animation: dash-fade-up 0.5s ease-out both;
 }
 
 /* ========== 收入面板 ========== */
 .revenue-panel {
-  @apply mb-6 rounded-[24px] border border-emerald-200/60 bg-white/88 p-5 lg:p-7 shadow-sm;
-  @apply backdrop-blur-sm;
-  animation: dash-fade-up 0.6s ease-out both;
+  @apply mb-8 rounded-2xl border border-emerald-200/60 bg-white p-6 shadow-sm;
+  animation: dash-fade-up 0.5s ease-out both;
 }
 
 .revenue-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-5 pb-5 border-b border-emerald-100/60;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5 border-b border-slate-100;
 }
 
 .revenue-range-text {
-  @apply mt-2 text-sm leading-6 text-slate-500;
+  @apply text-sm text-slate-400;
 }
 
 .revenue-controls {
@@ -2093,22 +1373,68 @@ onBeforeUnmount(() => {
 }
 
 .revenue-chart-grid {
-  @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
+  @apply grid grid-cols-1 xl:grid-cols-3 gap-5;
+}
+
+/* ========== 高亮面板 ========== */
+.highlight-grid {
+  @apply grid grid-cols-1 xl:grid-cols-2 gap-5 mb-8;
+}
+
+/* ========== 摘要列表 ========== */
+.summary-list {
+  @apply grid grid-cols-2 xl:grid-cols-3 gap-3 mt-4;
+}
+
+.summary-item {
+  @apply rounded-xl bg-slate-50 px-4 py-3;
+}
+
+.summary-item span {
+  @apply block text-xs text-slate-400 mb-1;
+}
+
+.summary-item strong {
+  @apply block text-xl font-bold text-slate-900 tabular-nums;
+}
+
+.summary-item em {
+  @apply block text-xs text-slate-400 not-italic mt-1;
+}
+
+/* ========== 焦点列表 ========== */
+.focus-list {
+  @apply space-y-3 mt-4;
+}
+
+.focus-item {
+  @apply flex items-start gap-3 p-2;
+}
+
+.focus-dot {
+  @apply mt-1.5 w-2 h-2 rounded-full shrink-0;
+}
+
+.focus-body strong {
+  @apply block text-sm font-semibold text-slate-800;
+}
+
+.focus-body p {
+  @apply mt-0.5 text-[13px] leading-5 text-slate-500;
 }
 
 /* ========== 趋势面板 ========== */
 .trend-panel {
-  @apply mb-6 rounded-[24px] border border-sky-200/60 bg-white/88 p-5 lg:p-7 shadow-sm;
-  @apply backdrop-blur-sm;
-  animation: dash-fade-up 0.6s ease-out 0.1s both;
+  @apply mb-8 rounded-2xl border border-sky-200/60 bg-white p-6 shadow-sm;
+  animation: dash-fade-up 0.5s ease-out 0.05s both;
 }
 
 .trend-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-5 pb-5 border-b border-sky-100/60;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5 border-b border-slate-100;
 }
 
 .trend-range-text {
-  @apply mt-2 text-sm leading-6 text-slate-500;
+  @apply text-sm text-slate-400;
 }
 
 .trend-controls {
@@ -2116,38 +1442,17 @@ onBeforeUnmount(() => {
 }
 
 .trend-chart-grid {
-  @apply grid grid-cols-1 xl:grid-cols-4 gap-4;
+  @apply flex flex-col gap-5 mt-6;
 }
 
-/* ========== 状态色 ========== */
-.level-success {
-  background: #10b981;
-  color: #10b981;
-}
-
-.level-info {
-  background: #0ea5e9;
-  color: #0ea5e9;
-}
-
-.level-warning {
-  background: #f59e0b;
-  color: #f59e0b;
-}
-
-.level-danger {
-  background: #f43f5e;
-  color: #f43f5e;
-}
-
-/* ========== 图表尺寸 ========== */
-.mini-chart-container {
-  width: 100%;
-  height: 220px;
-}
-
+/* ========== 图表区 ========== */
 .charts-grid {
-  @apply grid grid-cols-1 xl:grid-cols-3 gap-4;
+  @apply grid grid-cols-1 md:grid-cols-3 gap-5 mb-8;
+}
+
+.chart-card {
+  @apply rounded-2xl border border-slate-200/80 bg-white p-5;
+  animation: dash-fade-up 0.5s ease-out both;
 }
 
 .chart-span-2 {
@@ -2167,79 +1472,38 @@ onBeforeUnmount(() => {
   height: 360px;
 }
 
-/* ========== 摘要面板 ========== */
-.summary-board {
-  @apply space-y-3;
-}
-
-.summary-board-item {
-  @apply rounded-xl bg-slate-50/80 px-4 py-4;
-  border: 1px solid rgba(148, 163, 184, 0.06);
-}
-
-.summary-board-top {
-  @apply flex items-center justify-between gap-4 mb-3;
-}
-
-.summary-board-top span {
-  @apply text-sm text-slate-500;
-}
-
-.summary-board-top strong {
-  @apply text-sm font-semibold text-slate-900 tabular-nums;
-}
-
-.summary-board-track {
-  @apply h-1.5 rounded-full overflow-hidden;
-  background: rgba(148, 163, 184, 0.12);
-}
-
-.summary-board-bar {
-  @apply h-full rounded-full;
-  background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
-  animation: dash-bar-grow 0.8s ease-out both;
-}
-
-/* ========== 图表卡片入场 ========== */
-.chart-card {
-  animation: dash-fade-up 0.5s ease-out both;
-}
+/* ========== 状态色 ========== */
+.level-success { background: #10b981; color: #10b981; }
+.level-info { background: #0ea5e9; color: #0ea5e9; }
+.level-warning { background: #f59e0b; color: #f59e0b; }
+.level-danger { background: #f43f5e; color: #f43f5e; }
 
 /* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .dashboard-container {
-    @apply px-4 py-4;
+    @apply px-4 py-5;
   }
 
   .dashboard-title {
-    @apply text-3xl;
+    @apply text-xl;
   }
 
   .summary-list {
     @apply grid-cols-1;
   }
 
-  .header-actions {
-    @apply flex-col;
-  }
-
   .overview-card,
   .panel-card,
   .chart-card,
-  .signal-card,
   .revenue-panel,
   .trend-panel {
-    @apply rounded-2xl;
-  }
-
-  .mini-chart-container {
-    height: 190px;
+    @apply rounded-xl;
   }
 
   .chart-container,
   .chart-medium,
   .chart-large {
-    height: 280px;
+    height: 260px;
   }
 }
 </style>
