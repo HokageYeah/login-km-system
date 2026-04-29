@@ -160,6 +160,7 @@ export interface Statistics {
   devices: DeviceStatistics      // 设备统计
   apps: AppStatistics            // 应用统计
   revenue: RevenueStatistics     // 收入统计
+  all_time_revenue: RevenueStatistics // 全时间收入统计
   revenue_range: RevenueRange    // 收入统计日期范围
   trend_range: TrendRange        // 趋势统计日期范围
   trends: StatisticsTrends       // 趋势统计

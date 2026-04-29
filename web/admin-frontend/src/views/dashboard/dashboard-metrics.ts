@@ -28,6 +28,7 @@ export const createDashboardFallbackStatistics = (
     devices: { total: 0, active: 0, disabled: 0 },
     apps: { total: 0, active: 0 },
     revenue: { total: 0, used: 0, unused: 0 },
+    all_time_revenue: { total: 0, used: 0, unused: 0 },
     revenue_range: {
       start_date: new Date().toISOString().slice(0, 10),
       end_date: new Date().toISOString().slice(0, 10)

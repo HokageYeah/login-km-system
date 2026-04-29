@@ -269,6 +269,7 @@ class StatisticsResponse(BaseModel):
     devices: DeviceStatisticsResponse = Field(..., description="设备统计")
     apps: AppStatisticsResponse = Field(..., description="应用统计")
     revenue: RevenueStatisticsResponse = Field(..., description="收入统计")
+    all_time_revenue: RevenueStatisticsResponse = Field(..., description="全时间收入统计")
     revenue_range: RevenueRangeResponse = Field(..., description="收入统计日期范围")
     trend_range: TrendRangeResponse = Field(..., description="趋势统计日期范围")
     trends: StatisticsTrendsResponse = Field(..., description="统计趋势数据")

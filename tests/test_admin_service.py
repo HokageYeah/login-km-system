@@ -3,6 +3,7 @@
 """
 import asyncio
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 
 def _create_bound_card(db_session, *, card_key: str, status):
@@ -294,6 +295,69 @@ def test_get_statistics_returns_nested_groups(db_session):
     assert statistics["trends"]["daily_new"]["apps"][-1] == 1
     assert statistics["trends"]["cumulative"]["users"][-1] == 2
     assert statistics["trends"]["cumulative"]["devices"][-1] == 2
+
+
+def test_get_statistics_returns_all_time_revenue_independent_from_selected_range(db_session):
+    """全时间收入应独立于页面选择的收入趋势日期范围。"""
+    from app.models.app import App, AppStatus
+    from app.models.card import Card, CardStatus
+    from app.services.admin_service import AdminService
+
+    app = App(
+        app_key="statistics_all_time_revenue_app",
+        app_name="全时间收入测试应用",
+        status=AppStatus.NORMAL
+    )
+    db_session.add(app)
+    db_session.commit()
+    db_session.refresh(app)
+
+    today = datetime.now().date()
+    old_day = today - timedelta(days=30)
+    today_card = Card(
+        app_id=app.id,
+        card_key="STAT-REVENUE-TODAY-0001",
+        status=CardStatus.UNUSED,
+        expire_time=datetime.now() + timedelta(days=10),
+        max_device_count=1,
+        permissions=["demo"],
+        price=Decimal("20.00"),
+        created_at=datetime.combine(today, datetime.min.time())
+    )
+    old_card = Card(
+        app_id=app.id,
+        card_key="STAT-REVENUE-OLD-0001",
+        status=CardStatus.UNUSED,
+        expire_time=datetime.now() + timedelta(days=10),
+        max_device_count=1,
+        permissions=["demo"],
+        price=Decimal("10.00"),
+        created_at=datetime.combine(old_day, datetime.min.time())
+    )
+    disabled_card = Card(
+        app_id=app.id,
+        card_key="STAT-REVENUE-DISABLED-0001",
+        status=CardStatus.DISABLED,
+        expire_time=datetime.now() + timedelta(days=10),
+        max_device_count=1,
+        permissions=["demo"],
+        price=Decimal("99.00"),
+        created_at=datetime.combine(old_day, datetime.min.time())
+    )
+    db_session.add_all([today_card, old_card, disabled_card])
+    db_session.commit()
+
+    statistics, error = AdminService(db_session).get_statistics(
+        start_date=today,
+        end_date=today,
+        trend_start_date=today,
+        trend_end_date=today
+    )
+
+    assert error is None
+    assert statistics["revenue"]["total"] == Decimal("20.00")
+    assert statistics["all_time_revenue"]["total"] == Decimal("30.00")
+    assert statistics["all_time_revenue"]["unused"] == Decimal("30.00")
 
 
 def test_admin_statistics_endpoint_returns_nested_groups(db_session):

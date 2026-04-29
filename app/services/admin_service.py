@@ -157,6 +157,40 @@ class AdminService:
             "average_order_value": average_order_value
         }
 
+    def _build_revenue_summary(
+        self,
+        start_date=None,
+        end_date=None
+    ) -> Dict[str, Decimal]:
+        """汇总指定日期范围或全时间的可经营卡密金额。"""
+        revenue_statuses = [CardStatus.USED, CardStatus.UNUSED]
+        revenue_query = self.db.query(
+            Card.status,
+            func.coalesce(func.sum(Card.price), Decimal("0.00")).label("revenue")
+        ).filter(Card.status.in_(revenue_statuses))
+
+        if start_date and end_date:
+            start_datetime = datetime.combine(start_date, datetime.min.time())
+            end_datetime = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+            revenue_query = revenue_query.filter(
+                Card.created_at >= start_datetime,
+                Card.created_at < end_datetime
+            )
+
+        revenue_rows = revenue_query.group_by(Card.status).all()
+        revenue_by_status = {
+            row.status: Decimal(str(row.revenue or "0.00"))
+            for row in revenue_rows
+        }
+        used_revenue = revenue_by_status.get(CardStatus.USED, Decimal("0.00"))
+        unused_revenue = revenue_by_status.get(CardStatus.UNUSED, Decimal("0.00"))
+
+        return {
+            "total": (used_revenue + unused_revenue).quantize(Decimal("0.01")),
+            "used": used_revenue.quantize(Decimal("0.01")),
+            "unused": unused_revenue.quantize(Decimal("0.01"))
+        }
+
     def _build_permission_revenue_distribution(
         self,
         start_date=None,
@@ -1030,10 +1064,6 @@ class AdminService:
             if selected_trend_start_date > selected_trend_end_date:
                 return {}, "趋势开始日期不能晚于趋势结束日期"
 
-            selected_start_datetime = datetime.combine(selected_start_date, datetime.min.time())
-            selected_end_datetime = datetime.combine(selected_end_date + timedelta(days=1), datetime.min.time())
-            revenue_statuses = [CardStatus.USED, CardStatus.UNUSED]
-
             logger.info(
                 "[管理员服务] 开始汇总系统统计数据，"
                 f"revenue_range={selected_start_date.isoformat()}~{selected_end_date.isoformat()}，"
@@ -1053,27 +1083,8 @@ class AdminService:
             unused_cards = self.db.query(Card).filter(Card.status == CardStatus.UNUSED).count()
             used_cards = self.db.query(Card).filter(Card.status == CardStatus.USED).count()
             disabled_cards = self.db.query(Card).filter(Card.status == CardStatus.DISABLED).count()
-            used_revenue = Decimal(str(
-                self.db.query(func.coalesce(func.sum(Card.price), Decimal("0.00")))
-                .filter(
-                    Card.status == CardStatus.USED,
-                    Card.created_at >= selected_start_datetime,
-                    Card.created_at < selected_end_datetime
-                )
-                .scalar()
-                or "0.00"
-            ))
-            unused_revenue = Decimal(str(
-                self.db.query(func.coalesce(func.sum(Card.price), Decimal("0.00")))
-                .filter(
-                    Card.status == CardStatus.UNUSED,
-                    Card.created_at >= selected_start_datetime,
-                    Card.created_at < selected_end_datetime
-                )
-                .scalar()
-                or "0.00"
-            ))
-            total_revenue = used_revenue + unused_revenue
+            revenue = self._build_revenue_summary(selected_start_date, selected_end_date)
+            all_time_revenue = self._build_revenue_summary()
             
             # 设备统计
             total_devices = self.db.query(CardDevice).count()
@@ -1114,9 +1125,14 @@ class AdminService:
                     "active": active_apps
                 },
                 "revenue": {
-                    "total": total_revenue.quantize(Decimal("0.01")),
-                    "used": used_revenue.quantize(Decimal("0.01")),
-                    "unused": unused_revenue.quantize(Decimal("0.01"))
+                    "total": revenue["total"],
+                    "used": revenue["used"],
+                    "unused": revenue["unused"]
+                },
+                "all_time_revenue": {
+                    "total": all_time_revenue["total"],
+                    "used": all_time_revenue["used"],
+                    "unused": all_time_revenue["unused"]
                 },
                 "revenue_range": {
                     "start_date": selected_start_date.isoformat(),

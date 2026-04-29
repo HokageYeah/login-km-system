@@ -22,11 +22,11 @@
         <div class="ink-revenue-breakdown">
           <div class="ink-revenue-chip ink-chip-active">
             <span class="ink-chip-dot" />
-            <span>使用中 {{ formatCurrency(statisticsSnapshot.revenue.used) }}</span>
+            <span>使用中 {{ formatCurrency(allTimeRevenue.used) }}</span>
           </div>
           <div class="ink-revenue-chip ink-chip-stock">
             <span class="ink-chip-dot" />
-            <span>未使用 {{ formatCurrency(statisticsSnapshot.revenue.unused) }}</span>
+            <span>未使用 {{ formatCurrency(allTimeRevenue.unused) }}</span>
           </div>
         </div>
       </div>
@@ -116,6 +116,12 @@
             </div>
             <el-icon class="ink-panel-icon"><DataLine /></el-icon>
           </div>
+          <div class="ink-chart-summary">
+            <div v-for="item in salesTrendSummary" :key="item.label" class="ink-chart-summary-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </div>
           <div ref="salesTrendRef" class="ink-chart ink-chart-large"></div>
         </article>
 
@@ -126,6 +132,12 @@
               <h3 class="ink-panel-title">每日新增用户 / 设备 / 卡密对比</h3>
             </div>
             <el-icon class="ink-panel-icon"><DataAnalysis /></el-icon>
+          </div>
+          <div class="ink-chart-summary">
+            <div v-for="item in growthCompareSummary" :key="item.label" class="ink-chart-summary-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
           </div>
           <div ref="growthCompareRef" class="ink-chart ink-chart-large"></div>
         </article>
@@ -138,6 +150,12 @@
             </div>
             <el-icon class="ink-panel-icon"><DataLine /></el-icon>
           </div>
+          <div class="ink-chart-summary">
+            <div v-for="item in growthQualitySummary" :key="item.label" class="ink-chart-summary-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </div>
           <div ref="growthQualityRef" class="ink-chart ink-chart-medium"></div>
         </article>
 
@@ -148,6 +166,12 @@
               <h3 class="ink-panel-title">累计增长与系统使用规模</h3>
             </div>
             <el-icon class="ink-panel-icon"><CollectionTag /></el-icon>
+          </div>
+          <div class="ink-chart-summary">
+            <div v-for="item in cumulativeTrendSummary" :key="item.label" class="ink-chart-summary-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
           </div>
           <div ref="cumulativeTrendRef" class="ink-chart ink-chart-large"></div>
         </article>
@@ -160,6 +184,12 @@
             </div>
             <el-icon class="ink-panel-icon"><Histogram /></el-icon>
           </div>
+          <div class="ink-chart-summary">
+            <div v-for="item in keyMetricsSummary" :key="item.label" class="ink-chart-summary-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </div>
           <div ref="keyMetricsRef" class="ink-chart ink-chart-medium"></div>
         </article>
 
@@ -170,6 +200,12 @@
               <h3 class="ink-panel-title">增长协同散点图</h3>
             </div>
             <el-icon class="ink-panel-icon"><Grid /></el-icon>
+          </div>
+          <div class="ink-chart-summary">
+            <div v-for="item in growthScatterSummary" :key="item.label" class="ink-chart-summary-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
           </div>
           <div ref="growthScatterRef" class="ink-chart ink-chart-medium"></div>
         </article>
@@ -379,6 +415,11 @@ type ChartKey =
   | 'cumulativeTrend'
   | 'analysisRadar'
 
+type ChartSummaryItem = {
+  label: string
+  value: string
+}
+
 const loading = ref(false)                              // 页面加载状态
 const statistics = ref<Statistics | null>(null)         // 后端统计快照
 const lastUpdatedAt = ref<Date | null>(null)            // 最近刷新时间
@@ -537,16 +578,26 @@ const lastUpdatedText = computed(() => {
   })
 })
 
+const getSeriesTotal = (series: number[]) => {
+  return series.reduce((total, value) => total + value, 0)
+}
+
 const todayNewUsers = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.users))
 const todayNewDevices = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.devices))
 const todayNewCards = computed(() => getLastValue(statisticsSnapshot.value.trends.daily_new.cards))
 const todayRevenue = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
 const todayOrders = computed(() => getLastValue(statisticsSnapshot.value.sales_trend.daily_orders))
-const totalRevenue = computed(() => toDashboardAmount(statisticsSnapshot.value.revenue.total))
+const allTimeRevenue = computed(() => statisticsSnapshot.value.all_time_revenue)
+const totalRevenue = computed(() => toDashboardAmount(allTimeRevenue.value.total))
 
 const averageDailyUsers = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.users))
 const averageDailyCards = computed(() => getAverageValue(statisticsSnapshot.value.trends.daily_new.cards))
 const averageDailyRevenue = computed(() => getAverageValue(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
+const selectedRevenueTotal = computed(() => getSeriesTotal(statisticsSnapshot.value.sales_trend.daily_revenue.map(toDashboardAmount)))
+const selectedOrderTotal = computed(() => getSeriesTotal(statisticsSnapshot.value.sales_trend.daily_orders))
+const selectedNewUsersTotal = computed(() => getSeriesTotal(statisticsSnapshot.value.trends.daily_new.users))
+const selectedNewDevicesTotal = computed(() => getSeriesTotal(statisticsSnapshot.value.trends.daily_new.devices))
+const selectedNewCardsTotal = computed(() => getSeriesTotal(statisticsSnapshot.value.trends.daily_new.cards))
 
 const abnormalUserRate = computed(() => {
   return getRate(statisticsSnapshot.value.users.banned, statisticsSnapshot.value.users.total)
@@ -815,6 +866,56 @@ const growthScatterData = computed(() => {
     }
   })
 })
+
+const salesTrendSummary = computed<ChartSummaryItem[]>(() => [
+  { label: '范围销售额', value: formatCurrency(selectedRevenueTotal.value) },
+  { label: '范围订单数', value: `${selectedOrderTotal.value} 笔` },
+  { label: '日均销售额', value: formatCurrency(averageDailyRevenue.value) },
+  { label: '最新客单价', value: formatCurrency(getLastValue(statisticsSnapshot.value.sales_trend.average_order_value.map(toDashboardAmount))) }
+])
+
+const growthCompareSummary = computed<ChartSummaryItem[]>(() => [
+  { label: '新增用户', value: `${selectedNewUsersTotal.value} 人` },
+  { label: '新增设备', value: `${selectedNewDevicesTotal.value} 台` },
+  { label: '新增卡密', value: `${selectedNewCardsTotal.value} 个` },
+  { label: '设备协同', value: `${userDeviceSynergyRate.value}%` }
+])
+
+const growthQualitySummary = computed<ChartSummaryItem[]>(() => [
+  { label: '最新质量分', value: `${currentGrowthQuality.value} 分` },
+  { label: '范围均值', value: `${averageGrowthQuality.value.toFixed(1)} 分` },
+  { label: '最高质量分', value: `${getSeriesPeak(growthQualitySeries.value)} 分` },
+  { label: '风险压力', value: `${riskPressureRate.value}%` }
+])
+
+const cumulativeTrendSummary = computed<ChartSummaryItem[]>(() => {
+  const cumulative = statisticsSnapshot.value.trends.cumulative
+
+  return [
+    { label: '累计用户', value: `${getLastValue(cumulative.users)} 人` },
+    { label: '累计设备', value: `${getLastValue(cumulative.devices)} 台` },
+    { label: '累计卡密', value: `${getLastValue(cumulative.cards)} 个` },
+    { label: '累计应用', value: `${getLastValue(cumulative.apps)} 个` }
+  ]
+})
+
+const keyMetricsSummary = computed<ChartSummaryItem[]>(() => {
+  const snapshot = statisticsSnapshot.value
+
+  return [
+    { label: '卡密使用率', value: `${cardUsageRate.value}%` },
+    { label: '库存卡密', value: `${snapshot.cards.unused} 个` },
+    { label: '异常用户', value: `${snapshot.users.banned} 人` },
+    { label: '封禁卡密', value: `${snapshot.cards.disabled} 个` }
+  ]
+})
+
+const growthScatterSummary = computed<ChartSummaryItem[]>(() => [
+  { label: '新增用户峰值', value: `${getSeriesPeak(statisticsSnapshot.value.trends.daily_new.users)} 人` },
+  { label: '新增设备峰值', value: `${getSeriesPeak(statisticsSnapshot.value.trends.daily_new.devices)} 台` },
+  { label: '新增卡密峰值', value: `${getSeriesPeak(statisticsSnapshot.value.trends.daily_new.cards)} 个` },
+  { label: '协同点数', value: `${statisticsSnapshot.value.trends.labels.length} 个` }
+])
 
 const radarMetrics = computed<number[]>(() => {
   const snapshot = statisticsSnapshot.value
@@ -1853,6 +1954,22 @@ onBeforeUnmount(() => {
   @apply flex items-start justify-between gap-4 mb-5 pb-4 border-b border-stone-100;
 }
 
+.ink-chart-summary {
+  @apply grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4;
+}
+
+.ink-chart-summary-item {
+  @apply rounded-xl border border-stone-200/70 bg-white/60 px-3 py-2;
+}
+
+.ink-chart-summary-item span {
+  @apply block text-[11px] leading-4 text-stone-400 font-medium;
+}
+
+.ink-chart-summary-item strong {
+  @apply mt-1 block text-sm font-semibold text-stone-900 tabular-nums;
+}
+
 .ink-panel-eyebrow {
   @apply text-[11px] uppercase tracking-[0.22em] text-stone-400 font-medium;
 }
@@ -1979,6 +2096,10 @@ onBeforeUnmount(() => {
 
   .ink-metric-pill {
     @apply py-2;
+  }
+
+  .ink-chart-summary {
+    @apply grid-cols-2;
   }
 
   .ink-suite-toolbar {
