@@ -2,6 +2,33 @@
 
 这是一个基于 FastAPI 的通用卡密授权管理系统，支持多应用、多设备的卡密管理和权限控制。
 
+## 📚 项目文档导航
+
+如果是首次接手项目，或需要让 LLM 基于文档继续开发、优化、修复问题，建议优先阅读以下文档：
+
+- 全局规则与开发约束：
+  - [.agent/rules/km-specs.md](/Users/yuye/YeahWork/Python项目/login-km-system/.agent/rules/km-specs.md)
+- 后端核心设计与任务文档：
+  - [app/docs/通用卡密与授权系统设计说明.md](/Users/yuye/YeahWork/Python项目/login-km-system/app/docs/通用卡密与授权系统设计说明.md)
+  - [app/docs/通用卡密与授权系统任务.md](/Users/yuye/YeahWork/Python项目/login-km-system/app/docs/通用卡密与授权系统任务.md)
+- 接口与使用文档：
+  - [app/docs/API接口速查表.md](/Users/yuye/YeahWork/Python项目/login-km-system/app/docs/API接口速查表.md)
+  - [app/docs/系统使用手册.md](/Users/yuye/YeahWork/Python项目/login-km-system/app/docs/系统使用手册.md)
+- 前端设计与交互文档：
+  - [web/docs/管理后台前端设计说明（Vue3+TypeScript）.md](/Users/yuye/YeahWork/Python项目/login-km-system/web/docs/管理后台前端设计说明（Vue3+TypeScript）.md)
+  - [web/docs/管理后台整体布局与交互设计说明.md](/Users/yuye/YeahWork/Python项目/login-km-system/web/docs/管理后台整体布局与交互设计说明.md)
+  - [web/docs/管理后台前端设计任务.md](/Users/yuye/YeahWork/Python项目/login-km-system/web/docs/管理后台前端设计任务.md)
+- 前端路由与实现补充文档：
+  - [web/admin-frontend/docs/路由配置指南.md](/Users/yuye/YeahWork/Python项目/login-km-system/web/admin-frontend/docs/路由配置指南.md)
+  - [web/admin-frontend/docs/路由系统升级说明.md](/Users/yuye/YeahWork/Python项目/login-km-system/web/admin-frontend/docs/路由系统升级说明.md)
+
+建议阅读顺序：
+
+1. 先看 `km-specs.md`，建立整体规则、主链边界、开发约束
+2. 再看后端设计文档和任务文档，理解系统主链
+3. 如涉及接口联调，再看 API 速查表和系统使用手册
+4. 如涉及前端页面、管理后台、交互、路由，再看 `web/docs/` 和 `web/admin-frontend/docs/`
+
 ## ✨ 核心功能
 
 - 🔐 **用户认证系统**: 注册、登录、JWT Token 认证
@@ -20,6 +47,20 @@
 - 📝 **日志系统**: 完整的操作日志和异常记录 ✅
 - 🛡️ **异常处理**: 统一的业务异常处理机制 ✅
 - 🧪 **测试框架**: 完整的单元测试和集成测试 ✅
+
+## 🏗️ 项目组成
+
+当前仓库由三部分组成：
+
+- `app/`：FastAPI 后端主工程，负责认证、卡密、权限、应用、后台管理等核心主链
+- `web/admin-frontend/`：Vue 3 + TypeScript 管理后台前端工程
+- `app/docs/`、`web/docs/`、`.agent/rules/`：项目设计、任务、规则、使用说明文档
+
+其中：
+
+- 后端是最终授权裁决中心
+- 前端负责管理后台展示、交互、路由和接口调用
+- 文档目录负责沉淀面向开发者和 LLM 的上下文、规则与实现说明
 
 ## 🚀 快速开始
 
@@ -122,10 +163,21 @@ python run_app.py
 │   ├── middleware/       # 中间件
 │   │   └── exception_handlers.py # 异常处理器
 │   ├── models/           # 数据库模型
-│   │   └── article.py   # 文章模型
+│   │   ├── app.py       # 应用模型
+│   │   ├── user.py      # 用户模型
+│   │   ├── card.py      # 卡密模型
+│   │   ├── user_card.py # 用户与卡密绑定模型
+│   │   ├── card_device.py # 卡密与设备绑定模型
+│   │   ├── user_token.py  # 用户 Token 模型
+│   │   └── feature_permission.py # 功能权限元数据模型
 │   ├── schemas/          # Pydantic模型
-│   │   └── wx_data.py   # 微信公众号数据验证模型
-│   │   └── common_data.py   # 通用数据验证模型
+│   │   ├── auth.py      # 认证相关模型
+│   │   ├── card.py      # 卡密相关模型
+│   │   ├── permission.py # 权限校验相关模型
+│   │   ├── app.py       # 应用相关模型
+│   │   ├── admin.py     # 后台管理相关模型
+│   │   ├── feature_permission.py # 功能权限相关模型
+│   │   └── common_data.py # 通用响应模型
 │   ├── scripts/          # 脚本工具
 │   │   ├── create_database.py # 创建数据库脚本
 │   │   ├── init_database.py  # 初始化数据库脚本
@@ -133,9 +185,18 @@ python run_app.py
 │   │   ├── docker-entrypoint.sh # docker启动脚本
 │   │   └── set_env.py        # 环境设置脚本
 │   ├── services/         # 业务逻辑服务
-│   │   └── wx_public.py # 微信公众号服务
+│   │   ├── auth_service.py # 认证服务
+│   │   ├── card_service.py # 卡密服务
+│   │   ├── permission_service.py # 权限校验服务
+│   │   ├── app_service.py # 应用管理服务
+│   │   ├── admin_service.py # 后台管理服务
+│   │   ├── feature_permission_service.py # 功能权限服务
+│   │   └── card_pricing_service.py # 卡密定价服务
 │   ├── __init__.py      # 包初始化文件
 │   └── main.py          # 应用入口
+├── web/                  # 前端工程与设计文档
+│   ├── admin-frontend/  # 管理后台前端工程（Vue 3 + TypeScript）
+│   └── docs/            # 前端设计、布局、任务说明
 ├── logs/                 # 日志文件目录
 ├── .env                  # 环境变量配置
 ├── .env.development      # 开发环境配置
@@ -148,6 +209,27 @@ python run_app.py
 ├── .gitignore            # git忽略文件
 └── run_app.py            # 应用启动脚本
 ```
+
+### 当前主链模块说明
+
+当前项目的核心业务主链主要围绕以下模块展开：
+
+- `auth`：注册、登录、Token 校验、当前用户
+- `card`：卡密绑定、我的卡密、解绑设备、卡密详情
+- `permission`：权限校验、批量校验、我的权限
+- `app`：应用管理
+- `admin`：后台用户、卡密、设备、统计管理
+- `feature_permission`：功能权限元数据与卡密权限配置
+
+### 历史模块说明
+
+仓库中仍保留少量历史或旁路模块，例如：
+
+- `app/api/endpoints/wx_public.py`
+- `app/services/wx_public.py`
+- `app/models/article.py`
+
+这些内容不是当前卡密授权主链的架构中心。除非任务明确要求，否则不应再围绕这些历史模块继续扩展主业务。
 
 ## 安装和运行
 
