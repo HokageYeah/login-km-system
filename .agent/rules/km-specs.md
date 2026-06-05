@@ -86,6 +86,8 @@ trigger: always_on
 - 接口与使用文档：
   - `app/docs/API接口速查表.md`
   - `app/docs/系统使用手册.md`
+- 部署与发布文档：
+  - `app/docs/Docker部署与自动发布说明.md`
 - 前端设计与任务文档：
   - `web/docs/管理后台前端设计说明（Vue3+TypeScript）.md`
   - `web/docs/管理后台整体布局与交互设计说明.md`
@@ -104,6 +106,9 @@ trigger: always_on
   - 至少补读相关 `web/admin-frontend/src/` 模块与 `web/docs/` 设计文档
 - **前后端联调 / 接口契约任务**：
   - 必须同时对照 `app/docs/API接口速查表.md`、后端接口实现、前端 `src/api/` 与 `src/types/`
+- **Docker 部署 / 自动发布 / CI-CD / 服务器发布任务**：
+  - 必须优先阅读 `app/docs/Docker部署与自动发布说明.md`
+  - 同时核对 `docker-compose.yml`、`docker/backend/Dockerfile`、`docker/backend/docker-entrypoint.sh`、`docker/frontend/Dockerfile`、`docker/frontend/nginx.conf`、`.github/workflows/deploy.yml`
 - **规则 / 架构 / 文档治理任务**：
   - 除核心设计文档外，至少抽样核对真实代码结构，避免文档继续描述过时状态
 
@@ -121,7 +126,7 @@ trigger: always_on
 
 - 仓库中仍保留了部分历史集成模块与旧业务表述，例如 `wx_public`、`article.py`、根路径中的旧文案、README 中的旧结构说明等。
 - 这些内容 **不是当前卡密授权主链的架构中心**。除非用户明确要求，否则不要把新功能继续耦合到这些历史模块上。
-- `web/admin-frontend/README.md` 当前仍是 Vite 默认模板文案，**不能作为项目前端架构说明的权威来源**；涉及前端时应以 `web/docs/`、`web/admin-frontend/docs/` 与真实代码为准。
+- `web/admin-frontend/README.md` 现在已补充为前端工程说明，但涉及前端架构、页面设计、路由机制时，仍应优先结合 `web/docs/`、`web/admin-frontend/docs/` 与真实代码共同判断，不要只读单一说明文件。
 
 ## 3. 核心技术栈与真实工程约束
 
@@ -153,6 +158,8 @@ trigger: always_on
 - 配置入口：`app/core/config.py`
 - 数据库连接配置：`app/config/database_config.py`
 - 数据库连接与会话工厂：`app/db/sqlalchemy_db.py`
+- Docker 部署编排入口：`docker-compose.yml`
+- GitHub Actions 自动发布入口：`.github/workflows/deploy.yml`
 
 ## 4. 真实代码架构与职责分层
 
@@ -182,6 +189,10 @@ trigger: always_on
   - 当前测试主干集中在认证、卡密、权限三个核心链路
 - `app/docs/`
   - 项目任务、设计、阶段报告、接口说明、使用手册的主要沉淀位置
+- `docker/`
+  - Docker 镜像构建、容器启动脚本、Nginx 代理配置
+- `.github/workflows/`
+  - 自动发布工作流配置，当前部署主线不可忽略
 
 ### 4.3 当前核心路由模块
 
@@ -447,6 +458,32 @@ trigger: always_on
   - 再设计前端交互层；
   - 如接口契约不足，先补接口文档或后端能力，再推进前端落地。
 
+### 6.8 Docker 与自动发布边界说明
+
+- 当前项目已经形成明确的 Docker 部署主线，不要在处理部署问题时脱离现有编排重新假设一套流程。
+- 涉及 Docker、容器网络、镜像构建、服务器自动发布、数据库迁移时，必须优先基于以下真实文件判断：
+  - `docker-compose.yml`
+  - `docker/backend/Dockerfile`
+  - `docker/backend/docker-entrypoint.sh`
+  - `docker/frontend/Dockerfile`
+  - `docker/frontend/nginx.conf`
+  - `.github/workflows/deploy.yml`
+  - `app/docs/Docker部署与自动发布说明.md`
+- 不要把根目录较早期的手工部署说明，直接等同于当前自动发布主流程。
+- 不要遇到部署问题就直接建议“换一套部署架构”或“重写 Dockerfile”，应先理解：
+  - 当前三服务编排关系
+  - 构建阶段代理设计
+  - backend 启动前等待数据库并自动迁移
+  - frontend 通过 Nginx 代理 `/api`
+  - GitHub Actions 通过 SSH 在服务器上执行 `git reset + compose build + compose up`
+- 如果要优化部署流程，必须明确改动影响的是：
+  - 构建阶段
+  - 启动阶段
+  - 迁移阶段
+  - 代理阶段
+  - 自动发布阶段
+  不能在未理解现有链路前做局部拍脑袋调整。
+
 ## 7. 标准开发顺序（后续新增 / 修改功能时照此执行）
 
 ### 7.1 通用执行顺序
@@ -543,6 +580,7 @@ trigger: always_on
 - 开发任务 / 阶段变化：`app/docs/通用卡密与授权系统任务.md`
 - 接口变化：`app/docs/API接口速查表.md`
 - 使用方式变化：`app/docs/系统使用手册.md`
+- Docker 部署 / 自动发布变化：`app/docs/Docker部署与自动发布说明.md`
 - 前端设计变化：`web/docs/管理后台前端设计说明（Vue3+TypeScript）.md`
 - 前端布局与交互变化：`web/docs/管理后台整体布局与交互设计说明.md`
 - 前端任务规划变化：`web/docs/管理后台前端设计任务.md`

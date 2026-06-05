@@ -67,7 +67,7 @@
 详细的快速开始指南请查看：[快速开始指南](app/docs/快速开始指南.md)
 
 如果你准备使用 Docker / Docker Compose 部署，请直接查看详细部署文档：
-[DOCKER_DEPLOYMENT.md](/Users/yuye/YeahWork/Python项目/login-km-system/DOCKER_DEPLOYMENT.md)
+[app/docs/Docker部署与自动发布说明.md](/Users/yuye/YeahWork/Python项目/login-km-system/app/docs/Docker部署与自动发布说明.md)
 
 ### 1. 安装依赖
 ```bash
