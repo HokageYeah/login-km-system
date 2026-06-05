@@ -66,7 +66,9 @@
 
 ---
 
-### 2️⃣ 目录结构建议
+### 2️⃣ 当前工程目录结构
+
+当前仓库中已经存在真实前端工程 `web/admin-frontend/src/`，前端开发应优先兼容该工程结构，而不是把下面内容理解成可随意推翻的草案：
 
 ```text
 src/
@@ -89,8 +91,14 @@ src/
 │   ├─ card/
 │   │   ├─ components/ # 卡密管理模块组件
 │   │   └─ index.vue
+│   ├─ card-permission/
+│   │   ├─ components/ # 功能权限管理模块组件
+│   │   └─ index.vue
 │   ├─ app/
 │   │   ├─ components/ # 应用管理模块组件
+│   │   └─ index.vue
+│   ├─ device/
+│   │   ├─ components/ # 设备管理模块组件
 │   │   └─ index.vue
 │   ├─ stats/
 │   │   ├─ components/ # 统计数据模块组件
@@ -98,10 +106,12 @@ src/
 │   ├─ profile/
 │   │   ├─ components/ # 个人中心模块组件
 │   │   └─ index.vue
-│   └─ forbidden/
-│       ├─ components/ # 无权限提示相关组件
-│       └─ index.vue
+│   └─ error/
+│       ├─ 403.vue      # 无权限页
+│       └─ 404.vue      # 未找到页
+├─ directives/         # 自定义指令（如权限指令）
 ├─ utils/
+├─ styles/
 └─ main.ts
 ```
 
@@ -141,7 +151,7 @@ src/
 
 - `username`: 用户名
 - `password`: 密码
-- `app_key`: 应用唯一标识（可选，默认使用当前应用）
+- `app_key`: 应用唯一标识（登录链路中应显式传入，不应依赖前端私自猜测默认值）
 - `device_id`: 设备唯一标识
 
 ---
@@ -170,25 +180,6 @@ src/
 
 ### 4️⃣ 全局状态（Pinia）
 
----
-
-### 3️⃣ 全局状态（Pinia）
-
-```ts
-interface UserState {
-  token: string;
-  role: "admin" | "user";
-  username: string;
-}
-```
-
-- token 持久化到 localStorage
-- 页面刷新自动恢复登录态
-
----
-
-### 4️⃣ 全局状态（Pinia）
-
 ```ts
 interface UserState {
   token: string;
@@ -201,6 +192,10 @@ interface UserState {
 
 - token 持久化到 localStorage
 - 页面刷新自动恢复登录态
+- 当前工程中用户状态还需要和后端返回字段保持一致，尤其是：
+  - `role`
+  - `user_status`
+  - `has_card`
 
 ---
 
@@ -223,7 +218,7 @@ meta: {
 
 ---
 
-## 三、API 接口设计
+## 四、API 接口设计
 
 ### 1️⃣ 认证接口
 
