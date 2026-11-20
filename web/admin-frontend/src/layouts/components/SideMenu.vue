@@ -3,7 +3,7 @@
     :width="isCollapse ? '64px' : '260px'"
     class="sidebar-container"
   >
-    <!-- Logo 区域 -->
+    <!-- Logo 区域：黑底色块 + 黄色图标，粗野主义品牌锚点 -->
     <div class="logo-container" :class="{ 'collapsed': isCollapse }">
       <img src="@/assets/logo.svg" alt="logo" class="logo-img" v-if="false" /> <!-- 暂时隐藏图片logo -->
       <el-icon class="logo-icon" v-else><ElementPlus /></el-icon>
@@ -18,8 +18,8 @@
         :unique-opened="true"
         class="sidebar-menu"
         background-color="transparent"
-        text-color="#94a3b8"
-        active-text-color="#fff"
+        text-color="#57534E"
+        active-text-color="#141414"
         :collapse-transition="false"
         mode="vertical"
       >
@@ -135,15 +135,24 @@ const getIconComponent = (iconName: string | undefined) => {
 </script>
 
 <style scoped>
+/*
+ * 侧边栏（Brutalism 改版）：
+ * 纸色底 + 2px 黑色右边框；菜单项直角、激活态黄底黑字 + 硬阴影。
+ * 仅调整视觉，菜单生成/权限逻辑不变。
+ */
 .sidebar-container {
   @reference "../../styles/index.css";
-  @apply h-screen bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col;
+  @apply h-screen flex flex-col;
+  background: var(--paper);
+  border-right: 2px solid var(--ink);
+  transition: width 0.2s cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Logo 区域样式 */
+/* Logo 区域：黑底色块，黄色方块图标 + 加粗标题 */
 .logo-container {
-  @apply h-16 flex items-center justify-center relative overflow-hidden transition-all duration-300;
-  /* background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%); */
+  @apply h-16 flex items-center justify-center relative overflow-hidden;
+  background: var(--ink);
+  border-bottom: 2px solid var(--ink);
 }
 
 .logo-container.collapsed {
@@ -151,38 +160,64 @@ const getIconComponent = (iconName: string | undefined) => {
 }
 
 .logo-icon {
-  @apply text-blue-500 text-2xl mr-2;
-  transition: all 0.3s;
+  @apply text-xl mr-2 p-1;
+  color: var(--ink);
+  background: var(--accent);
+  border: 2px solid var(--accent);
 }
 
 .collapsed .logo-icon {
-  @apply mr-0 text-3xl;
+  @apply mr-0;
 }
 
 .logo-title {
-  @apply text-white font-bold text-lg whitespace-nowrap;
-  transition: opacity 0.3s;
+  @apply font-black whitespace-nowrap text-base tracking-wide;
+  color: var(--paper);
 }
 
-/* 菜单样式复写 */
+/* 菜单样式复写：直角、加粗、黄色激活态 */
 .sidebar-menu {
   @apply border-none;
+  padding: 8px;
 }
 
 :deep(.el-menu-item) {
-  @apply mx-2 my-1 rounded-lg transition-all duration-300 font-medium;
+  @apply my-1 font-bold;
+  border-radius: 0;
+  border: 2px solid transparent; /* 预留边框位，激活时加黑框不抖动 */
+  height: 44px;
+  line-height: 40px;
 }
 
 :deep(.el-menu-item:hover) {
-  @apply bg-slate-800 text-white;
+  background: var(--accent-soft);
+  color: var(--ink);
 }
 
+/* 激活项：电光黄底 + 黑框 + 硬阴影，参考站 CTA 的"按压感" */
 :deep(.el-menu-item.is-active) {
-  @apply bg-blue-600 text-white shadow-lg shadow-blue-500/30;
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
-:deep(.el-menu-item .el-icon) {
+:deep(.el-sub-menu__title) {
+  @apply font-bold;
+  border-radius: 0;
+  height: 44px;
+  line-height: 40px;
+}
+
+:deep(.el-sub-menu__title:hover) {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+:deep(.el-menu-item .el-icon),
+:deep(.el-sub-menu__title .el-icon) {
   @apply text-lg;
+  color: inherit;
 }
 
 /* 折叠时候icon居中 */

@@ -445,113 +445,199 @@ watch(dialogVisible, (newVal) => {
 <style scoped>
 @reference "../../../styles/index.css";
 
-/* 主弹窗覆写 */
-:deep(.device-dialog-root .el-dialog) {
-  @apply rounded-3xl overflow-hidden border-0;
-  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(148, 163, 184, 0.1);
-}
+/*
+ * 查看设备弹窗（Brutalism 改版）：
+ * 弹窗容器外观（黑框 + 硬阴影 + 直角）已由全局主题接管，
+ * 这里只覆写自定义头部的排布与内部摘要/定价等业务块样式。
+ * 头部 Hero 改为黑底 + 黄色眉题，替代原蓝紫渐变与白色光斑。
+ */
+
+/* 主弹窗：仅保留结构性内边距覆写，去掉与全局冲突的圆角与弥散阴影 */
 :deep(.device-dialog-root .el-dialog__header) { @apply p-0 m-0; }
 :deep(.device-dialog-root .el-dialog__body) { @apply px-6 py-5; }
 :deep(.device-dialog-root .el-dialog__footer) { @apply px-6 pb-5 pt-0; }
 
-/* 子弹窗覆写 */
-:deep(.device-limit-dialog-root .el-dialog) {
-  @apply rounded-2xl overflow-hidden border-0;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(148, 163, 184, 0.08);
-}
+/* 子弹窗：同上 */
 :deep(.device-limit-dialog-root .el-dialog__header) { @apply p-0 m-0; }
 :deep(.device-limit-dialog-root .el-dialog__body) { @apply px-6 py-5; }
 :deep(.device-limit-dialog-root .el-dialog__footer) { @apply px-6 pb-5 pt-0; }
 
-/* 头部 Hero */
+/* 头部 Hero：黑底 + 黄色眉题 */
 .dialog-hero {
   @apply relative px-6 pt-6 pb-5 overflow-hidden;
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  background: var(--ink);
 }
+
+/* 右上角黄色几何块：平面色块装饰（无模糊、无渐变），overflow-hidden 裁切 */
 .dialog-hero-bg {
-  @apply absolute rounded-full;
-  width: 200px; height: 200px; right: -60px; top: -80px;
-  background: rgba(255, 255, 255, 0.12);
+  @apply absolute;
+  width: 140px;
+  height: 140px;
+  right: -46px;
+  top: -56px;
+  background: var(--accent);
+  transform: rotate(14deg);
 }
+
 .dialog-hero-content { @apply relative z-10 pr-10; }
-.dialog-eyebrow { @apply text-xs font-semibold tracking-[0.18em] uppercase text-blue-100 mb-1.5; }
-.dialog-title { @apply text-xl font-bold text-white mb-1; }
-.dialog-desc { @apply text-sm text-blue-100 font-mono; }
+
+.dialog-eyebrow {
+  @apply text-xs tracking-[0.18em] uppercase mb-1.5;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.dialog-title {
+  @apply text-xl mb-1;
+  font-weight: 900;
+  color: var(--surface);
+}
+
+.dialog-desc {
+  @apply text-sm font-mono;
+  color: var(--paper);
+}
+
+/* 关闭按钮：黄色方块（直角），在黑底上形成强对比 */
 .dialog-close-btn {
-  @apply absolute top-4 right-4 z-20 border-white/30 text-white bg-white/10;
+  border-radius: 0;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
 }
-.dialog-close-btn:hover { @apply bg-white/20 text-white border-white/50; }
 
-/* 子弹窗头部 */
+.dialog-close-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--ink);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--accent);
+}
+
+/* 子弹窗头部：黑色粗分隔线，与全局对话框标题栏语言一致 */
 .sub-dialog-header {
-  @apply flex items-center justify-between px-6 py-4 border-b border-slate-200/80;
+  @apply flex items-center justify-between px-6 py-4;
+  border-bottom: 2px solid var(--ink);
 }
-.sub-dialog-title { @apply text-base font-bold text-slate-900; }
-.sub-dialog-close-btn {
-  @apply border-slate-200 text-slate-400 bg-transparent;
-}
-.sub-dialog-close-btn:hover { @apply bg-slate-100 text-slate-600 border-slate-300; }
 
-/* 卡密摘要条 */
+.sub-dialog-title {
+  @apply text-base;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+/* circle 属性只影响默认圆角，这里强制直角 */
+.sub-dialog-close-btn {
+  border-radius: 0;
+}
+
+/* 卡密摘要条：纸色底 + 柔和边框（面板内的次级信息块） */
 .card-summary {
   @apply flex items-center gap-4 flex-wrap mb-5 p-4;
-  @apply rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-sm;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
+
 .summary-item { @apply flex items-center gap-2; }
-.summary-label { @apply text-xs text-slate-400 font-medium; }
-.summary-value { @apply text-sm text-slate-900 font-semibold; }
-.summary-action-btn { @apply rounded-xl; }
+
+.summary-label {
+  @apply text-xs;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.summary-value {
+  @apply text-sm;
+  font-weight: 800;
+  color: var(--ink);
+}
 
 /* 设备表格 */
 .device-table { @apply w-full; }
-.device-id { @apply font-mono text-sm text-slate-800; }
 
-/* 活跃状态 */
-.active-time-cell { @apply flex items-center gap-2 text-sm text-slate-600; }
-.active-dot {
-  @apply w-2 h-2 rounded-full shrink-0;
+.device-id {
+  @apply font-mono text-sm;
+  font-weight: 600;
+  color: var(--ink);
 }
-.dot-active { @apply bg-emerald-500; box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
-.dot-recent { @apply bg-amber-400; }
-.dot-inactive { @apply bg-slate-300; }
 
-.action-btn { @apply rounded-lg; }
+/* 活跃状态：方块指示灯（黑框直角），去掉圆形与辉光 */
+.active-time-cell {
+  @apply flex items-center gap-2 text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.active-dot {
+  @apply w-2.5 h-2.5 shrink-0;
+  border: 2px solid var(--ink);
+}
+
+.dot-active { background: #1a7f37; }
+.dot-recent { background: #e8a13a; }
+.dot-inactive { background: var(--line-soft); }
 
 /* 修改限制子弹窗 */
 .limit-dialog-body { @apply pt-2; }
-.limit-dialog-desc { @apply text-sm text-slate-500 leading-6 mb-4; }
+
+.limit-dialog-desc {
+  @apply text-sm leading-6 mb-4;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
 .limit-summary {
   @apply grid grid-cols-2 gap-3 mb-4;
 }
-.limit-summary-item {
-  @apply rounded-xl bg-slate-50 border border-slate-100 p-3;
-}
-.limit-summary-item span { @apply block text-xs text-slate-400 mb-1; }
-.limit-summary-item strong { @apply text-sm text-slate-900 font-semibold; }
 
-/* 定价面板 */
-.pricing-panel {
-  @apply mt-3 rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50/80 to-blue-50/80 p-4;
+.limit-summary-item {
+  @apply p-3;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
+
+.limit-summary-item span {
+  @apply block text-xs mb-1;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.limit-summary-item strong {
+  @apply text-sm;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+/* 定价面板：黄色弱化底 + 黑框，金额是弹窗内的关键决策信息 */
+.pricing-panel {
+  @apply mt-3 p-4;
+  background: var(--accent-soft);
+  border: 2px solid var(--ink);
+}
+
 .pricing-row {
   @apply flex items-center justify-between mb-2;
 }
-.pricing-row span { @apply text-sm text-slate-500; }
-.pricing-row strong { @apply text-lg font-bold text-violet-700 tabular-nums; }
-.pricing-panel p { @apply text-xs leading-5 text-slate-600; }
 
-/* 底部按钮 */
+.pricing-row span {
+  @apply text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.pricing-row strong {
+  @apply text-lg tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.pricing-panel p {
+  @apply text-xs leading-5;
+  color: var(--ink-soft);
+}
+
+/* 底部按钮：外观交给全局（default / primary 黑框体系） */
 .dialog-footer { @apply flex justify-end gap-3; }
-.footer-btn-cancel { @apply rounded-xl; }
-.footer-btn-primary {
-  @apply rounded-xl border-0 text-white font-medium;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
-}
-.footer-btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  transform: translateY(-1px);
-}
 
 .mono-text { @apply font-mono; }
 </style>

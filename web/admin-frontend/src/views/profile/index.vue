@@ -654,18 +654,24 @@ onMounted(() => {
 <style scoped>
 @reference "../../styles/index.css";
 
+/*
+ * 个人中心（Brutalism 改版）：
+ * 纸色底 + 黑框硬阴影面板 + 黄底黑字头像 + 荧光笔主标题。
+ * 弹窗/按钮/表格外观统一交给全局 Element Plus 覆盖，这里只处理布局与卡片本身。
+ */
+
 .profile-container {
   @apply min-h-full p-6 lg:p-8;
-  background:
-    radial-gradient(circle at top left, rgba(96, 165, 250, 0.14), transparent 24%),
-    radial-gradient(circle at top right, rgba(45, 212, 191, 0.1), transparent 20%),
-    linear-gradient(180deg, #f8fbfd 0%, #f4f7fb 52%, #f8fafc 100%);
+  background: var(--paper);
 }
 
+/* 顶部英雄区：黑框硬阴影面板 */
 .profile-hero {
-  @apply rounded-[30px] border border-slate-200/80 bg-white/90 px-6 py-6 lg:px-8 lg:py-7;
-  @apply shadow-sm mb-5;
+  @apply px-6 py-6 lg:px-8 lg:py-7 mb-5;
   @apply flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .hero-main {
@@ -676,92 +682,90 @@ onMounted(() => {
   @apply shrink-0;
 }
 
+/* 头像：黄底黑字贴纸感（直角黑框由全局 el-avatar 覆盖提供） */
 .user-avatar {
-  @apply bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-500 text-white shadow-lg;
+  background: var(--accent);
+  color: var(--ink);
 }
 
 .hero-copy {
   @apply max-w-3xl;
 }
 
+/* 眉题徽章：黑底黄字标签，替代原蓝色胶囊 */
 .hero-badge {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs tracking-[0.18em] uppercase;
-  @apply bg-sky-100 text-sky-700 border border-sky-200;
+  @apply inline-flex items-center px-3 py-1 text-xs;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--accent);
+  font-weight: 800;
 }
 
+/* 页面主标题：大号加粗 + 黄色荧光衬底 */
 .profile-title {
-  @apply mt-4 text-3xl lg:text-4xl font-semibold text-slate-900;
+  @apply mt-4 text-3xl lg:text-4xl;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  display: inline-block;
+  padding: 0 0.15em;
 }
 
 .profile-subtitle {
-  @apply mt-3 text-sm lg:text-base leading-7 text-slate-500;
+  @apply mt-3 text-sm lg:text-base leading-7;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .hero-tags {
   @apply mt-4 flex flex-wrap gap-2;
 }
 
-.hero-tag {
-  @apply rounded-full;
-}
-
-.hero-info-grid {
-  @apply mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3;
-}
-
-.hero-info-item {
-  @apply rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-4 flex flex-col gap-2;
-}
-
-.hero-info-item-wide {
-  @apply md:col-span-2 xl:col-span-2;
-}
-
-.hero-info-label {
-  @apply text-xs text-slate-400;
-}
-
-.hero-info-value {
-  @apply text-sm font-semibold text-slate-900 break-all;
-}
-
-.hero-info-code {
-  @apply font-mono text-xs rounded-xl bg-white px-3 py-2 border border-slate-200;
-}
-
 .hero-actions {
   @apply flex flex-col sm:flex-row sm:flex-wrap gap-3 xl:justify-end;
 }
 
+/* 状态小卡：纸色底 + 黑框直角 */
 .hero-status-card {
-  @apply min-w-[160px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3;
+  @apply min-w-[160px] px-4 py-3;
+  background: var(--paper);
+  border: 2px solid var(--ink);
 }
 
 .hero-status-card span {
-  @apply block text-xs text-slate-400 mb-1;
+  @apply block text-xs mb-1;
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .hero-status-card strong {
-  @apply text-sm font-semibold text-slate-900;
+  @apply text-sm;
+  color: var(--ink);
+  font-weight: 800;
 }
 
+/* 绑定按钮走全局 primary 外观（黑底 → hover 黄），只保留字重 */
 .bind-btn {
-  @apply rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 font-medium;
-  @apply shadow-sm hover:bg-sky-100 hover:text-sky-800;
+  font-weight: 700;
 }
 
+/* 帮助按钮：交给全局 default 按钮观感 */
 .help-btn {
-  @apply rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-sm;
-  @apply hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700;
+  color: var(--ink-soft);
 }
 
 .metrics-grid {
   @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5;
 }
 
+/* 指标卡 / 面板卡：黑框硬阴影 */
 .metric-card,
 .panel-card {
-  @apply rounded-[28px] border border-slate-200/80 bg-white/88 shadow-sm backdrop-blur-sm;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .metric-card {
@@ -773,15 +777,21 @@ onMounted(() => {
 }
 
 .metric-head span {
-  @apply text-sm text-slate-500;
+  @apply text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .metric-head strong {
-  @apply text-2xl font-semibold text-slate-900;
+  @apply text-2xl tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .metric-card p {
-  @apply mt-3 text-sm leading-6 text-slate-500;
+  @apply mt-3 text-sm leading-6;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .profile-main-grid {
@@ -802,51 +812,24 @@ onMounted(() => {
 }
 
 .card-eyebrow {
-  @apply text-xs uppercase tracking-[0.2em] text-slate-400;
+  @apply text-xs uppercase;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .card-title {
-  @apply mt-1 text-xl font-semibold text-slate-900 flex items-center gap-2;
+  @apply mt-1 text-xl flex items-center gap-2;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .title-icon {
-  @apply text-sky-600;
-}
-
-.detail-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 gap-4;
-}
-
-.detail-item {
-  @apply rounded-2xl bg-slate-50 px-4 py-4 flex flex-col gap-2;
-}
-
-.detail-item-wide {
-  @apply md:col-span-2;
-}
-
-.detail-label {
-  @apply text-sm text-slate-400;
-}
-
-.detail-value {
-  @apply text-base font-semibold text-slate-900 break-all;
-}
-
-.detail-code {
-  @apply font-mono text-sm bg-slate-100 rounded-xl px-3 py-2;
+  color: var(--ink);
 }
 
 .info-summary-block {
   @apply mt-0 pt-0;
-}
-
-.summary-block-head {
-  @apply mb-4;
-}
-
-.summary-block-title {
-  @apply mt-1 text-lg font-semibold text-slate-900;
 }
 
 .status-list,
@@ -858,64 +841,77 @@ onMounted(() => {
   @apply flex items-start gap-3;
 }
 
+/* 状态点：黑框方块（直角），语义色填充 */
 .status-dot {
-  @apply mt-2 w-2.5 h-2.5 rounded-full shrink-0;
+  @apply mt-2 w-3 h-3 shrink-0;
+  border: 2px solid var(--ink);
 }
 
 .status-body strong,
 .tip-item strong {
-  @apply block text-sm font-semibold text-slate-900;
+  @apply block text-sm;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .status-body p,
 .tip-item p {
-  @apply mt-1 text-sm leading-6 text-slate-500;
+  @apply mt-1 text-sm leading-6;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-.level-success {
-  @apply bg-emerald-500;
-}
-
-.level-info {
-  @apply bg-sky-500;
-}
-
-.level-warning {
-  @apply bg-amber-500;
-}
-
-.level-danger {
-  @apply bg-rose-500;
-}
+/* 状态语义色：含义保留，色值对齐品牌（成功绿/信息蓝/警告橙/危险红） */
+.level-success { background: #1a7f37; }
+.level-info { background: var(--accent-blue); }
+.level-warning { background: #b45309; }
+.level-danger { background: var(--danger); }
 
 .quick-actions-grid {
   @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
 }
 
+/* 快捷入口卡：纸色底 + 黑框，hover 位移放大阴影（按压感） */
 .action-card {
-  @apply rounded-2xl border border-slate-200 bg-slate-50 px-5 py-5;
-  @apply flex flex-col gap-2 no-underline transition-all duration-300;
+  @apply px-5 py-5;
+  @apply flex flex-col gap-2 no-underline;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal-sm);
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .action-card:hover {
-  @apply border-sky-200 bg-sky-50 shadow-md shadow-sky-100;
-  transform: translateY(-2px);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+  background: var(--accent-soft);
 }
 
+/* 图标色块：黄底黑框直角 */
 .action-icon {
-  @apply text-sky-600;
+  background: var(--accent);
+  border: 2px solid var(--ink);
+  padding: 6px;
+  color: var(--ink);
 }
 
 .action-label {
-  @apply text-base font-semibold text-slate-900;
+  @apply text-base;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .action-desc {
-  @apply text-sm text-slate-500;
+  @apply text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .tip-item {
-  @apply rounded-2xl bg-slate-50 px-4 py-4;
+  @apply px-4 py-4;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .cards-card {
@@ -923,11 +919,17 @@ onMounted(() => {
 }
 
 .cards-header-meta {
-  @apply flex flex-wrap gap-3 text-sm text-slate-500;
+  @apply flex flex-wrap gap-3 text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .cards-header-meta span {
-  @apply inline-flex items-center rounded-full bg-slate-100 px-3 py-1;
+  @apply inline-flex items-center px-3 py-1;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .cards-list {
@@ -942,26 +944,36 @@ onMounted(() => {
   @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5;
 }
 
+/* 卡密卡片：纸色底黑框，hover 位移放大阴影 */
 .card-item {
-  @apply rounded-[24px] border border-slate-200 bg-slate-50/90 p-5;
-  @apply transition-all duration-300;
+  @apply p-5;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal-sm);
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
 
 .card-item:hover {
-  @apply border-sky-200 shadow-md shadow-sky-100;
-  transform: translateY(-2px);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
 }
 
 .card-header-row {
-  @apply flex items-start justify-between gap-4 pb-4 border-b border-slate-200;
+  @apply flex items-start justify-between gap-4 pb-4;
+  border-bottom: 2px solid var(--ink);
 }
 
 .card-key {
-  @apply font-mono text-base font-bold text-slate-900 break-all;
+  @apply font-mono text-base break-all;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .card-subline {
-  @apply mt-2 flex flex-wrap gap-3 text-xs text-slate-500;
+  @apply mt-2 flex flex-wrap gap-3 text-xs;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .card-highlights {
@@ -969,15 +981,21 @@ onMounted(() => {
 }
 
 .highlight-box {
-  @apply rounded-2xl bg-white px-4 py-4 border border-slate-200;
+  @apply px-4 py-4;
+  background: var(--surface);
+  border: 2px solid var(--ink);
 }
 
 .highlight-box span {
-  @apply block text-xs text-slate-400 mb-2;
+  @apply block text-xs mb-2;
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .highlight-box strong {
-  @apply text-sm font-semibold text-slate-900 leading-6 break-all;
+  @apply text-sm leading-6 break-all;
+  color: var(--ink);
+  font-weight: 800;
 }
 
 .card-body {
@@ -993,15 +1011,21 @@ onMounted(() => {
 }
 
 .card-remark-row {
-  @apply rounded-2xl bg-white px-4 py-4 border border-slate-200;
+  @apply px-4 py-4;
+  background: var(--surface);
+  border: 2px solid var(--line-soft);
 }
 
 .card-label {
-  @apply text-sm text-slate-500 font-medium;
+  @apply text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .card-value {
-  @apply text-sm text-slate-900 font-semibold leading-6;
+  @apply text-sm leading-6;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .permission-tags {
@@ -1009,15 +1033,18 @@ onMounted(() => {
 }
 
 .permission-tag {
-  @apply text-xs rounded-full;
+  @apply text-xs;
 }
 
 .no-permissions {
-  @apply text-sm text-slate-400 italic;
+  @apply text-sm italic;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .card-footer {
-  @apply pt-4 mt-4 border-t border-slate-200;
+  @apply pt-4 mt-4;
+  border-top: 2px solid var(--ink);
 }
 
 .device-list {
@@ -1030,7 +1057,7 @@ onMounted(() => {
   }
 
   .profile-hero {
-    @apply rounded-3xl p-5;
+    @apply p-5;
   }
 
   .profile-title {
@@ -1039,10 +1066,6 @@ onMounted(() => {
 
   .hero-actions {
     @apply flex-col;
-  }
-
-  .hero-info-grid {
-    @apply grid-cols-1;
   }
 
   .card-highlights {

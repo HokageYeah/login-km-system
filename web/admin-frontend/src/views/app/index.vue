@@ -439,10 +439,18 @@ onMounted(() => {
 
 <style scoped>
 @reference "../../styles/index.css";
+
+/*
+ * 应用管理页（Brutalism 改版）：
+ * 纸色页面底 + 黑框硬阴影面板 + 荧光笔主标题 + 直角图标色块。
+ * 按钮/表格/标签等组件外观统一交给全局主题（styles/index.css），
+ * 这里只负责布局与局部强调，避免与全局主题打架。
+ */
+
 .app-management-container {
   @apply w-full h-full p-8;
-  @apply bg-gradient-to-br from-gray-50 to-gray-100;
-  min-height: calc(100vh - 64px);
+  background: var(--paper);
+  min-height: calc(100vh - var(--topbar-height));
 }
 
 /* 页面头部 */
@@ -450,38 +458,34 @@ onMounted(() => {
   @apply flex justify-between items-center mb-8;
 }
 
+/* 页面主标题：大号加粗 + 黄色荧光笔衬底（粗野主义的招牌强调手法） */
 .page-title {
-  @apply text-3xl font-bold text-gray-900 mb-2;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  @apply text-3xl mb-2;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  display: inline-block;
+  padding: 0 0.15em;
 }
 
 .page-subtitle {
-  @apply text-base text-gray-600;
+  @apply text-base;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-.header-actions {
-}
-
+/* 创建按钮：只控制尺寸；黑底/黄底 hover 由全局 primary 规则提供 */
 .create-btn {
   @apply px-6 py-2.5;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  @apply text-white font-medium rounded-xl;
-  @apply shadow-lg shadow-blue-500/20;
-  transition: all 0.3s ease;
 }
 
-.create-btn:hover {
-  @apply shadow-xl shadow-blue-500/30;
-  transform: translateY(-2px);
-}
-
-/* 表格区域 */
+/* 表格区域：暖白表面 + 2px 黑框 + 硬阴影的硬边面板 */
 .table-section {
-  @apply bg-white rounded-2xl p-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .app-table {
@@ -493,12 +497,17 @@ onMounted(() => {
   @apply flex items-center gap-2;
 }
 
+/* 图标块：平面粉色块 + 黑框直角（应用=粉，延续 dashboard 的色彩编码） */
 .app-icon {
-  @apply text-purple-600;
+  @apply flex items-center justify-center w-8 h-8 shrink-0;
+  background: var(--accent-pink);
+  color: var(--ink);
+  border: 2px solid var(--ink);
 }
 
 .app-name-text {
-  @apply font-medium text-gray-900;
+  @apply font-semibold;
+  color: var(--ink);
 }
 
 /* AppKey单元格 */
@@ -507,31 +516,42 @@ onMounted(() => {
 }
 
 .app-key-text {
-  @apply font-mono text-sm font-medium text-gray-900;
+  @apply font-mono text-sm font-semibold;
+  color: var(--ink);
 }
 
+/* 复制按钮：text 型按钮走全局无阴影规则，这里只保证墨色可读 */
 .copy-btn {
-  @apply text-blue-600;
+  color: var(--ink-soft);
+}
+
+.copy-btn:hover {
+  color: var(--ink);
 }
 
 /* 状态标签 */
 .status-tag {
-  @apply font-medium;
+  font-weight: 700;
 }
 
 /* 时间单元格 */
 .time-cell {
-  @apply flex items-center gap-2 text-sm text-gray-600;
+  @apply flex items-center gap-2 text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-/* 批量操作工具栏 */
+/* 批量操作工具栏：黄色弱化底 + 黑框，选中态本身即高亮 */
 .batch-actions-bar {
   @apply flex justify-between items-center mb-4 p-4;
-  @apply bg-blue-50 border border-blue-200 rounded-xl;
+  background: var(--accent-soft);
+  border: 2px solid var(--ink);
 }
 
 .selected-info {
-  @apply flex items-center gap-2 text-blue-700;
+  @apply flex items-center gap-2;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .info-icon {
@@ -539,7 +559,8 @@ onMounted(() => {
 }
 
 .selected-info strong {
-  @apply text-blue-900 font-bold;
+  color: var(--ink);
+  font-weight: 800;
 }
 
 .action-buttons {

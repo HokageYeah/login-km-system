@@ -1588,116 +1588,56 @@ onBeforeUnmount(() => {
 <style scoped>
 @reference "../../styles/index.css";
 
+/*
+ * 水墨仪表盘（Brutalism 改版说明）：
+ * 与姊妹页 index.vue 统一设计语言——纸色页面底、黑框硬阴影卡片、荧光黄强调、
+ * 直角、编号角标。原水墨风的渐变底、弥散光斑、衬线字体、圆角胶囊全部移除；
+ * 只换视觉皮，不动模板结构与图表脚本。
+ */
+
+@keyframes ink-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== 页面容器：奶油纸色平铺，替代水墨渐变底 ========== */
 .ink-dashboard {
   @apply min-h-full px-6 py-6 lg:px-8;
-  background:
-    radial-gradient(circle at top left, rgba(17, 24, 39, 0.06), transparent 22%),
-    radial-gradient(circle at 86% 10%, rgba(146, 64, 14, 0.1), transparent 20%),
-    linear-gradient(180deg, #f6f4ef 0%, #f3f0e8 48%, #f8f6f1 100%);
-  position: relative;
-  overflow: hidden;
+  background: var(--paper);
 }
 
-.ink-dashboard::before {
-  content: '';
-  position: absolute;
-  inset: 40px auto auto -120px;
-  width: 360px;
-  height: 360px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(17, 24, 39, 0.08), transparent 70%);
-  filter: blur(20px);
-  pointer-events: none;
-}
-
-.ink-dashboard::after {
-  content: '';
-  position: absolute;
-  right: -100px;
-  top: 320px;
-  width: 300px;
-  height: 420px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(180, 83, 9, 0.08), transparent 72%);
-  filter: blur(30px);
-  pointer-events: none;
-}
-
-.ink-hero,
-.ink-quote-strip,
-.ink-metric-card,
-.ink-panel,
-.ink-chart-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.ink-quote-strip > * {
-  position: relative;
-  z-index: 1;
-}
-
-.ink-quote-tag {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs uppercase tracking-[0.22em];
-  @apply border border-stone-300 bg-stone-100/90 text-stone-700;
-}
-
-.ink-panel-title {
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
-}
-
+/* ========== Hero 收入总盘 ========== */
 .ink-hero {
-  @apply rounded-[34px] border border-stone-300/80 px-6 py-6 lg:px-10 lg:py-8 mb-5;
-  @apply shadow-sm flex flex-col items-center text-center;
-  background:
-    radial-gradient(circle at 50% 30%, rgba(17, 24, 39, 0.06), transparent 50%),
-    radial-gradient(circle at 80% 60%, rgba(180, 83, 9, 0.06), transparent 35%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(250, 248, 243, 0.88) 100%);
+  @apply px-6 py-6 lg:px-10 lg:py-8 mb-5 flex flex-col items-center text-center;
+  position: relative; /* 刷新按钮绝对定位的锚点 */
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-top: 8px solid var(--accent); /* 黄色粗顶边：与姊妹页收入面板同语言 */
+  box-shadow: var(--shadow-brutal);
+  animation: ink-fade-up 0.3s ease-out both;
 }
 
-.ink-hero::before {
-  content: '';
-  position: absolute;
-  inset: -20% auto auto 55%;
-  width: 280px;
-  height: 280px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(17, 24, 39, 0.08), transparent 68%);
-  filter: blur(18px);
-}
-
-.ink-hero::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -40px;
-  width: 60%;
-  height: 80px;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse, rgba(120, 113, 108, 0.06), transparent 72%);
-  filter: blur(16px);
-}
-
-/* 刷新按钮 */
+/* 刷新按钮：外观交给全局 default 按钮主题（黑框白底 + 黄 hover），这里只管定位 */
 .ink-refresh-btn {
   @apply absolute right-6 top-6 z-10;
-  @apply rounded-2xl border border-stone-700 bg-stone-900 text-white font-medium;
-  @apply hover:bg-stone-800 hover:text-white;
+  font-weight: 700;
 }
 
 /* 总收入核心区 */
 .ink-revenue-center {
-  @apply relative z-[1] flex flex-col items-center;
+  @apply flex flex-col items-center;
 }
 
 .ink-revenue-stamp {
   @apply mb-3;
 }
 
+/* 印章式标签改为黑底黄字方块，呼应姊妹页的编号角标语言 */
 .ink-revenue-stamp-text {
-  @apply inline-flex items-center rounded-full px-4 py-1.5 text-xs uppercase tracking-[0.24em] font-medium;
-  @apply border border-stone-400/60 bg-stone-200/50 text-stone-600;
-  letter-spacing: 0.28em;
+  @apply inline-flex items-center px-4 py-1.5 text-xs font-black uppercase;
+  background: var(--ink);
+  color: var(--accent);
+  letter-spacing: 0.24em;
 }
 
 .ink-revenue-main {
@@ -1705,42 +1645,51 @@ onBeforeUnmount(() => {
 }
 
 .ink-revenue-prefix {
-  @apply text-2xl lg:text-3xl font-light text-stone-400;
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  @apply text-2xl lg:text-3xl;
+  font-weight: 900;
+  color: var(--ink-soft);
 }
 
+/* 总收入数字：页面主标题待遇——900 字重 + 荧光笔衬底 */
 .ink-revenue-amount {
-  @apply text-4xl sm:text-5xl lg:text-6xl font-bold text-stone-900 tracking-tight;
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  @apply text-4xl sm:text-5xl lg:text-6xl tracking-tight tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
   line-height: 1.1;
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  padding: 0 0.12em;
 }
 
 .ink-revenue-breakdown {
   @apply mt-4 flex flex-wrap justify-center gap-3;
 }
 
+/* 收入构成胶囊：去圆角去毛玻璃，改为黑框方块 */
 .ink-revenue-chip {
-  @apply inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium;
-  @apply border border-stone-200/80 bg-white/70 backdrop-blur-sm;
+  @apply inline-flex items-center gap-2 px-4 py-1.5 text-sm font-bold;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  color: var(--ink);
 }
 
 .ink-chip-dot {
-  @apply w-2 h-2 rounded-full;
+  @apply w-2.5 h-2.5;
+  border: 2px solid var(--ink);
 }
 
 .ink-chip-active .ink-chip-dot {
-  background: #111827;
-  box-shadow: 0 0 6px rgba(17, 24, 39, 0.3);
+  background: var(--ink);
 }
 
 .ink-chip-stock .ink-chip-dot {
-  background: #a8a29e;
+  background: var(--ink-soft);
 }
 
 /* 指标横条 */
 .ink-hero-metrics {
-  @apply relative z-[1] mt-6 flex flex-wrap items-center justify-center gap-0;
-  @apply rounded-2xl border border-stone-200/80 bg-white/60 backdrop-blur-sm px-2 py-0;
+  @apply mt-6 flex flex-wrap items-center justify-center gap-0 px-2 py-0;
+  background: var(--paper);
+  border: 2px solid var(--ink);
 }
 
 .ink-metric-pill {
@@ -1748,91 +1697,98 @@ onBeforeUnmount(() => {
 }
 
 .ink-metric-pill-label {
-  @apply text-xs text-stone-400 font-medium tracking-wide;
+  @apply text-xs tracking-wide;
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .ink-metric-pill-value {
-  @apply mt-1 text-sm font-semibold text-stone-900 tabular-nums;
+  @apply mt-1 text-sm tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .ink-metric-pill-value small {
-  @apply text-xs font-normal text-stone-500 ml-0.5;
+  @apply text-xs font-semibold ml-0.5;
+  color: var(--ink-soft);
 }
 
+/* 收入类数字保留琥珀语义色（warning 族），保证含义不丢 */
 .ink-value-revenue {
-  color: #92400e;
+  color: #b45309;
 }
 
 .ink-metric-divider {
-  @apply w-px h-8 bg-stone-200/80;
+  width: 2px;
+  height: 32px;
+  background: var(--ink);
 }
 
+/* ========== 经营结论条：反色黑底横幅，制造页面节奏 ========== */
 .ink-quote-strip {
-  @apply mb-6 rounded-[28px] border border-stone-300/80 px-6 py-6 lg:px-8 lg:py-7;
-  background:
-    radial-gradient(circle at top left, rgba(17, 24, 39, 0.05), transparent 40%),
-    radial-gradient(circle at bottom right, rgba(180, 83, 9, 0.04), transparent 35%),
-    linear-gradient(135deg, rgba(255,255,255,0.80) 0%, rgba(248,245,240,0.88) 100%);
+  @apply mb-6 px-6 py-6 lg:px-8 lg:py-7;
+  background: var(--ink);
+  box-shadow: var(--shadow-brutal);
+  animation: ink-fade-up 0.3s ease-out both;
 }
 
-.ink-quote-strip::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(17, 24, 39, 0.6), rgba(180, 83, 9, 0.25), transparent);
-  border-radius: 9999px;
-}
-
-.ink-quote-strip::after {
-  content: '';
-  position: absolute;
-  right: -20px;
-  bottom: -30px;
-  width: 180px;
-  height: 180px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(120, 113, 108, 0.06), transparent 70%);
-  filter: blur(14px);
-  pointer-events: none;
+.ink-quote-tag {
+  @apply inline-flex items-center px-3 py-1 text-xs uppercase font-black;
+  background: var(--accent);
+  color: var(--ink);
+  letter-spacing: 0.18em;
 }
 
 .ink-quote-strip strong {
-  @apply mt-3 block text-lg lg:text-xl font-semibold text-stone-900 leading-8;
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  @apply mt-3 block text-lg lg:text-xl leading-8;
+  font-weight: 900;
+  color: var(--accent);
 }
 
 .ink-quote-strip p {
-  @apply mt-2 text-sm leading-7 text-stone-600;
+  @apply mt-2 text-sm leading-7;
+  color: #dcd5c6;
 }
 
 .ink-quote-meta {
-  @apply mt-5 pt-4 border-t border-stone-200/60 flex flex-wrap gap-2;
+  @apply mt-5 pt-4 flex flex-wrap gap-2;
+  border-top: 2px solid #57534e;
 }
 
 .ink-quote-meta span {
-  @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium;
-  @apply border border-stone-200/70 bg-white/60 text-stone-600;
+  @apply inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold;
+  border: 2px solid #f1ede2;
+  color: #f1ede2;
 }
 
 /* ========== Suite 通用 ========== */
 .ink-growth-suite,
 .ink-risk-suite {
-  @apply mb-6 rounded-[28px] border border-stone-300/70 p-5 lg:p-7 shadow-sm;
-  background:
-    radial-gradient(circle at top left, rgba(17, 24, 39, 0.03), transparent 35%),
-    linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(248,245,240,0.90) 100%);
+  @apply mb-6 p-5 lg:p-7;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
+  animation: ink-fade-up 0.35s ease-out both;
+}
+
+/* 增长面板黄顶边、风险面板黑顶边：复刻姊妹页两大主面板的节奏对比 */
+.ink-growth-suite {
+  border-top: 8px solid var(--accent);
+}
+
+.ink-risk-suite {
+  border-top: 8px solid var(--ink);
 }
 
 .ink-suite-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6;
-  @apply pb-5 border-b border-stone-200/50;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5;
+  border-bottom: 2px solid var(--ink);
 }
 
 .ink-suite-text {
-  @apply mt-2 text-sm leading-6 text-stone-500 max-w-xl;
+  @apply mt-2 text-sm leading-6 max-w-xl;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .ink-suite-controls {
@@ -1842,101 +1798,113 @@ onBeforeUnmount(() => {
 /* ========== 指标卡片网格 ========== */
 .ink-metric-grid {
   @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6;
+  counter-reset: ink-metric-num;
 }
 
 .ink-metric-card,
 .ink-panel,
 .ink-chart-card {
-  @apply rounded-[24px] border border-stone-300/60 shadow-sm;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(250,248,243,0.92) 100%);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.ink-metric-card:hover {
-  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
-  transform: translateY(-1px);
-}
-
-.ink-metric-card::before,
-.ink-panel::before,
-.ink-chart-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 24px;
-  width: 48px;
-  height: 3px;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, rgba(17,24,39,0.55), rgba(180,83,9,0.2));
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
+  animation: ink-fade-up 0.35s ease-out both;
 }
 
 .ink-metric-card {
-  @apply p-5 lg:p-6;
+  @apply relative p-5 lg:p-6;
+}
+
+/* 编号角标（01/02/03/04）：与姊妹页总览卡同一视觉语言 */
+.ink-metric-card::after {
+  counter-increment: ink-metric-num;
+  content: counter(ink-metric-num, decimal-leading-zero);
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--ink);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 2px 8px;
+  letter-spacing: 0.05em;
+}
+
+/* hover 按压感：位移 + 阴影放大，粗野主义的标准反馈（禁用 scale） */
+.ink-metric-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
 }
 
 .ink-metric-head {
   @apply flex items-center justify-between mb-4;
 }
 
+/* 图标块：平面色 + 2px 黑框直角（保留类型色彩编码） */
 .ink-metric-icon {
-  @apply w-11 h-11 rounded-xl flex items-center justify-center;
-  border: 1px solid rgba(0,0,0,0.04);
+  @apply w-11 h-11 flex items-center justify-center;
+  border: 2px solid var(--ink);
+  color: var(--ink);
 }
 
 .ink-user {
-  @apply bg-stone-100 text-stone-700;
+  background: var(--accent-blue);
 }
 
 .ink-warning {
-  @apply bg-amber-50 text-amber-700;
-  border-color: rgba(217, 119, 6, 0.1);
+  background: #e8a13a;
 }
 
 .ink-ticket {
-  @apply bg-emerald-50 text-emerald-700;
-  border-color: rgba(4, 120, 87, 0.1);
+  background: var(--accent);
 }
 
 .ink-grid {
-  @apply bg-rose-50 text-rose-700;
-  border-color: rgba(190, 18, 60, 0.1);
+  background: var(--accent-pink);
 }
 
 .ink-metric-tag {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
-  @apply text-stone-500 bg-stone-50 border border-stone-200/60;
+  @apply inline-flex items-center px-3 py-1 text-xs font-bold;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .ink-metric-label {
-  @apply block text-xs text-stone-400 font-medium tracking-wide uppercase;
+  @apply block text-xs tracking-wide uppercase font-bold;
+  color: var(--ink-soft);
 }
 
 .ink-metric-value {
-  @apply block mt-2 text-3xl font-bold text-stone-900 tabular-nums;
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  @apply block mt-2 text-3xl tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .ink-metric-progress {
   @apply mt-4 flex items-center gap-3;
 }
 
+/* 进度条：黑框直角轨道 + 荧光黄填充 */
 .ink-metric-progress-track {
-  @apply flex-1 h-1.5 rounded-full overflow-hidden;
-  background: rgba(168, 162, 158, 0.15);
+  @apply flex-1 h-3 overflow-hidden;
+  background: var(--paper);
+  border: 2px solid var(--ink);
 }
 
 .ink-metric-progress-bar {
-  @apply h-full rounded-full;
-  background: linear-gradient(90deg, rgba(17, 24, 39, 0.7), rgba(168, 162, 158, 0.5));
+  height: 100%;
+  background: var(--accent);
 }
 
 .ink-metric-progress span {
-  @apply text-xs font-semibold text-stone-400 tabular-nums;
+  @apply text-xs font-bold tabular-nums;
+  color: var(--ink-soft);
 }
 
 .ink-metric-desc {
-  @apply mt-4 text-xs leading-6 text-stone-500;
+  @apply mt-4 text-xs leading-6;
+  color: var(--ink-soft);
+  font-weight: 600;
   min-height: 48px;
 }
 
@@ -1951,7 +1919,8 @@ onBeforeUnmount(() => {
 }
 
 .ink-panel-head {
-  @apply flex items-start justify-between gap-4 mb-5 pb-4 border-b border-stone-100;
+  @apply flex items-start justify-between gap-4 mb-5 pb-4;
+  border-bottom: 2px solid var(--ink);
 }
 
 .ink-chart-summary {
@@ -1959,30 +1928,40 @@ onBeforeUnmount(() => {
 }
 
 .ink-chart-summary-item {
-  @apply rounded-xl border border-stone-200/70 bg-white/60 px-3 py-2;
+  @apply px-3 py-2;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .ink-chart-summary-item span {
-  @apply block text-[11px] leading-4 text-stone-400 font-medium;
+  @apply block text-[11px] leading-4 font-bold;
+  color: var(--ink-soft);
 }
 
 .ink-chart-summary-item strong {
-  @apply mt-1 block text-sm font-semibold text-stone-900 tabular-nums;
+  @apply mt-1 block text-sm tabular-nums;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .ink-panel-eyebrow {
-  @apply text-[11px] uppercase tracking-[0.22em] text-stone-400 font-medium;
+  @apply text-[11px] uppercase tracking-[0.22em] font-bold;
+  color: var(--ink-soft);
 }
 
 .ink-panel-title {
-  @apply mt-1 text-lg font-semibold text-stone-900;
-  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  @apply mt-1 text-lg;
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
+/* 面板图标：荧光黄平面块 + 黑框直角 */
 .ink-panel-icon {
-  @apply flex items-center justify-center w-10 h-10 rounded-xl;
-  @apply bg-stone-50 text-stone-600;
-  border: 1px solid rgba(0,0,0,0.04);
+  @apply flex items-center justify-center w-10 h-10;
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
 }
 
 .ink-analysis-list {
@@ -1990,46 +1969,47 @@ onBeforeUnmount(() => {
 }
 
 .ink-analysis-item {
-  @apply flex items-start gap-3 rounded-xl p-3;
-  transition: background 0.15s ease;
+  @apply flex items-start gap-3 p-3;
 }
 
+/* hover 反馈：黄色弱化底（accent-soft），替代原水墨淡色 */
 .ink-analysis-item:hover {
-  background: rgba(245, 243, 238, 0.5);
+  background: var(--accent-soft);
 }
 
+/* 语义点：方块 + 黑框，去掉辉光 */
 .ink-analysis-dot {
-  @apply mt-1.5 w-2 h-2 rounded-full shrink-0;
-  box-shadow: 0 0 4px currentColor;
+  @apply mt-1.5 w-2.5 h-2.5 shrink-0;
+  border: 2px solid var(--ink);
 }
 
 .ink-analysis-content strong {
-  @apply block text-sm font-semibold text-stone-800;
+  @apply block text-sm;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .ink-analysis-content p {
-  @apply mt-1 text-[13px] leading-6 text-stone-500;
+  @apply mt-1 text-[13px] leading-6;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-/* 水墨色系：浓淡墨 + 赭石 */
+/* 语义色：保留含义（success/info/warning/danger），去掉水墨浓淡变体 */
 .level-success {
-  background: #047857;
-  color: #047857;
+  background: #1a7f37;
 }
 
 .level-info {
-  background: #374151;
-  color: #374151;
+  background: var(--ink-soft);
 }
 
 .level-warning {
   background: #b45309;
-  color: #b45309;
 }
 
 .level-danger {
-  background: #9f1239;
-  color: #9f1239;
+  background: var(--danger);
 }
 
 /* ========== 图表网格 ========== */
@@ -2068,6 +2048,7 @@ onBeforeUnmount(() => {
     @apply px-4 py-4;
   }
 
+  /* 全直角主题下移动端只收内边距，不再降级圆角 */
   .ink-hero,
   .ink-growth-suite,
   .ink-risk-suite,
@@ -2075,7 +2056,7 @@ onBeforeUnmount(() => {
   .ink-metric-card,
   .ink-panel,
   .ink-chart-card {
-    @apply rounded-2xl p-4;
+    @apply p-4;
   }
 
   .ink-refresh-btn {
@@ -2091,7 +2072,8 @@ onBeforeUnmount(() => {
   }
 
   .ink-metric-divider {
-    @apply w-16 h-px;
+    width: 64px;
+    height: 2px;
   }
 
   .ink-metric-pill {

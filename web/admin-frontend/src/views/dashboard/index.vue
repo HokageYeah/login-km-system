@@ -1262,6 +1262,12 @@ onBeforeUnmount(() => {
 <style scoped>
 @reference "../../styles/index.css";
 
+/*
+ * 数据看板（Brutalism 改版）：
+ * 纸色页面底 + 黑框硬阴影卡片 + 大号加粗标题 + 编号总览卡。
+ * 图表容器统一用 .chart-card 黑框卡片；图表内部配色属业务脚本，保持不动。
+ */
+
 @keyframes dash-fade-up {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1270,17 +1276,24 @@ onBeforeUnmount(() => {
 /* ========== 页面容器 ========== */
 .dashboard-container {
   @apply min-h-full px-6 py-8 lg:px-10;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: var(--paper);
 }
 
 /* ========== 页头 ========== */
 .dashboard-header {
-  @apply flex items-center justify-between mb-10;
-  animation: dash-fade-up 0.4s ease-out both;
+  @apply flex items-center justify-between mb-10 flex-wrap gap-4;
+  animation: dash-fade-up 0.3s ease-out both;
 }
 
+/* 页面主标题：大号加粗 + 荧光笔衬底 */
 .dashboard-title {
-  @apply text-2xl font-bold text-slate-800;
+  @apply text-3xl;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  display: inline-block;
+  padding: 0 0.15em;
 }
 
 .header-actions {
@@ -1288,84 +1301,116 @@ onBeforeUnmount(() => {
 }
 
 .header-updated {
-  @apply text-sm text-slate-400 tabular-nums;
+  @apply text-sm tabular-nums;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
+/* 刷新按钮走全局 default 按钮外观（黑框白底 + 黄 hover） */
 .refresh-btn {
-  @apply rounded-xl border border-slate-200 bg-white text-slate-600 font-medium;
-  @apply shadow-sm;
-  transition: all 0.2s ease;
+  font-weight: 700;
 }
 
-.refresh-btn:hover {
-  @apply border-sky-300 text-sky-700 bg-sky-50;
-  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.12);
-}
-
-/* ========== 总览卡片 ========== */
+/* ========== 总览卡片（带编号 01/02/03/04）========== */
 .overview-grid {
-  @apply grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8;
+  @apply grid grid-cols-2 xl:grid-cols-4 gap-5 mb-8;
+  counter-reset: overview-num;
 }
 
 .overview-card {
-  @apply rounded-2xl border border-slate-200/80 bg-white px-5 py-4;
-  @apply flex items-center gap-4;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  animation: dash-fade-up 0.4s ease-out both;
+  @apply flex items-center gap-4 px-5 py-4 relative;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
+  animation: dash-fade-up 0.3s ease-out both;
+}
+
+/* 编号角标：参考站 CASE STUDIES 的 01/02 编号语言 */
+.overview-card::after {
+  counter-increment: overview-num;
+  content: counter(overview-num, decimal-leading-zero);
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--ink);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 2px 8px;
+  letter-spacing: 0.05em;
 }
 
 .overview-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
 }
 
 .overview-card-top {
   @apply flex items-center justify-between;
 }
 
+/* 图标块：直角黑框 + 平面色（保留类型色彩编码） */
 .overview-icon {
-  @apply flex items-center justify-center w-10 h-10 rounded-xl shrink-0;
+  @apply flex items-center justify-center w-11 h-11 shrink-0;
+  border: 2px solid var(--ink);
 }
 
-.icon-user { @apply bg-sky-50 text-sky-600; }
-.icon-card { @apply bg-amber-50 text-amber-600; }
-.icon-device { @apply bg-teal-50 text-teal-600; }
-.icon-app { @apply bg-violet-50 text-violet-600; }
+.icon-user { background: var(--accent-blue); color: var(--ink); }
+.icon-card { background: var(--accent); color: var(--ink); }
+.icon-device { background: #b8f1cc; color: var(--ink); }
+.icon-app { background: var(--accent-pink); color: var(--ink); }
 
 .overview-tag {
-  @apply text-xs font-medium text-slate-400;
+  @apply text-xs font-bold;
+  color: var(--ink-soft);
 }
 
 .overview-label {
-  @apply block text-xs text-slate-400;
+  @apply block text-xs font-bold;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
 }
 
 .overview-value {
-  @apply block text-2xl font-bold text-slate-900 tabular-nums mt-0.5;
+  @apply block text-2xl tabular-nums mt-0.5;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 /* ========== 面板标题 ========== */
 .panel-title {
-  @apply text-base font-semibold text-slate-800 mb-1;
+  @apply text-base mb-1;
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
 .panel-card {
-  @apply rounded-2xl border border-slate-200/80 bg-white p-5;
-  animation: dash-fade-up 0.5s ease-out both;
+  @apply p-5;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
+  animation: dash-fade-up 0.35s ease-out both;
 }
 
 /* ========== 收入面板 ========== */
 .revenue-panel {
-  @apply mb-8 rounded-2xl border border-emerald-200/60 bg-white p-6 shadow-sm;
-  animation: dash-fade-up 0.5s ease-out both;
+  @apply mb-8 p-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-top: 8px solid var(--accent); /* 黄色粗顶边：面板强调 */
+  box-shadow: var(--shadow-brutal);
+  animation: dash-fade-up 0.35s ease-out both;
 }
 
 .revenue-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5 border-b border-slate-100;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5;
+  border-bottom: 2px solid var(--ink);
 }
 
 .revenue-range-text {
-  @apply text-sm text-slate-400;
+  @apply text-sm font-semibold;
+  color: var(--ink-soft);
 }
 
 .revenue-controls {
@@ -1387,19 +1432,25 @@ onBeforeUnmount(() => {
 }
 
 .summary-item {
-  @apply rounded-xl bg-slate-50 px-4 py-3;
+  @apply px-4 py-3;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .summary-item span {
-  @apply block text-xs text-slate-400 mb-1;
+  @apply block text-xs font-bold mb-1;
+  color: var(--ink-soft);
 }
 
 .summary-item strong {
-  @apply block text-xl font-bold text-slate-900 tabular-nums;
+  @apply block text-xl tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .summary-item em {
-  @apply block text-xs text-slate-400 not-italic mt-1;
+  @apply block text-xs not-italic mt-1 font-semibold;
+  color: var(--ink-soft);
 }
 
 /* ========== 焦点列表 ========== */
@@ -1412,29 +1463,39 @@ onBeforeUnmount(() => {
 }
 
 .focus-dot {
-  @apply mt-1.5 w-2 h-2 rounded-full shrink-0;
+  @apply mt-1.5 w-3 h-3 shrink-0;
+  border: 2px solid var(--ink);
 }
 
 .focus-body strong {
-  @apply block text-sm font-semibold text-slate-800;
+  @apply block text-sm;
+  font-weight: 800;
+  color: var(--ink);
 }
 
 .focus-body p {
-  @apply mt-0.5 text-[13px] leading-5 text-slate-500;
+  @apply mt-0.5 text-[13px] leading-5 font-medium;
+  color: var(--ink-soft);
 }
 
 /* ========== 趋势面板 ========== */
 .trend-panel {
-  @apply mb-8 rounded-2xl border border-sky-200/60 bg-white p-6 shadow-sm;
-  animation: dash-fade-up 0.5s ease-out 0.05s both;
+  @apply mb-8 p-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-top: 8px solid var(--ink); /* 黑色粗顶边：与收入面板形成节奏 */
+  box-shadow: var(--shadow-brutal);
+  animation: dash-fade-up 0.35s ease-out 0.05s both;
 }
 
 .trend-toolbar {
-  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5 border-b border-slate-100;
+  @apply flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-6 pb-5;
+  border-bottom: 2px solid var(--ink);
 }
 
 .trend-range-text {
-  @apply text-sm text-slate-400;
+  @apply text-sm font-semibold;
+  color: var(--ink-soft);
 }
 
 .trend-controls {
@@ -1451,8 +1512,11 @@ onBeforeUnmount(() => {
 }
 
 .chart-card {
-  @apply rounded-2xl border border-slate-200/80 bg-white p-5;
-  animation: dash-fade-up 0.5s ease-out both;
+  @apply p-5;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
+  animation: dash-fade-up 0.35s ease-out both;
 }
 
 .chart-span-2 {
@@ -1472,11 +1536,11 @@ onBeforeUnmount(() => {
   height: 360px;
 }
 
-/* ========== 状态色 ========== */
-.level-success { background: #10b981; color: #10b981; }
-.level-info { background: #0ea5e9; color: #0ea5e9; }
-.level-warning { background: #f59e0b; color: #f59e0b; }
-.level-danger { background: #f43f5e; color: #f43f5e; }
+/* ========== 状态色（语义保留，改为黑框方块）========== */
+.level-success { background: #1a7f37; }
+.level-info { background: var(--accent-blue); }
+.level-warning { background: #e8a13a; }
+.level-danger { background: var(--danger); }
 
 /* ========== 响应式 ========== */
 @media (max-width: 768px) {
@@ -1485,19 +1549,11 @@ onBeforeUnmount(() => {
   }
 
   .dashboard-title {
-    @apply text-xl;
+    @apply text-2xl;
   }
 
   .summary-list {
     @apply grid-cols-1;
-  }
-
-  .overview-card,
-  .panel-card,
-  .chart-card,
-  .revenue-panel,
-  .trend-panel {
-    @apply rounded-xl;
   }
 
   .chart-container,

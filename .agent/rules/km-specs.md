@@ -93,6 +93,7 @@ trigger: always_on
   - `web/docs/管理后台整体布局与交互设计说明.md`
   - `web/docs/管理后台前端设计任务.md`
 - 前端工程专项文档（涉及路由 / 菜单 / 前端实现时必须看）：
+  - `web/admin-frontend/docs/前端设计规范（Brutalism设计系统）.md` ★ 视觉设计基准，所有前端任务必读
   - `web/admin-frontend/docs/路由配置指南.md`
   - `web/admin-frontend/docs/路由系统升级说明.md`
 
@@ -446,7 +447,20 @@ trigger: always_on
   - Element Plus
   - Pinia
   - Vue Router
-- 如果任务涉及前端页面、管理后台界面、落地页、组件视觉、交互优化、UI 评审等工作，**前端 UI 设计可以使用技能 `.agent/skills/ui-ux-pro-max` 作为首选设计参考与执行能力**。
+
+#### 前端视觉设计系统（Brutalism，强制遵循）
+
+管理后台已于 2026-11 完成 **Brutalism（粗野主义）× Creative Agency** 整体改版（参考 https://uupm.cc/demo/creative-agency ），完整规范见 `web/admin-frontend/docs/前端设计规范（Brutalism设计系统）.md`。**后续所有前端开发（新页面、新组件、改版维护）必须遵循该设计系统**，要点：
+
+- **设计令牌唯一来源**：`web/admin-frontend/src/styles/index.css` 的 `:root`（墨 `--ink`、纸 `--paper`、面 `--surface`、电光黄 `--accent`、三档硬阴影、`--topbar-height` 等）。页面样式只引用令牌，**禁止写死色值**。
+- **观感铁律**：2px 黑边框、全直角、平面色块、900 字重大标题 + 黄色荧光笔衬底、硬阴影（如 `4px 4px 0 #141414`）；**禁止** Element Plus 默认蓝、圆角、弥散阴影、渐变、毛玻璃、scale 缩放 hover、外部字体。
+- **组件策略**：Element Plus 组件外观由全局主题统一接管，scoped 样式只写布局不写皮肤；语义（成功/警告/危险）只通过边框与文字颜色表达。
+- **交互节奏**：150ms 过渡；hover 位移 `-2px,-2px` + 阴影放大，active 压回（实体按压感）；尊重 `prefers-reduced-motion`。
+- **布局约束**：`.main-container { min-width: 0 }` 是防宽表格撑爆页面的关键约束，勿删；表格超宽由表格自身底部横向滚动条承接，页面不出横向滚动。
+- **⚠️ 级联顺序**：`src/main.ts` 必须先引 `element-plus/dist/index.css` 再引 `@/styles/index.css`，颠倒会导致全局主题被 EP 同优先级规则压掉、页面退回 EP 默认风格（历史 bug，勿回退）。
+- 改版 / 新增页面后，同步更新设计规范文档，保持文档与 `index.css` 一致。
+
+- 如果任务涉及前端页面、管理后台界面、落地页、组件视觉、交互优化、UI 评审等工作，**前端 UI 设计可以使用技能 `.agent/skills/ui-ux-pro-max` 作为首选设计参考与执行能力**，但技能产出的视觉方案必须**收敛到上述设计系统之内**（令牌、直角、硬阴影、字体栈），不得引入与之冲突的第二套视觉语言。
 - 使用 `ui-ux-pro-max` 时，优先吸收其在视觉风格、配色、字体搭配、布局、动效、可访问性、栈最佳实践上的指导，但必须兼容当前前端工程结构、现有路由体系、现有组件与业务语义。
 - 前端实现必须优先遵守以下通用原则：
   - 先确认后端是否已有对应接口、字段、状态语义
@@ -585,6 +599,7 @@ trigger: always_on
 - 前端布局与交互变化：`web/docs/管理后台整体布局与交互设计说明.md`
 - 前端任务规划变化：`web/docs/管理后台前端设计任务.md`
 - 前端路由 / 菜单机制变化：`web/admin-frontend/docs/路由配置指南.md`、`web/admin-frontend/docs/路由系统升级说明.md`
+- 前端视觉设计系统变化（令牌、组件形态、交互规范）：`web/admin-frontend/docs/前端设计规范（Brutalism设计系统）.md`
 
 不要只改代码不改文档，也不要只改文档不核对代码。
 

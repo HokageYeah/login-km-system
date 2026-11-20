@@ -425,10 +425,18 @@ onMounted(() => {
 
 <style scoped>
 @reference "../../styles/index.css";
+
+/*
+ * 设备管理页（Brutalism 改版）：
+ * 纸色页面底 + 黑框硬阴影卡片 + 荧光笔标题。
+ * 表格/按钮/分页外观统一交给全局 Element Plus 覆盖（styles/index.css），
+ * 这里只处理布局与单元格语义色，避免与全局主题打架。
+ */
+
 .device-management-container {
   @apply w-full h-full p-8;
-  @apply bg-gradient-to-br from-gray-50 to-gray-100;
-  min-height: calc(100vh - 64px);
+  background: var(--paper);
+  min-height: calc(100vh - var(--topbar-height));
 }
 
 /* 页面头部 */
@@ -436,22 +444,29 @@ onMounted(() => {
   @apply flex justify-between items-center mb-8;
 }
 
+/* 页面主标题：大号加粗 + 黄色荧光衬底（粗野主义的"记号笔"语言） */
 .page-title {
-  @apply text-3xl font-bold text-gray-900 mb-2;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  @apply text-3xl mb-2;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  display: inline-block;
+  padding: 0 0.15em;
 }
 
 .page-subtitle {
-  @apply text-base text-gray-600;
+  @apply text-base;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-/* 筛选区域 */
+/* 筛选区域：黑框硬阴影卡片（直角，无圆角无弥散阴影） */
 .filter-section {
-  @apply bg-white rounded-2xl p-6 mb-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6 mb-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .filter-form {
@@ -466,10 +481,12 @@ onMounted(() => {
   @apply w-48;
 }
 
-/* 表格区域 */
+/* 表格区域：黑框硬阴影卡片 */
 .table-section {
-  @apply bg-white rounded-2xl p-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .device-table {
@@ -481,12 +498,15 @@ onMounted(() => {
   @apply flex items-center gap-2;
 }
 
+/* 设备图标：保留蓝色色相区分，换成品牌蓝令牌 */
 .device-icon {
-  @apply text-blue-600;
+  color: var(--accent-blue);
 }
 
 .device-id-text {
-  @apply font-mono text-sm font-medium text-gray-900;
+  @apply font-mono text-sm;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 /* 卡密单元格 */
@@ -495,15 +515,20 @@ onMounted(() => {
 }
 
 .card-key-text {
-  @apply font-mono text-sm font-medium text-gray-900;
+  @apply font-mono text-sm;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .price-cell {
-  @apply font-semibold text-gray-900 tabular-nums;
+  @apply tabular-nums;
+  color: var(--ink);
+  font-weight: 700;
 }
 
+/* 复制按钮：文字按钮不加阴影，色彩回归墨色系 */
 .copy-btn {
-  @apply text-blue-600;
+  color: var(--ink-soft);
 }
 
 .related-users-cell {
@@ -515,17 +540,21 @@ onMounted(() => {
 }
 
 .related-user-more {
-  @apply text-xs text-gray-500;
+  @apply text-xs;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-/* 状态标签 */
+/* 状态标签：直角加粗外观已由全局 el-tag 接管 */
 .status-tag {
   @apply font-medium;
 }
 
 /* 时间单元格 */
 .time-cell {
-  @apply flex items-center gap-2 text-sm text-gray-600;
+  @apply flex items-center gap-2 text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 /* 活跃时间单元格 */
@@ -533,16 +562,17 @@ onMounted(() => {
   @apply flex items-center gap-2 text-sm;
 }
 
+/* 活跃状态语义色：含义保留（活跃绿/近期橙/离线灰），色值对齐品牌暖色系 */
 .active-icon {
-  @apply text-green-500;
+  color: #1a7f37;
 }
 
 .recent-icon {
-  @apply text-yellow-500;
+  color: #b45309;
 }
 
 .inactive-icon {
-  @apply text-gray-400;
+  color: var(--ink-soft);
 }
 
 /* 分页 */

@@ -1,15 +1,24 @@
 <template>
   <div class="login-container">
-    <!-- 动态背景 -->
-    <div class="background-shapes">
-      <div class="shape shape-1"></div>
-      <div class="shape shape-2"></div>
-      <div class="shape shape-3"></div>
+    <!-- 装饰背景：粗野主义几何块（平面色块 + 黑边框，替代原模糊光斑） -->
+    <div class="background-shapes" aria-hidden="true">
+      <div class="shape shape-grid"></div>
+      <div class="shape shape-square"></div>
+      <div class="shape shape-accent"></div>
+      <div class="shape shape-circle"></div>
+    </div>
+
+    <!-- 顶部跑马灯：内容从最右侧进场、跑出左侧后再循环 -->
+    <div class="top-marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>KM SYSTEM ✦ 授权中心 ✦ 卡密管理 ✦ 设备管控 ✦ 权限校验 ✦ </span>
+      </div>
     </div>
 
     <!-- 登录卡片 -->
-    <div class="login-card glass-card">
+    <div class="login-card">
       <div class="card-header">
+        <p class="system-kicker">LOGIN / 管理后台</p>
         <h1 class="system-title">卡密管理系统--测试</h1>
         <p class="system-subtitle">高效 · 安全 · 便捷</p>
       </div>
@@ -74,7 +83,7 @@
           </el-button>
         </el-form-item>
       </el-form>
-      
+
       <div class="card-footer">
         <span class="footer-text">© 2026 KaMi System Admin</span>
       </div>
@@ -208,95 +217,114 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 容器样式：全屏居中，溢出隐藏 */
+/*
+ * 登录页（Brutalism 改版）：
+ * 纸色底 + 黑框几何装饰 + 硬阴影卡片 + 顶部跑马灯。
+ * 表单控件外观统一交给全局 Element Plus 覆盖（styles/index.css），
+ * 这里只处理布局与卡片本身，避免与全局主题打架。
+ */
 .login-container {
   @reference "../../styles/index.css";
-  @apply relative w-full h-screen flex justify-center items-center overflow-hidden bg-gray-900;
+  @apply relative w-full h-screen flex justify-center items-center overflow-hidden;
+  background: var(--paper);
 }
 
-/* 背景图形动画区域 */
+/* 背景装饰：平面几何块（黑描边 + 少量黄色/粉色点缀），无模糊无动画 */
 .background-shapes {
   @apply absolute inset-0 overflow-hidden;
 }
 
 .shape {
-  @apply absolute rounded-full filter blur-3xl opacity-30 animate-pulse;
+  @apply absolute;
 }
 
-.shape-1 {
-  @apply w-96 h-96 bg-purple-600 -top-20 -left-20;
-  animation-duration: 7s;
+/* 细网格：极低对比度，制造"工程图纸"感 */
+.shape-grid {
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(20, 20, 20, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 20, 20, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
 
-.shape-2 {
-  @apply w-96 h-96 bg-blue-600 top-1/2 right-0 transform -translate-y-1/2 translate-x-1/3;
-  animation-duration: 10s;
+.shape-square {
+  @apply w-40 h-40;
+  border: 2px solid var(--ink);
+  background: var(--accent-blue);
+  top: 10%;
+  left: 8%;
+  transform: rotate(-8deg);
 }
 
-.shape-3 {
-  @apply w-80 h-80 bg-pink-600 -bottom-20 left-1/3;
-  animation-duration: 8s;
+.shape-accent {
+  @apply w-28 h-28;
+  border: 2px solid var(--ink);
+  background: var(--accent);
+  bottom: 12%;
+  right: 10%;
+  transform: rotate(12deg);
 }
 
-/* 登录卡片样式：毛玻璃效果 */
+.shape-circle {
+  @apply w-36 h-36 rounded-full;
+  border: 2px solid var(--ink);
+  background: var(--accent-pink);
+  top: 14%;
+  right: 14%;
+}
+
+/* 顶部跑马灯：黑底黄字 */
+.top-marquee {
+  @apply absolute top-0 left-0 right-0 overflow-hidden;
+  background: var(--ink);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  padding: 8px 0;
+  border-bottom: 2px solid var(--ink);
+}
+
+/* 登录卡片：硬边框 + 大硬阴影 */
 .login-card {
-  @apply w-full max-w-md p-8 rounded-2xl z-10 mx-4;
-  /* Glassmorphism 样式已在全局 index.css 定义，这里补充特定样式 */
-  background: rgba(255, 255, 255, 0.1); /* 深色模式下的玻璃感 */
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  @apply w-full max-w-md p-8 z-10 mx-4;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal-lg);
 }
 
 .card-header {
   @apply text-center mb-8;
 }
 
+/* 眉题：小号大写风格标签 */
+.system-kicker {
+  @apply text-xs font-extrabold tracking-[0.2em] mb-3;
+  color: var(--ink-soft);
+}
+
 .system-title {
-  @apply text-3xl font-bold text-white mb-2 tracking-wide;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  @apply text-3xl font-black mb-2 tracking-tight;
+  color: var(--ink);
+  /* 荧光笔衬底：黄色块从文字下 38% 处垫起 */
+  background: linear-gradient(to top, var(--accent) 30%, transparent 30%);
+  display: inline-block;
+  padding: 0 0.2em;
 }
 
 .system-subtitle {
-  @apply text-gray-400 text-sm font-light tracking-widest uppercase;
+  @apply text-sm font-bold tracking-widest uppercase;
+  color: var(--ink-soft);
 }
 
-/* 表单样式 */
+/* 表单布局 */
 .login-form {
   @apply space-y-6;
 }
 
-/* 自定义输入框样式 */
-:deep(.custom-input .el-input__wrapper) {
-  @apply bg-white/10 border-none shadow-none rounded-lg h-12 box-border;
-  transition: all 0.3s ease;
-}
-
-:deep(.custom-input .el-input__wrapper.is-focus) {
-  @apply bg-white/20 ring-2 ring-blue-500/50;
-}
-
-:deep(.custom-input .el-input__inner) {
-  @apply text-white placeholder-gray-400 h-full;
-}
-
-:deep(.custom-input .el-input__prefix-inner) {
-  @apply text-gray-400;
-}
-
-/* 登录按钮样式 */
+/* 登录按钮：全宽加高，按压感由全局 primary 规则提供 */
 .login-button {
-  @apply w-full h-12 text-lg font-medium rounded-lg border-none;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.login-button:hover {
-  @apply opacity-90 shadow-lg transform -translate-y-0.5;
-  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
-}
-
-.login-button:active {
-  @apply transform translate-y-0.5;
+  @apply w-full h-12 text-lg font-extrabold;
 }
 
 .card-footer {
@@ -304,6 +332,7 @@ onMounted(() => {
 }
 
 .footer-text {
-  @apply text-gray-500 text-xs;
+  @apply text-xs font-bold;
+  color: var(--ink-soft);
 }
 </style>

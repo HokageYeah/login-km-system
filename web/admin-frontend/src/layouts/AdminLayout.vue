@@ -49,6 +49,10 @@ const toggleCollapse = () => {
 .main-container {
   @apply min-h-screen transition-all duration-300 relative ml-[260px] w-full;
   /* ml-64 = 256px -> 接近 260px */
+  /* 关键修复：flex 子项默认 min-width:auto（等于内容最小宽度），
+   * 宽表格会把整个容器撑出视口导致页面级横向滚动。
+   * 置 0 后容器宽度锁定为 视口-侧栏宽，表格超宽由表格自身底部滚动条承接。 */
+  min-width: 0;
 }
 
 /* 折叠后的主容器左边距 */

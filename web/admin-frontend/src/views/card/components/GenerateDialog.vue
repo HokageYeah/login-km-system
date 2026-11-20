@@ -631,12 +631,13 @@ watch(
 <style scoped>
 @reference "../../../styles/index.css";
 
-/* 弹窗容器覆写 */
-:deep(.generate-dialog .el-dialog) {
-  @apply rounded-3xl overflow-hidden border-0;
-  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(148, 163, 184, 0.1);
-}
+/*
+ * 生成卡密弹窗（Brutalism 改版）：
+ * 弹窗容器外观（黑框 + 硬阴影 + 直角）已由全局主题接管，
+ * 这里只处理自定义头部、表单分组、快捷时间片与定价面板样式。
+ */
 
+/* 弹窗容器：保留滚动与排布覆写，圆角/阴影/边框交给全局 */
 :deep(.generate-dialog .el-dialog__header) {
   @apply p-0 m-0;
 }
@@ -651,19 +652,21 @@ watch(
   @apply px-6 pb-5 pt-0;
 }
 
-/* 头部 Hero */
+/* 头部 Hero：黑底 + 黄色眉题，替代原蓝紫渐变 */
 .dialog-hero {
   @apply relative px-6 pt-6 pb-5 overflow-hidden;
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  background: var(--ink);
 }
 
+/* 右上角黄色几何块：平面色块装饰，无模糊无渐变 */
 .dialog-hero-bg {
-  @apply absolute rounded-full;
-  width: 200px;
-  height: 200px;
-  right: -60px;
-  top: -80px;
-  background: rgba(255, 255, 255, 0.12);
+  @apply absolute;
+  width: 140px;
+  height: 140px;
+  right: -46px;
+  top: -56px;
+  background: var(--accent);
+  transform: rotate(14deg);
 }
 
 .dialog-hero-content {
@@ -671,24 +674,37 @@ watch(
 }
 
 .dialog-eyebrow {
-  @apply text-xs font-semibold tracking-[0.18em] uppercase text-blue-100 mb-1.5;
+  @apply text-xs tracking-[0.18em] uppercase mb-1.5;
+  font-weight: 800;
+  color: var(--accent);
 }
 
 .dialog-title {
-  @apply text-xl font-bold text-white mb-1;
+  @apply text-xl mb-1;
+  font-weight: 900;
+  color: var(--surface);
 }
 
 .dialog-desc {
-  @apply text-sm text-blue-100;
+  @apply text-sm;
+  color: var(--paper);
+  font-weight: 600;
 }
 
+/* 关闭按钮：黄色方块（直角），在黑底上形成强对比 */
 .dialog-close-btn {
-  @apply absolute top-4 right-4 z-20;
-  @apply border-white/30 text-white bg-white/10;
+  border-radius: 0;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
 }
 
 .dialog-close-btn:hover {
-  @apply bg-white/20 text-white border-white/50;
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--ink);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--accent);
 }
 
 /* 表单区域 */
@@ -696,13 +712,17 @@ watch(
   @apply space-y-1;
 }
 
+/* 表单分组：纸色底 + 柔和边框，在弹窗表面内形成分组层次 */
 .form-section {
-  @apply rounded-2xl border border-slate-200/80 bg-white/60 p-4 mb-3;
-  @apply backdrop-blur-sm;
+  @apply p-4 mb-3;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .section-label {
-  @apply text-xs font-semibold tracking-[0.12em] uppercase text-slate-400 mb-3;
+  @apply text-xs tracking-[0.12em] uppercase mb-3;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 /* 控件 + 右侧 badge 布局 */
@@ -714,58 +734,80 @@ watch(
   @apply flex-1;
 }
 
+/* 字段徽标：黑框直角小牌 */
 .field-badge {
-  @apply shrink-0 text-xs font-medium text-slate-400;
-  @apply px-3 py-1.5 rounded-lg;
-  @apply bg-slate-100/80 border border-slate-200/60;
+  @apply shrink-0 text-xs px-3 py-1.5;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 2px solid var(--ink);
   white-space: nowrap;
 }
 
 /* 快捷时间选择面板 */
 .shortcut-panel {
-  @apply mt-3 w-full rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3;
+  @apply mt-3 w-full p-3;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .shortcut-panel-label {
-  @apply block text-xs text-slate-400 font-medium mb-2;
+  @apply block text-xs mb-2;
+  font-weight: 700;
+  color: var(--ink-soft);
 }
 
 .shortcut-chips {
   @apply flex flex-wrap gap-1.5;
 }
 
+/* 快捷时间片：黑框直角小按钮，hover 反转为黄色 + 按压位移 */
 .shortcut-chip {
-  @apply text-xs px-3 py-1.5 rounded-lg cursor-pointer font-medium;
-  @apply border border-slate-200 bg-white text-slate-600;
+  @apply text-xs px-3 py-1.5 cursor-pointer;
+  font-weight: 700;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
   transition: all 0.15s ease;
 }
 
 .shortcut-chip:hover {
-  @apply border-violet-300 bg-violet-50 text-violet-700;
+  background: var(--accent);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
+/* 选中态：黑底黄字，与全局分段控制器/分页同语言 */
 .shortcut-chip-active {
-  @apply border-violet-400 bg-violet-100 text-violet-700;
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2);
+  background: var(--ink);
+  color: var(--accent);
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
 }
 
-/* 设备定价行 */
+/* 设备定价行：warning 语义（#b45309）+ 黄色弱化底 + 黑框 */
 .device-pricing-row {
-  @apply mt-2.5 flex items-center justify-between gap-3;
-  @apply px-3 py-2 rounded-xl;
-  @apply bg-amber-50/80 border border-amber-200/60;
+  @apply mt-2.5 flex items-center justify-between gap-3 px-3 py-2;
+  background: var(--accent-soft);
+  border: 2px solid var(--ink);
 }
 
 .device-pricing-label {
-  @apply text-xs text-amber-700 font-medium;
+  @apply text-xs;
+  font-weight: 700;
+  color: #b45309;
 }
 
 .device-pricing-value {
-  @apply text-xs text-amber-800 tabular-nums;
+  @apply text-xs tabular-nums;
+  font-weight: 600;
+  color: #b45309;
 }
 
 .device-pricing-value strong {
-  @apply font-bold text-amber-900;
+  font-weight: 900;
+  color: #b45309;
 }
 
 /* 权限选项样式 */
@@ -779,11 +821,16 @@ watch(
 }
 
 .permission-key {
-  @apply text-sm font-medium text-slate-800;
+  @apply text-sm;
+  font-weight: 700;
+  color: var(--ink);
 }
 
+/* 价格用 success 语义色：金额是正向经营信息 */
 .permission-price {
-  @apply ml-auto text-xs font-semibold text-emerald-600 tabular-nums;
+  @apply ml-auto text-xs tabular-nums;
+  font-weight: 800;
+  color: #1a7f37;
 }
 
 /* 价格编辑 */
@@ -791,8 +838,11 @@ watch(
   @apply flex gap-3 w-full;
 }
 
+/* 定价面板：黄色弱化底 + 黑框，定价是本弹窗的核心信息 */
 .pricing-panel {
-  @apply mt-3 w-full rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50/80 to-blue-50/80 p-4;
+  @apply mt-3 w-full p-4;
+  background: var(--accent-soft);
+  border: 2px solid var(--ink);
 }
 
 .pricing-summary {
@@ -800,24 +850,32 @@ watch(
 }
 
 .pricing-card {
-  @apply rounded-xl bg-white border border-slate-100 p-3;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  @apply p-3;
+  background: var(--surface);
+  border: 2px solid var(--ink);
 }
 
+/* 当前单价卡：整块黄色，突出"实际生效值" */
 .pricing-card-current {
-  @apply border-violet-200;
+  background: var(--accent);
 }
 
 .pricing-card span {
-  @apply block text-xs text-slate-400 mb-1;
+  @apply block text-xs mb-1;
+  font-weight: 700;
+  color: var(--ink-soft);
 }
 
 .pricing-card strong {
-  @apply text-lg font-bold text-violet-700 tabular-nums;
+  @apply text-lg tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .pricing-formula {
-  @apply space-y-1 text-xs leading-5 text-slate-600;
+  @apply space-y-1 text-xs leading-5;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 /* 生成结果 */
@@ -829,80 +887,73 @@ watch(
   @apply text-center mb-5;
 }
 
+/* 成功图标：绿色平面方块 + 黑框硬阴影（success 语义 #1a7f37） */
 .result-hero-icon {
-  @apply inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3;
-  background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
-  @apply text-white;
+  @apply inline-flex items-center justify-center w-16 h-16 mb-3;
+  background: #1a7f37;
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal-sm);
+  color: #fffdf6;
 }
 
 .result-title {
-  @apply text-2xl font-bold text-slate-900 mb-1;
+  @apply text-2xl mb-1;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .result-subtitle {
-  @apply text-sm text-slate-500;
+  @apply text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .result-subtitle strong {
-  @apply text-violet-700 font-bold;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .result-actions {
   @apply flex justify-center gap-3 mb-5;
 }
 
-.result-action-btn {
-  @apply rounded-xl;
-}
-
+/* 结果列表：纸色底列表区 + 白底行卡 */
 .card-list {
-  @apply max-h-80 overflow-y-auto;
-  @apply bg-slate-50/80 rounded-2xl p-3;
+  @apply max-h-80 overflow-y-auto p-3;
   @apply space-y-1.5;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .card-item {
-  @apply flex items-center gap-3;
-  @apply bg-white rounded-xl px-4 py-2.5;
-  @apply border border-slate-100;
-  transition: all 0.2s ease;
+  @apply flex items-center gap-3 px-4 py-2.5;
+  background: var(--surface);
+  border: 2px solid var(--line-soft);
+  transition: all 0.15s ease;
 }
 
 .card-item:hover {
-  @apply border-violet-200 shadow-sm;
+  border-color: var(--ink);
 }
 
 .card-index {
-  @apply text-xs font-semibold text-slate-300 w-6 text-right;
+  @apply text-xs w-6 text-right;
+  font-weight: 800;
+  color: var(--ink-soft);
 }
 
 .card-key {
-  @apply flex-1 font-mono text-sm font-medium text-slate-800;
+  @apply flex-1 font-mono text-sm;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .copy-btn {
-  @apply text-violet-500;
+  color: var(--ink-soft);
 }
 
-/* 底部按钮 */
+/* 底部按钮：外观交给全局主题 */
 .dialog-footer {
   @apply flex justify-end gap-3;
-}
-
-.footer-btn-cancel {
-  @apply rounded-xl;
-}
-
-.footer-btn-primary {
-  @apply rounded-xl;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  @apply border-0 text-white font-medium;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
-}
-
-.footer-btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  transform: translateY(-1px);
 }
 </style>

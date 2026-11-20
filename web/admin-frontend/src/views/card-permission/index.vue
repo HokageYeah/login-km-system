@@ -715,11 +715,18 @@ watch(
 
 <style scoped>
 @reference "../../styles/index.css";
+
+/*
+ * 功能权限管理页（Brutalism 改版）：
+ * 纸色页面底 + 黑框硬阴影卡片 + 荧光笔标题。
+ * 按钮/表格/分页外观统一交给全局 Element Plus 覆盖，这里只处理布局与单元格细节。
+ */
+
 .permission-container {
   @apply w-full h-full;
   @apply p-8;
-  @apply bg-gradient-to-br from-gray-50 to-gray-100;
-  min-height: calc(100vh - 64px);
+  background: var(--paper);
+  min-height: calc(100vh - var(--topbar-height));
 }
 
 /* 页面头部 */
@@ -727,51 +734,40 @@ watch(
   @apply flex justify-between items-center mb-6;
 }
 
+/* 页面主标题：大号加粗 + 黄色荧光衬底（替代原蓝紫渐变文字） */
 .permission-title {
-  @apply text-3xl font-bold text-gray-900;
-  @apply mb-2;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  @apply text-3xl mb-2;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  display: inline-block;
+  padding: 0 0.15em;
 }
 
 .permission-subtitle {
-  @apply text-base text-gray-600;
+  @apply text-base;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .header-actions {
   @apply flex gap-4;
 }
 
-.export-btn {
-  @apply px-5 py-2.5 rounded-xl border border-blue-100;
-  @apply bg-white text-blue-600 font-medium;
-}
-
-.import-btn {
-  @apply px-5 py-2.5 rounded-xl border border-emerald-100;
-  @apply bg-emerald-50 text-emerald-700 font-medium;
-}
-
+/* 导出/导入/创建按钮统一走全局按钮观感（黑框 + hover 黄底），只保留字重 */
+.export-btn,
+.import-btn,
 .create-btn {
-  @apply px-6 py-2.5;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  @apply text-white font-medium rounded-xl;
-  @apply shadow-lg shadow-blue-500/20;
-  transition: all 0.3s ease;
+  font-weight: 700;
 }
 
-.create-btn:hover {
-  @apply shadow-xl shadow-blue-500/30;
-  transform: translateY(-2px);
-}
-
-/* 筛选卡片 */
+/* 筛选卡片：黑框硬阴影 */
 .filter-card {
-  @apply bg-white rounded-2xl p-6;
-  @apply shadow-sm border border-gray-100;
-  @apply mb-6;
+  @apply p-6 mb-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .filter-row {
@@ -790,36 +786,44 @@ watch(
   @apply px-4;
 }
 
-/* 权限列表 */
+/* 权限列表卡片 */
 .permission-list {
-  @apply bg-white rounded-2xl p-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
+/* 批量操作条：危险语义用红描边表达，底色回归纸色 */
 .batch-actions-bar {
   @apply flex items-center justify-between mb-4 px-4 py-3;
-  @apply rounded-xl border border-red-100 bg-red-50;
+  background: var(--paper);
+  border: 2px solid var(--danger);
 }
 
 .selected-info {
-  @apply text-sm text-gray-700;
+  @apply text-sm;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .permission-table {
   @apply w-full;
 }
 
+/* 权限标识：等宽字体保留（代码感） */
 .permission-tag {
   font-family: 'Courier New', monospace;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .name-cell {
   @apply flex items-center gap-2;
 }
 
+/* 名称图标：保留蓝色色相区分，换品牌蓝令牌 */
 .name-icon {
-  @apply text-blue-600;
+  color: var(--accent-blue);
 }
 
 .status-tag {
@@ -827,7 +831,9 @@ watch(
 }
 
 .price-cell {
-  @apply font-semibold text-gray-800;
+  @apply tabular-nums;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .action-buttons {

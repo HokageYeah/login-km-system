@@ -1097,10 +1097,18 @@ watch(
 
 <style scoped>
 @reference "../../styles/index.css";
+
+/*
+ * 卡密管理页（Brutalism 改版）：
+ * 纸色页面底 + 黑框硬阴影面板 + 荧光笔主标题。
+ * el-button / el-table / el-tag / el-pagination 外观统一交给全局主题，
+ * 这里只负责页面级布局与单元格内自定义样式，避免与全局观感打架。
+ */
+
 .card-management-container {
   @apply w-full h-full p-8;
-  @apply bg-gradient-to-br from-gray-50 to-gray-100;
-  min-height: calc(100vh - 64px);
+  background: var(--paper);
+  min-height: calc(100vh - var(--topbar-height));
 }
 
 /* 页面头部 */
@@ -1108,38 +1116,35 @@ watch(
   @apply flex justify-between items-center mb-8;
 }
 
+/* 页面主标题：大号加粗 + 黄色荧光衬底（与 dashboard 标题同语言） */
 .page-title {
-  @apply text-3xl font-bold text-gray-900 mb-2;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  @apply text-3xl mb-2;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  display: inline-block;
+  padding: 0 0.15em;
 }
 
 .page-subtitle {
-  @apply text-base text-gray-600;
+  @apply text-base;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-.header-actions {
-}
-
+/* 生成按钮：黑底主按钮观感由全局 primary 规则接管，这里只控制尺寸 */
 .generate-btn {
   @apply px-6 py-2.5;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  @apply text-white font-medium rounded-xl;
-  @apply shadow-lg shadow-blue-500/20;
-  transition: all 0.3s ease;
+  font-weight: 800;
 }
 
-.generate-btn:hover {
-  @apply shadow-xl shadow-blue-500/30;
-  transform: translateY(-2px);
-}
-
-/* 筛选区域 */
+/* 筛选区域：黑框硬阴影面板 */
 .filter-section {
-  @apply bg-white rounded-2xl p-6 mb-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6 mb-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .filter-form {
@@ -1154,10 +1159,12 @@ watch(
   @apply w-64;
 }
 
-/* 表格区域 */
+/* 表格区域：与筛选区同语言的黑框面板 */
 .table-section {
-  @apply bg-white rounded-2xl p-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .card-table {
@@ -1170,11 +1177,14 @@ watch(
 }
 
 .card-key-text {
-  @apply font-mono text-sm font-medium text-gray-900;
+  @apply font-mono text-sm;
+  font-weight: 700;
+  color: var(--ink);
 }
 
+/* 复制为文字按钮：不加阴影，仅色彩反馈 */
 .copy-btn {
-  @apply text-blue-600;
+  color: var(--ink-soft);
 }
 
 .related-users-cell {
@@ -1186,7 +1196,9 @@ watch(
 }
 
 .related-user-more {
-  @apply text-xs text-gray-500;
+  @apply text-xs;
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 /* 状态标签 */
@@ -1195,16 +1207,21 @@ watch(
 }
 
 .status-tag {
-  @apply font-medium;
+  @apply font-bold;
 }
 
+/* 过期附加标签：warning 语义（#b45309）+ 黄色弱化底 */
 .expired-tag {
-  @apply border-orange-300 text-orange-600 bg-orange-50;
+  color: #b45309;
+  border-color: #b45309;
+  background: var(--accent-soft);
 }
 
 /* 过期时间单元格 */
 .expire-time-cell {
-  @apply flex items-center gap-2 text-sm text-gray-600;
+  @apply flex items-center gap-2 text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 /* 权限单元格 */
@@ -1212,34 +1229,45 @@ watch(
   @apply flex flex-wrap gap-1;
 }
 
+/* 权限标签：黄色弱化底 + 黑框，权限是可售卖能力，值得强调 */
 .permission-tag {
-  @apply bg-blue-50 text-blue-700 border-blue-200;
+  background: var(--accent-soft);
+  color: var(--ink);
+  border-color: var(--ink);
 }
 
 .price-header {
-  @apply inline-flex items-center justify-end gap-1 text-gray-700;
+  @apply inline-flex items-center justify-end gap-1;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .price-help-icon {
-  @apply text-sm text-gray-400 cursor-help transition-colors duration-200;
+  @apply text-sm cursor-help;
+  color: var(--ink-soft);
 }
 
 .price-help-icon:hover {
-  @apply text-blue-500;
+  color: var(--ink);
 }
 
 .price-cell {
-  @apply font-semibold text-gray-900 tabular-nums;
+  @apply tabular-nums;
+  font-weight: 800;
+  color: var(--ink);
 }
 
-/* 批量操作工具栏 */
+/* 批量操作工具栏：黄色弱化底 + 黑框，选中态一眼可辨 */
 .batch-actions-bar {
   @apply flex justify-between items-center mb-4 p-4;
-  @apply bg-blue-50 border border-blue-200 rounded-xl;
+  background: var(--accent-soft);
+  border: 2px solid var(--ink);
 }
 
 .selected-info {
-  @apply flex items-center gap-2 text-blue-700;
+  @apply flex items-center gap-2;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .info-icon {
@@ -1247,7 +1275,8 @@ watch(
 }
 
 .selected-info strong {
-  @apply text-blue-900 font-bold;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 /* 操作按钮 */
@@ -1255,63 +1284,58 @@ watch(
   @apply flex gap-2;
 }
 
-/* 详情抽屉 */
+/* 详情抽屉：纸色底，内容由黑框区块承载层次 */
 :deep(.card-detail-drawer .el-drawer__body) {
-  @apply p-0 bg-gray-50;
+  @apply p-0;
+  background: var(--paper);
 }
 
 .drawer-page {
   @apply min-h-full p-6 space-y-5;
 }
 
+/* 抽屉头部：暖白面板 + 黄色粗顶边（与 dashboard 收入面板同语言） */
 .drawer-hero {
-  @apply rounded-3xl p-6 text-white overflow-hidden relative;
-  background:
-    radial-gradient(circle at 12% 20%, rgba(255, 255, 255, 0.32), transparent 28%),
-    linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
-  box-shadow: 0 24px 60px rgba(59, 130, 246, 0.24);
-}
-
-.drawer-hero::after {
-  content: '';
-  @apply absolute rounded-full;
-  width: 180px;
-  height: 180px;
-  right: -72px;
-  bottom: -96px;
-  background: rgba(255, 255, 255, 0.16);
+  @apply p-6 relative overflow-hidden;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-top: 8px solid var(--accent);
+  box-shadow: var(--shadow-brutal);
 }
 
 .drawer-hero-top {
-  @apply flex items-start justify-between gap-4 relative z-10;
+  @apply flex items-start justify-between gap-4;
 }
 
 .drawer-eyebrow {
-  @apply text-xs font-semibold tracking-widest text-blue-100 mb-2;
+  @apply text-xs tracking-widest mb-2;
+  font-weight: 800;
+  color: var(--ink-soft);
 }
 
 .drawer-title {
-  @apply text-xl font-bold font-mono break-all leading-snug;
+  @apply text-xl font-mono break-all leading-snug;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .drawer-hero-actions {
   @apply flex items-center gap-2 shrink-0;
 }
 
+/* 图标按钮强制直角：circle 属性只影响默认圆角，边框与底色交给全局 */
 .drawer-icon-btn {
-  @apply shrink-0 border-white/30 text-white bg-white/10;
-}
-
-.drawer-icon-btn:hover {
-  @apply bg-white/20 text-white border-white/50;
+  border-radius: 0;
 }
 
 .drawer-status-row {
-  @apply flex flex-wrap items-center gap-2 mt-5 relative z-10;
+  @apply flex flex-wrap items-center gap-2 mt-5;
 }
 
 .drawer-app-name {
-  @apply text-sm text-blue-50;
+  @apply text-sm;
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .drawer-stats-grid {
@@ -1319,27 +1343,37 @@ watch(
 }
 
 .drawer-stat-card {
-  @apply bg-white rounded-2xl border border-gray-100 p-4 shadow-sm;
+  @apply p-4;
+  background: var(--surface);
+  border: 2px solid var(--ink);
 }
 
 .drawer-stat-label {
-  @apply block text-xs text-gray-500 mb-2;
+  @apply block text-xs mb-2;
+  color: var(--ink-soft);
+  font-weight: 700;
 }
 
 .drawer-stat-card strong {
-  @apply text-lg font-bold text-gray-900;
+  @apply text-lg;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .danger-text {
-  @apply text-red-600;
+  color: var(--danger);
 }
 
 .drawer-section {
-  @apply bg-white rounded-2xl border border-gray-100 p-5 shadow-sm;
+  @apply p-5;
+  background: var(--surface);
+  border: 2px solid var(--ink);
 }
 
 .section-title {
-  @apply text-sm font-bold text-gray-900 mb-4;
+  @apply text-sm mb-4;
+  font-weight: 900;
+  color: var(--ink);
 }
 
 .info-list {
@@ -1351,27 +1385,38 @@ watch(
 }
 
 .info-row span {
-  @apply text-gray-500 shrink-0;
+  @apply shrink-0;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .info-row strong {
-  @apply text-gray-900 text-right font-medium break-all;
+  @apply text-right break-all;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .mono-text {
   @apply font-mono;
 }
 
+/* 关联信息块：面板内的次级信息，用纸色底 + 柔和边框降低视觉噪音 */
 .drawer-related-block {
-  @apply rounded-2xl bg-gray-50 border border-gray-100 p-4 mb-4 last:mb-0;
+  @apply p-4 mb-4 last:mb-0;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .drawer-block-head {
-  @apply flex items-center justify-between mb-3 text-sm font-medium text-gray-900;
+  @apply flex items-center justify-between mb-3 text-sm;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .drawer-block-head small {
-  @apply text-xs text-gray-500 font-normal;
+  @apply text-xs;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .drawer-tag-list {
@@ -1379,7 +1424,10 @@ watch(
 }
 
 .remark-card {
-  @apply min-h-20 rounded-2xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-700 whitespace-pre-wrap;
+  @apply min-h-20 p-4 text-sm whitespace-pre-wrap;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
+  color: var(--ink);
 }
 
 .action-panel {
@@ -1399,7 +1447,7 @@ watch(
   @apply flex justify-end mt-6;
 }
 
-/* 响应式调整 */
+/* 响应式调整（纯布局，与视觉主题无关） */
 @media (max-width: 768px) {
   .page-header {
     @apply flex-col gap-4;

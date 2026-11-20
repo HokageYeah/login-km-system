@@ -270,92 +270,168 @@ watch(dialogVisible, (newVal) => {
 <style scoped>
 @reference "../../../styles/index.css";
 
-/* 弹窗覆写 */
-:deep(.expire-dialog-root .el-dialog) {
-  @apply rounded-3xl overflow-hidden border-0;
-  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(148, 163, 184, 0.1);
-}
+/*
+ * 修改过期时间弹窗（Brutalism 改版）：
+ * 弹窗容器外观（黑框 + 硬阴影 + 直角）已由全局主题接管，
+ * 这里只处理自定义头部与快捷时间片、定价面板等内部样式。
+ */
+
+/* 弹窗容器：只保留排布覆写，圆角/边框/阴影交给全局 */
 :deep(.expire-dialog-root .el-dialog__header) { @apply p-0 m-0; }
 :deep(.expire-dialog-root .el-dialog__body) { @apply px-6 py-5; }
 :deep(.expire-dialog-root .el-dialog__footer) { @apply px-6 pb-5 pt-0; }
 
-/* 头部 Hero */
+/* 头部 Hero：黑底 + 黄色眉题，替代原蓝紫渐变 */
 .dialog-hero {
   @apply relative px-6 pt-6 pb-5 overflow-hidden;
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  background: var(--ink);
 }
+
+/* 右上角黄色几何块：平面色块装饰，无模糊无渐变 */
 .dialog-hero-bg {
-  @apply absolute rounded-full;
-  width: 200px; height: 200px; right: -60px; top: -80px;
-  background: rgba(255, 255, 255, 0.12);
+  @apply absolute;
+  width: 140px;
+  height: 140px;
+  right: -46px;
+  top: -56px;
+  background: var(--accent);
+  transform: rotate(14deg);
 }
+
 .dialog-hero-content { @apply relative z-10 pr-10; }
-.dialog-eyebrow { @apply text-xs font-semibold tracking-[0.18em] uppercase text-blue-100 mb-1.5; }
-.dialog-title { @apply text-xl font-bold text-white mb-1; }
-.dialog-desc { @apply text-sm text-blue-100 font-mono; }
-.dialog-close-btn {
-  @apply absolute top-4 right-4 z-20 border-white/30 text-white bg-white/10;
+
+.dialog-eyebrow {
+  @apply text-xs tracking-[0.18em] uppercase mb-1.5;
+  font-weight: 800;
+  color: var(--accent);
 }
-.dialog-close-btn:hover { @apply bg-white/20 text-white border-white/50; }
+
+.dialog-title {
+  @apply text-xl mb-1;
+  font-weight: 900;
+  color: var(--surface);
+}
+
+.dialog-desc {
+  @apply text-sm font-mono;
+  color: var(--paper);
+}
+
+/* 关闭按钮：黄色方块（直角），在黑底上形成强对比 */
+.dialog-close-btn {
+  border-radius: 0;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.dialog-close-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--ink);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--accent);
+}
 
 /* 弹窗主体 */
 .expire-dialog-body { @apply pt-1; }
 
-/* 当前过期时间预览 */
+/* 当前过期时间预览：纸色底 + 柔和边框 */
 .current-preview {
-  @apply rounded-2xl border border-slate-200/80 bg-white/60 p-4 mb-5;
-  @apply backdrop-blur-sm;
+  @apply p-4 mb-5;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
+
 .preview-item {
   @apply flex items-center justify-between;
 }
-.preview-item span { @apply text-xs text-slate-400 font-medium; }
-.preview-item strong { @apply text-sm text-slate-900 font-semibold; }
+
+.preview-item span {
+  @apply text-xs;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.preview-item strong {
+  @apply text-sm;
+  font-weight: 800;
+  color: var(--ink);
+}
 
 /* 快捷选择面板 */
 .shortcut-panel {
-  @apply mt-3 w-full rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3;
+  @apply mt-3 w-full p-3;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
+
 .shortcut-panel-label {
-  @apply block text-xs text-slate-400 font-medium mb-2;
+  @apply block text-xs mb-2;
+  font-weight: 700;
+  color: var(--ink-soft);
 }
+
 .shortcut-chips {
   @apply flex flex-wrap gap-1.5;
 }
+
+/* 快捷时间片：黑框直角小按钮，hover 反转为黄色 + 按压位移 */
 .shortcut-chip {
-  @apply text-xs px-3 py-1.5 rounded-lg cursor-pointer font-medium;
-  @apply border border-slate-200 bg-white text-slate-600;
+  @apply text-xs px-3 py-1.5 cursor-pointer;
+  font-weight: 700;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
   transition: all 0.15s ease;
 }
+
 .shortcut-chip:hover {
-  @apply border-violet-300 bg-violet-50 text-violet-700;
+  background: var(--accent);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.shortcut-chip:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 
 .form-tip {
-  @apply mt-2 text-xs text-slate-400 leading-5;
+  @apply mt-2 text-xs leading-5;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-/* 定价面板 */
+/* 定价面板：黄色弱化底 + 黑框，金额是弹窗内的关键决策信息 */
 .pricing-panel {
-  @apply mt-4 rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50/80 to-blue-50/80 p-4;
+  @apply mt-4 p-4;
+  background: var(--accent-soft);
+  border: 2px solid var(--ink);
 }
+
 .pricing-row {
   @apply flex items-center justify-between mb-2;
 }
-.pricing-row span { @apply text-sm text-slate-500; }
-.pricing-row strong { @apply text-lg font-bold text-violet-700 tabular-nums; }
-.pricing-panel p { @apply text-xs leading-5 text-slate-600; }
 
-/* 底部按钮 */
+.pricing-row span {
+  @apply text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.pricing-row strong {
+  @apply text-lg tabular-nums;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.pricing-panel p {
+  @apply text-xs leading-5;
+  color: var(--ink-soft);
+}
+
+/* 底部按钮：外观交给全局主题 */
 .dialog-footer { @apply flex justify-end gap-3; }
-.footer-btn-cancel { @apply rounded-xl; }
-.footer-btn-primary {
-  @apply rounded-xl border-0 text-white font-medium;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
-}
-.footer-btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  transform: translateY(-1px);
-}
 </style>

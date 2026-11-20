@@ -623,10 +623,17 @@ onMounted(() => {
 
 <style scoped>
 @reference "../../styles/index.css";
+
+/*
+ * 用户管理页（Brutalism 改版）：
+ * 纸色页面底 + 黑框硬阴影面板（筛选区/表格区）+ 荧光笔主标题 + 蓝色直角图标块。
+ * 表格/分页/标签/输入控件外观统一交给全局主题，此处只做布局与局部强调。
+ */
+
 .user-management-container {
   @apply w-full h-full p-8;
-  @apply bg-gradient-to-br from-gray-50 to-gray-100;
-  min-height: calc(100vh - 64px);
+  background: var(--paper);
+  min-height: calc(100vh - var(--topbar-height));
 }
 
 /* 页面头部 */
@@ -634,22 +641,29 @@ onMounted(() => {
   @apply flex justify-between items-center mb-8;
 }
 
+/* 页面主标题：大号加粗 + 黄色荧光笔衬底（粗野主义的招牌强调手法） */
 .page-title {
-  @apply text-3xl font-bold text-gray-900 mb-2;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  @apply text-3xl mb-2;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  background: linear-gradient(to top, var(--accent) 32%, transparent 32%);
+  display: inline-block;
+  padding: 0 0.15em;
 }
 
 .page-subtitle {
-  @apply text-base text-gray-600;
+  @apply text-base;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-/* 筛选区域 */
+/* 筛选区域：暖白表面 + 2px 黑框 + 硬阴影的硬边面板 */
 .filter-section {
-  @apply bg-white rounded-2xl p-6 mb-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6 mb-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .filter-form {
@@ -664,10 +678,12 @@ onMounted(() => {
   @apply w-64;
 }
 
-/* 表格区域 */
+/* 表格区域：与筛选区同一套硬边面板语言 */
 .table-section {
-  @apply bg-white rounded-2xl p-6;
-  @apply shadow-sm border border-gray-100;
+  @apply p-6;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-brutal);
 }
 
 .user-table {
@@ -679,17 +695,22 @@ onMounted(() => {
   @apply flex items-center gap-2;
 }
 
+/* 图标块：平面蓝色块 + 黑框直角（用户=蓝，延续 dashboard 的色彩编码） */
 .user-icon {
-  @apply text-blue-600;
+  @apply flex items-center justify-center w-8 h-8 shrink-0;
+  background: var(--accent-blue);
+  color: var(--ink);
+  border: 2px solid var(--ink);
 }
 
 .username-text {
-  @apply font-medium text-gray-900;
+  @apply font-semibold;
+  color: var(--ink);
 }
 
 /* 状态标签 */
 .status-tag {
-  @apply font-medium;
+  font-weight: 700;
 }
 
 .card-status-cell {
@@ -698,7 +719,7 @@ onMounted(() => {
 
 .card-count-btn,
 .card-link-btn {
-  @apply font-medium;
+  font-weight: 700;
 }
 
 .active-cards-table {
@@ -715,7 +736,9 @@ onMounted(() => {
 
 /* 时间单元格 */
 .time-cell {
-  @apply flex items-center gap-2 text-sm text-gray-600;
+  @apply flex items-center gap-2 text-sm;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 /* 分页 */
@@ -723,14 +746,17 @@ onMounted(() => {
   @apply flex justify-end mt-6;
 }
 
-/* 批量操作工具栏 */
+/* 批量操作工具栏：黄色弱化底 + 黑框，选中态本身即高亮 */
 .batch-actions-bar {
   @apply flex justify-between items-center mb-4 p-4;
-  @apply bg-blue-50 border border-blue-200 rounded-xl;
+  background: var(--accent-soft);
+  border: 2px solid var(--ink);
 }
 
 .selected-info {
-  @apply flex items-center gap-2 text-blue-700;
+  @apply flex items-center gap-2;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .info-icon {
@@ -738,7 +764,8 @@ onMounted(() => {
 }
 
 .selected-info strong {
-  @apply text-blue-900 font-bold;
+  color: var(--ink);
+  font-weight: 800;
 }
 
 .action-buttons {

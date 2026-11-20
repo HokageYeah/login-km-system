@@ -352,55 +352,99 @@ watch(dialogVisible, (newVal) => {
 <style scoped>
 @reference "../../../styles/index.css";
 
-/* 弹窗覆写 */
+/*
+ * 权限表单弹窗（Brutalism 改版）：
+ * 黑色标题栏 + 黄色几何贴纸 + 直角黑框表单分区。
+ * 弹窗外框/输入控件/按钮外观交给全局 Element Plus 覆盖，
+ * 这里只处理弹窗内部结构，避免与全局主题打架。
+ */
+
+/* 弹窗覆写：直角黑框 + 硬阴影（替换旧圆角柔影） */
 :deep(.permission-form-root .el-dialog) {
-  @apply rounded-3xl overflow-hidden border-0;
-  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(148, 163, 184, 0.1);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  box-shadow: var(--shadow-brutal-lg);
+  overflow: hidden;
 }
 :deep(.permission-form-root .el-dialog__header) { @apply p-0 m-0; }
 :deep(.permission-form-root .el-dialog__body) { @apply px-6 py-5; max-height: 72vh; overflow-y: auto; }
 :deep(.permission-form-root .el-dialog__footer) { @apply px-6 pb-5 pt-0; }
 
-/* 头部 Hero */
+/* 头部 Hero：黑底 + 黄色点缀，替代蓝紫渐变 */
 .dialog-hero {
   @apply relative px-6 pt-6 pb-5 overflow-hidden;
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  background: var(--ink);
+  border-bottom: 2px solid var(--ink);
 }
+
+/* 装饰块：黄色平面方块（旋转贴纸感，无模糊无透明） */
 .dialog-hero-bg {
-  @apply absolute rounded-full;
+  @apply absolute;
   width: 200px; height: 200px; right: -60px; top: -80px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--accent);
+  transform: rotate(12deg);
 }
+
 .dialog-hero-content { @apply relative z-10 pr-10; }
-.dialog-eyebrow { @apply text-xs font-semibold tracking-[0.18em] uppercase text-blue-100 mb-1.5; }
-.dialog-title { @apply text-xl font-bold text-white mb-1; }
-.dialog-desc { @apply text-sm text-blue-100 font-mono; }
-.dialog-close-btn {
-  @apply absolute top-4 right-4 z-20 border-white/30 text-white bg-white/10;
+.dialog-eyebrow {
+  @apply text-xs tracking-[0.18em] uppercase mb-1.5;
+  color: var(--accent);
+  font-weight: 800;
 }
-.dialog-close-btn:hover { @apply bg-white/20 text-white border-white/50; }
+.dialog-title {
+  @apply text-xl mb-1;
+  color: var(--surface);
+  font-weight: 900;
+}
+.dialog-desc {
+  @apply text-sm font-mono;
+  color: var(--accent-soft);
+}
+
+/* 关闭按钮：黄底黑字贴在黑色标题栏上 */
+.dialog-close-btn {
+  @apply absolute top-4 right-4 z-20;
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+.dialog-close-btn:hover {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--ink);
+}
 
 /* 表单 */
 .form-body { @apply pt-1; }
 
+/* 表单分区：纸色底 + 细线框（弹窗内层次弱一级，避免全黑框过重） */
 .form-section {
-  @apply rounded-2xl border border-slate-200/80 bg-white/60 p-4 mb-3;
-  @apply backdrop-blur-sm;
+  @apply p-4 mb-3;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .section-label {
-  @apply text-xs font-semibold tracking-[0.12em] uppercase text-slate-400 mb-3;
+  @apply text-xs tracking-[0.12em] uppercase mb-3;
+  color: var(--ink-soft);
+  font-weight: 800;
 }
 
 .field-label { @apply mr-1; }
-.label-help { @apply text-slate-400 cursor-help; }
+.label-help {
+  color: var(--ink-soft);
+  cursor: help;
+}
 
 /* 控件 + 右侧 badge */
 .field-with-badge { @apply flex items-center gap-3 w-full; }
 .field-control { @apply flex-1; }
 .field-badge {
-  @apply shrink-0 text-xs font-medium text-slate-400;
-  @apply px-3 py-1.5 rounded-lg bg-slate-100/80 border border-slate-200/60;
+  @apply shrink-0 text-xs px-3 py-1.5;
+  color: var(--ink-soft);
+  font-weight: 700;
+  background: var(--surface);
+  border: 2px solid var(--ink);
 }
 
 /* 显示设置横排 */
@@ -410,19 +454,13 @@ watch(dialogVisible, (newVal) => {
 /* 图标选项 */
 .icon-option { @apply flex items-center gap-2; }
 
-/* 无应用提示 */
-.empty-app-tip { @apply mt-2 text-sm text-amber-600; }
+/* 无应用提示：警告语义色 */
+.empty-app-tip {
+  @apply mt-2 text-sm;
+  color: #b45309;
+  font-weight: 600;
+}
 
-/* 底部按钮 */
+/* 底部按钮：外观交给全局 default / primary 规则（黑框 + hover 黄底） */
 .dialog-footer { @apply flex justify-end gap-3; }
-.footer-btn-cancel { @apply rounded-xl; }
-.footer-btn-primary {
-  @apply rounded-xl border-0 text-white font-medium;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
-}
-.footer-btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  transform: translateY(-1px);
-}
 </style>

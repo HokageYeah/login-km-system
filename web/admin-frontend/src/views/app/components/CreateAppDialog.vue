@@ -203,69 +203,103 @@ watch(dialogVisible, (newVal) => {
 <style scoped>
 @reference "../../../styles/index.css";
 
-/* 弹窗覆写 */
-:deep(.create-app-root .el-dialog) {
-  @apply rounded-3xl overflow-hidden border-0;
-  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(148, 163, 184, 0.1);
-}
+/*
+ * 创建应用弹窗（Brutalism 改版）：
+ * 全局主题已接管 el-dialog 的黑框/硬阴影/直角外观，
+ * 这里只保留自定义头部的黑色 hero 块与黄色几何角饰，
+ * 替换掉旧蓝紫渐变、毛玻璃分组与圆角覆盖。
+ */
+
+/* 弹窗覆写：仅调整内边距布局，让 hero 铺满头部，观感交给全局 */
 :deep(.create-app-root .el-dialog__header) { @apply p-0 m-0; }
 :deep(.create-app-root .el-dialog__body) { @apply px-6 py-5; }
 :deep(.create-app-root .el-dialog__footer) { @apply px-6 pb-5 pt-0; }
 
-/* 头部 Hero */
+/* 头部 Hero：黑底块，替代旧蓝紫渐变横幅 */
 .dialog-hero {
   @apply relative px-6 pt-6 pb-5 overflow-hidden;
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  background: var(--ink);
 }
+
+/* 几何角饰：平面黄色方块 + 黑描边，被 hero 裁切出斜角轮廓 */
 .dialog-hero-bg {
-  @apply absolute rounded-full;
-  width: 200px; height: 200px; right: -60px; top: -80px;
-  background: rgba(255, 255, 255, 0.12);
+  @apply absolute;
+  width: 140px; height: 140px; right: -34px; top: -34px;
+  background: var(--accent);
+  border: 2px solid var(--ink);
+  transform: rotate(14deg);
 }
+
 .dialog-hero-content { @apply relative z-10 pr-10; }
-.dialog-eyebrow { @apply text-xs font-semibold tracking-[0.18em] uppercase text-blue-100 mb-1.5; }
-.dialog-title { @apply text-xl font-bold text-white mb-1; }
-.dialog-desc { @apply text-sm text-blue-100; }
-.dialog-close-btn {
-  @apply absolute top-4 right-4 z-20 border-white/30 text-white bg-white/10;
+
+/* 眉题：黑底上的黄色大写小标签 */
+.dialog-eyebrow {
+  @apply text-xs tracking-[0.18em] uppercase mb-1.5;
+  color: var(--accent);
+  font-weight: 800;
 }
-.dialog-close-btn:hover { @apply bg-white/20 text-white border-white/50; }
+
+.dialog-title {
+  @apply text-xl mb-1;
+  color: var(--paper);
+  font-weight: 900;
+}
+
+.dialog-desc {
+  @apply text-sm;
+  color: var(--paper);
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+/* 关闭按钮：黄底黑框直角（覆盖 circle 圆形外观，保持粗野主义直角语言） */
+.dialog-close-btn {
+  @apply absolute top-4 right-4 z-20;
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+}
+.dialog-close-btn:hover {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
+}
 
 /* 表单 */
 .form-body { @apply pt-1; }
 
+/* 分组容器：纸色底 + 细沙线边框，与弹窗暖白表面形成层次 */
 .form-section {
-  @apply rounded-2xl border border-slate-200/80 bg-white/60 p-4 mb-3;
-  @apply backdrop-blur-sm;
+  @apply p-4 mb-3;
+  background: var(--paper);
+  border: 2px solid var(--line-soft);
 }
 
 .section-label {
-  @apply text-xs font-semibold tracking-[0.12em] uppercase text-slate-400 mb-3;
+  @apply text-xs tracking-[0.12em] uppercase mb-3;
+  color: var(--ink-soft);
+  font-weight: 800;
 }
 
 .field-label { @apply mr-1; }
-.label-help { @apply text-slate-400 cursor-help; }
+.label-help {
+  color: var(--ink-soft);
+  cursor: help;
+}
 
 /* 输入框 + 生成按钮 */
 .field-with-action { @apply flex gap-2 w-full; }
 .field-control { @apply flex-1; }
-.field-action-btn { @apply rounded-xl; }
 
 /* 提示文字 */
 .field-tip {
-  @apply mt-2 text-xs text-slate-400 leading-5;
+  @apply mt-2 text-xs leading-5;
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
-/* 底部按钮 */
+/* 底部按钮：外观由全局主题提供（默认/primary），此处只保留字重强调 */
 .dialog-footer { @apply flex justify-end gap-3; }
-.footer-btn-cancel { @apply rounded-xl; }
-.footer-btn-primary {
-  @apply rounded-xl border-0 text-white font-medium;
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
-}
-.footer-btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  transform: translateY(-1px);
-}
+.footer-btn-primary { font-weight: 800; }
 </style>

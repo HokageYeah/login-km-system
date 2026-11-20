@@ -15,19 +15,19 @@
 </script>
 
 <style scoped>
-/* 页面切换动画 */
+/* 页面切换动画：与 AppMain 保持一致的利落节奏（150ms） */
 .fade-transform-leave-active,
 .fade-transform-enter-active {
-  transition: all 0.3s;
+  transition: opacity 0.18s, transform 0.18s;
 }
 
 .fade-transform-enter-from {
   opacity: 0;
-  transform: translateX(-10px);
+  transform: translateX(-8px);
 }
 
 .fade-transform-leave-to {
   opacity: 0;
-  transform: translateX(10px);
+  transform: translateX(8px);
 }
 </style>
