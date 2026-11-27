@@ -19,7 +19,7 @@
     <div class="login-card">
       <div class="card-header">
         <p class="system-kicker">LOGIN / 管理后台</p>
-        <h1 class="system-title">卡密管理系统--测试</h1>
+        <h1 class="system-title">新卡密管理系统</h1>
         <p class="system-subtitle">高效 · 安全 · 便捷</p>
       </div>
 
