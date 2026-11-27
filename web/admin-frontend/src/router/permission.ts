@@ -18,7 +18,7 @@ router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   
   // 设置页面标题
-  document.title = `${to.meta.title ? to.meta.title + ' - ' : ''}卡密管理系统`
+  document.title = `${to.meta.title ? to.meta.title + ' - ' : ''}新卡密管理系统`
 
   /**
    * 1. 白名单处理：登录页

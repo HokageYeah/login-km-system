@@ -7,7 +7,7 @@
     <div class="logo-container" :class="{ 'collapsed': isCollapse }">
       <img src="@/assets/logo.svg" alt="logo" class="logo-img" v-if="false" /> <!-- 暂时隐藏图片logo -->
       <el-icon class="logo-icon" v-else><ElementPlus /></el-icon>
-      <h1 class="logo-title" v-show="!isCollapse">卡密管理系统</h1>
+      <h1 class="logo-title" v-show="!isCollapse">新卡密管理系统</h1>
     </div>
 
     <!-- 菜单区域 -->
